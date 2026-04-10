@@ -23,7 +23,7 @@ You only need a way to serve static files locally. Any of these work:
 | Tool | Install | Command |
 |------|---------|---------|
 | **Python 3** (recommended) | Pre-installed on macOS/Linux | `python3 -m http.server 8080` |
-| Python (Windows) | `py -m http.server 8080` |
+| Python (Windows) | Pre-installed on Windows | `py -m http.server 8080` |
 | **Node.js** | [nodejs.org](https://nodejs.org) | `npx serve -p 8080` |
 | **VS Code** | [Live Server extension](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) | Right-click `index.html` → "Open with Live Server" |
 
