@@ -37,14 +37,14 @@ You only need a way to serve static files locally. Any of these work:
 
 2. **Start a local server** from the project root
     Windows:
-```bash
+   ```bash
     py -m http.server 8080
-```
+   ```
 
    Mac/Linux:
-```bash
-python3 -m http.server 8080
-```
+   ```bash
+   python3 -m http.server 8080
+   ```
 3. **Open in your browser**
    ```
    http://localhost:8080
