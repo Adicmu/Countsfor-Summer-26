@@ -436,6 +436,15 @@ body {
   color:var(--text-tertiary);
   font-style:italic;
 }
+.cc-description {
+  font-size:0.8rem;
+  color:var(--text-secondary);
+  line-height:1.65;
+  padding:8px 12px;
+  background:var(--bg-secondary);
+  border-radius:var(--radius-sm);
+  border-left:3px solid var(--border-medium);
+}
 
 /* Counts For section */
 .counts-for-list {

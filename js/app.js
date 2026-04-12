@@ -363,6 +363,11 @@ const App = {
 
         <div class="cc-section-title">Counts For</div>
         <div class="counts-for-list">${cfHtml}</div>
+
+        ${course.description ? `
+          <div class="cc-section-title">Description</div>
+          <div class="cc-description">${esc(course.description)}</div>
+        ` : ''}
       </div>`;
   },
 
