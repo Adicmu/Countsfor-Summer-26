@@ -1,5 +1,5 @@
 // ============================================================
-// CountsFor — Main Application (Dual-Lens Explorer)
+// CountsFor — Main Application (Progressive Disclosure)
 // ============================================================
 
 const App = {
@@ -9,6 +9,7 @@ const App = {
   trees: {},          // { CS: tree, IS: tree, BA: tree, BS: tree }
   treeSections: {},   // { CS: { degree, gened }, ... }
 
+  layoutMode: 'focused', // 'focused' | 'split'
   activeMajor: 'CS',
   selectedCourse: null,
   treeSearchQuery: '',
@@ -77,10 +78,12 @@ const App = {
 
   // ── Shell Rendering ───────────────────────────────────────
   renderShell() {
+    const isSplit = this.layoutMode === 'split';
     document.getElementById('app').innerHTML = `
       <nav class="navbar">
         <div class="navbar-brand" onclick="App.reset()">CountsFor <span class="subtitle">CMU-Q</span></div>
         <div class="navbar-right">
+          <button class="nav-back ${isSplit?'visible':''}" id="navBack" onclick="App.exitExplorer()">← Back to Search</button>
           <div class="navbar-location-toggle">
             <button class="loc-btn ${this.locationFilter==='all'?'active':''}" onclick="App.setLocation('all')">All</button>
             <button class="loc-btn ${this.locationFilter==='qatar'?'active':''}" onclick="App.setLocation('qatar')">🇶🇦 Qatar</button>
@@ -90,14 +93,14 @@ const App = {
         </div>
       </nav>
 
-      <div class="mobile-lens-toggle" id="mobileLensToggle">
+      <div class="mobile-lens-toggle ${isSplit?'split-active':''}" id="mobileLensToggle">
         <button class="mobile-lens-btn ${this.mobileLens==='lookup'?'active':''}" onclick="App.setMobileLens('lookup')">🔍 Course Lookup</button>
         <button class="mobile-lens-btn ${this.mobileLens==='map'?'active':''}" onclick="App.setMobileLens('map')">🗂 Requirement Map</button>
       </div>
 
-      <div class="main-layout">
+      <div class="main-layout ${isSplit?'layout-split':'layout-focused'}" id="mainLayout">
         <!-- LEFT: Course Lookup -->
-        <div class="panel panel-left ${this.mobileLens==='map'?'hidden-mobile':''}" id="panelLeft">
+        <div class="panel panel-left ${isSplit && this.mobileLens==='map'?'hidden-mobile':''}" id="panelLeft">
           <div class="panel-header">
             <div class="panel-tag">Course Lookup</div>
             <div class="panel-title">What does this course count for?</div>
@@ -110,8 +113,8 @@ const App = {
           <div class="panel-body" id="leftBody"></div>
         </div>
 
-        <!-- RIGHT: Requirement Map -->
-        <div class="panel ${this.mobileLens==='lookup'?'hidden-mobile':''}" id="panelRight">
+        <!-- RIGHT: Requirement Map (hidden in focused mode via CSS) -->
+        <div class="panel panel-right ${isSplit && this.mobileLens==='lookup'?'hidden-mobile':''}" id="panelRight">
           <div class="major-tabs" id="majorTabs">
             ${MAJOR_ORDER.map(m => `<button class="major-tab ${m===this.activeMajor?'active':''}" data-major="${m}" onclick="App.switchMajor('${m}')">${m}</button>`).join('')}
           </div>
@@ -146,12 +149,12 @@ const App = {
         if (ta) ta.classList.remove('visible');
       }
 
-      // Handle cf-row clicks (cross-linking) via data attributes
+      // Handle cf-row clicks — enter explorer and navigate to the requirement
       const cfRow = e.target.closest('[data-nav-major]');
       if (cfRow) {
         const major = cfRow.dataset.navMajor;
         const path = cfRow.dataset.navPath;
-        if (major && path) this.navigateToReqNode(major, path);
+        if (major && path) this.enterExplorer(major, path);
       }
 
       // Handle tree node toggle via data attributes
@@ -203,9 +206,60 @@ const App = {
 
   reset() {
     this.selectedCourse = null;
+    if (this.layoutMode === 'split') {
+      this.exitExplorer();
+    }
     const input = document.getElementById('courseSearch');
     if (input) input.value = '';
     this.renderLeftEmpty();
+  },
+
+  // ── Explorer Mode (progressive disclosure) ─────────────────
+  enterExplorer(major, path) {
+    if (this.layoutMode === 'split') {
+      // Already in split mode — just navigate
+      if (major && path) this.navigateToReqNode(major, path);
+      return;
+    }
+    this.layoutMode = 'split';
+    const layout = document.getElementById('mainLayout');
+    if (layout) {
+      layout.classList.remove('layout-focused');
+      layout.classList.add('layout-split');
+    }
+    // Show back button
+    const backBtn = document.getElementById('navBack');
+    if (backBtn) backBtn.classList.add('visible');
+    // Show mobile toggle
+    const mobileToggle = document.getElementById('mobileLensToggle');
+    if (mobileToggle) mobileToggle.classList.add('split-active');
+    // Show right panel
+    const rightPanel = document.getElementById('panelRight');
+    if (rightPanel) rightPanel.style.display = 'flex';
+    // Render tree if not yet rendered
+    this.renderTree();
+    // Navigate to specific node if provided
+    if (major && path) {
+      setTimeout(() => this.navigateToReqNode(major, path), 100);
+    }
+  },
+
+  exitExplorer() {
+    this.layoutMode = 'focused';
+    const layout = document.getElementById('mainLayout');
+    if (layout) {
+      layout.classList.remove('layout-split');
+      layout.classList.add('layout-focused');
+    }
+    // Hide back button
+    const backBtn = document.getElementById('navBack');
+    if (backBtn) backBtn.classList.remove('visible');
+    // Hide mobile toggle
+    const mobileToggle = document.getElementById('mobileLensToggle');
+    if (mobileToggle) mobileToggle.classList.remove('split-active');
+    // Remove hidden-mobile from left panel
+    const leftPanel = document.getElementById('panelLeft');
+    if (leftPanel) leftPanel.classList.remove('hidden-mobile');
   },
 
   // ══════════════════════════════════════════════════════════
@@ -367,6 +421,12 @@ const App = {
         ${course.description ? `
           <div class="cc-section-title">Description</div>
           <div class="cc-description">${esc(course.description)}</div>
+        ` : ''}
+
+        ${this.layoutMode === 'focused' ? `
+          <button class="explore-cta" onclick="App.enterExplorer()">
+            🗂 Explore Requirement Map <span class="arrow">→</span>
+          </button>
         ` : ''}
       </div>`;
   },

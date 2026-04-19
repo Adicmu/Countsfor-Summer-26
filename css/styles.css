@@ -225,16 +225,39 @@ body {
 }
 
 /* ============================================================
-   MAIN LAYOUT — DUAL LENS
+   MAIN LAYOUT — Progressive Disclosure
+   Two modes: focused (single panel) and split (dual panel)
    ============================================================ */
 .main-layout {
   flex:1;
   display:grid;
-  grid-template-columns:minmax(340px,42%) 1fr;
+  grid-template-columns:1fr;
   overflow:hidden;
   position:relative;
   min-height:0;
+  transition:grid-template-columns 0.35s cubic-bezier(0.4,0,0.2,1);
 }
+
+/* ── Focused Mode (default) ── */
+.layout-focused .panel-right {
+  display:none;
+}
+.layout-focused .panel-left {
+  border-right:none;
+}
+
+/* ── Split Mode (on demand) ── */
+.layout-split {
+  grid-template-columns:minmax(320px,40%) 1fr;
+}
+.layout-split .panel-right {
+  display:flex;
+}
+.layout-split .panel-left {
+  border-right:var(--panel-divider);
+}
+
+/* ── Panels ── */
 .panel {
   display:flex;
   flex-direction:column;
@@ -243,8 +266,8 @@ body {
   transition:background var(--transition-slow);
   min-height:0;
 }
-.panel-left {
-  border-right:var(--panel-divider);
+.panel-right {
+  display:none;
 }
 .panel-header {
   padding:20px 20px 16px;
@@ -270,6 +293,95 @@ body {
   overflow-y:auto;
   padding:0;
   min-height:0;
+}
+
+/* ── Focused Mode: centered content ── */
+.layout-focused .panel-body {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+}
+.layout-focused .course-card {
+  max-width:720px;
+  width:100%;
+}
+.layout-focused .empty-state {
+  max-width:500px;
+}
+.layout-focused .panel-header {
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  text-align:center;
+  padding:32px 20px 24px;
+  border-bottom:none;
+}
+.layout-focused .search-wrapper {
+  width:100%;
+  max-width:520px;
+}
+
+/* ── Explore CTA Button ── */
+.explore-cta {
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  width:100%;
+  padding:12px 20px;
+  margin-top:20px;
+  border:1px dashed var(--border-medium);
+  border-radius:var(--radius-md);
+  background:var(--bg-secondary);
+  color:var(--text-secondary);
+  font-family:inherit;
+  font-size:0.82rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all var(--transition);
+}
+.explore-cta:hover {
+  border-color:var(--cmu-red);
+  color:var(--cmu-red);
+  background:rgba(196,18,48,0.04);
+  transform:translateY(-1px);
+}
+[data-theme="dark"] .explore-cta:hover {
+  background:rgba(196,18,48,0.10);
+}
+.explore-cta .arrow {
+  transition:transform 0.2s ease;
+}
+.explore-cta:hover .arrow {
+  transform:translateX(3px);
+}
+
+/* ── Back-to-Search Link (navbar) ── */
+.nav-back {
+  display:none;
+  align-items:center;
+  gap:5px;
+  padding:0 12px;
+  height:34px;
+  border:1px solid var(--border-light);
+  border-radius:8px;
+  background:var(--bg-secondary);
+  color:var(--text-secondary);
+  font-family:inherit;
+  font-size:0.75rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:all var(--transition);
+  white-space:nowrap;
+}
+.nav-back:hover {
+  border-color:var(--border-medium);
+  color:var(--text-primary);
+  background:var(--bg-tertiary);
+}
+.layout-split ~ .navbar .nav-back,
+.nav-back.visible {
+  display:flex;
 }
 
 /* ============================================================
@@ -823,7 +935,7 @@ body {
 }
 
 /* ============================================================
-   MOBILE LENS TOGGLE
+   MOBILE LENS TOGGLE (only in split mode)
    ============================================================ */
 .mobile-lens-toggle {
   display:none;
@@ -861,26 +973,22 @@ body {
 }
 
 /* ============================================================
-   FOOTER (minimal)
-   ============================================================ */
-.footer {
-  display:none; /* hidden in split layout, visible on mobile */
-}
-
-/* ============================================================
    RESPONSIVE
    ============================================================ */
 @media (max-width: 860px) {
-  .main-layout {
+  .layout-split {
     grid-template-columns:1fr;
   }
-  .panel-left {
+  .layout-split .panel-left {
     border-right:none;
   }
-  .panel.hidden-mobile {
+  .layout-split .panel.hidden-mobile {
     display:none !important;
   }
-  .mobile-lens-toggle {
+  .mobile-lens-toggle.split-active {
     display:flex !important;
+  }
+  .layout-focused .panel-header {
+    padding:24px 16px 16px;
   }
 }
