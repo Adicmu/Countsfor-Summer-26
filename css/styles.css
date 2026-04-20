@@ -356,32 +356,32 @@ body {
   transform:translateX(3px);
 }
 
-/* ── Back-to-Search Link (navbar) ── */
-.nav-back {
-  display:none;
+/* ── Panel Close Button (✕ on right panel) ── */
+.panel-close {
+  position:absolute;
+  top:8px;
+  right:10px;
+  z-index:10;
+  width:30px;
+  height:30px;
+  display:flex;
   align-items:center;
-  gap:5px;
-  padding:0 12px;
-  height:34px;
-  border:1px solid var(--border-light);
-  border-radius:8px;
-  background:var(--bg-secondary);
+  justify-content:center;
+  border:none;
+  border-radius:50%;
+  background:var(--bg-tertiary);
   color:var(--text-secondary);
-  font-family:inherit;
-  font-size:0.75rem;
-  font-weight:600;
+  font-size:1.2rem;
+  line-height:1;
   cursor:pointer;
   transition:all var(--transition);
-  white-space:nowrap;
 }
-.nav-back:hover {
-  border-color:var(--border-medium);
-  color:var(--text-primary);
-  background:var(--bg-tertiary);
+.panel-close:hover {
+  background:var(--cmu-red);
+  color:#fff;
 }
-.layout-split ~ .navbar .nav-back,
-.nav-back.visible {
-  display:flex;
+.panel-right {
+  position:relative;
 }
 
 /* ============================================================

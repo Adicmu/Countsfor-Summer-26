@@ -83,7 +83,6 @@ const App = {
       <nav class="navbar">
         <div class="navbar-brand" onclick="App.reset()">CountsFor <span class="subtitle">CMU-Q</span></div>
         <div class="navbar-right">
-          <button class="nav-back ${isSplit?'visible':''}" id="navBack" onclick="App.exitExplorer()">← Back to Search</button>
           <div class="navbar-location-toggle">
             <button class="loc-btn ${this.locationFilter==='all'?'active':''}" onclick="App.setLocation('all')">All</button>
             <button class="loc-btn ${this.locationFilter==='qatar'?'active':''}" onclick="App.setLocation('qatar')">🇶🇦 Qatar</button>
@@ -115,6 +114,7 @@ const App = {
 
         <!-- RIGHT: Requirement Map (hidden in focused mode via CSS) -->
         <div class="panel panel-right ${isSplit && this.mobileLens==='lookup'?'hidden-mobile':''}" id="panelRight">
+          <button class="panel-close" onclick="App.exitExplorer()" title="Close requirement map">&times;</button>
           <div class="major-tabs" id="majorTabs">
             ${MAJOR_ORDER.map(m => `<button class="major-tab ${m===this.activeMajor?'active':''}" data-major="${m}" onclick="App.switchMajor('${m}')">${m}</button>`).join('')}
           </div>
@@ -227,9 +227,6 @@ const App = {
       layout.classList.remove('layout-focused');
       layout.classList.add('layout-split');
     }
-    // Show back button
-    const backBtn = document.getElementById('navBack');
-    if (backBtn) backBtn.classList.add('visible');
     // Show mobile toggle
     const mobileToggle = document.getElementById('mobileLensToggle');
     if (mobileToggle) mobileToggle.classList.add('split-active');
@@ -251,15 +248,17 @@ const App = {
       layout.classList.remove('layout-split');
       layout.classList.add('layout-focused');
     }
-    // Hide back button
-    const backBtn = document.getElementById('navBack');
-    if (backBtn) backBtn.classList.remove('visible');
+    // Force-hide right panel so it doesn't leak below
+    const rightPanel = document.getElementById('panelRight');
+    if (rightPanel) rightPanel.style.display = 'none';
     // Hide mobile toggle
     const mobileToggle = document.getElementById('mobileLensToggle');
     if (mobileToggle) mobileToggle.classList.remove('split-active');
-    // Remove hidden-mobile from left panel
+    // Ensure left panel is visible
     const leftPanel = document.getElementById('panelLeft');
     if (leftPanel) leftPanel.classList.remove('hidden-mobile');
+    // Re-render the course card to show the Explore button again
+    if (this.selectedCourse) this.renderCourseCard(this.selectedCourse);
   },
 
   // ══════════════════════════════════════════════════════════
