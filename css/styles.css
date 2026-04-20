@@ -356,32 +356,28 @@ body {
   transform:translateX(3px);
 }
 
-/* ── Panel Close Button (✕ on right panel) ── */
+/* ── Panel Close Button (✕ inside major-tabs row) ── */
 .panel-close {
-  position:absolute;
-  top:8px;
-  right:10px;
-  z-index:10;
-  width:30px;
-  height:30px;
+  width:34px;
+  height:34px;
+  border-radius:8px;
+  border:1px solid var(--border-light);
+  background:var(--bg-secondary);
+  color:var(--text-secondary);
+  cursor:pointer;
   display:flex;
   align-items:center;
   justify-content:center;
-  border:none;
-  border-radius:50%;
-  background:var(--bg-tertiary);
-  color:var(--text-secondary);
-  font-size:1.2rem;
+  font-size:1.1rem;
   line-height:1;
-  cursor:pointer;
   transition:all var(--transition);
+  flex-shrink:0;
+  margin-left:auto;
 }
 .panel-close:hover {
   background:var(--cmu-red);
   color:#fff;
-}
-.panel-right {
-  position:relative;
+  border-color:var(--cmu-red);
 }
 
 /* ============================================================
@@ -640,8 +636,9 @@ body {
    ============================================================ */
 .major-tabs {
   display:flex;
+  align-items:center;
   gap:0;
-  padding:0 16px;
+  padding:0 8px 0 16px;
   border-bottom:var(--panel-divider);
   flex-shrink:0;
   background:var(--bg-panel);

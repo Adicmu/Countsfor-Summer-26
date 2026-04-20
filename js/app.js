@@ -114,9 +114,9 @@ const App = {
 
         <!-- RIGHT: Requirement Map (hidden in focused mode via CSS) -->
         <div class="panel panel-right ${isSplit && this.mobileLens==='lookup'?'hidden-mobile':''}" id="panelRight">
-          <button class="panel-close" onclick="App.exitExplorer()" title="Close requirement map">&times;</button>
           <div class="major-tabs" id="majorTabs">
             ${MAJOR_ORDER.map(m => `<button class="major-tab ${m===this.activeMajor?'active':''}" data-major="${m}" onclick="App.switchMajor('${m}')">${m}</button>`).join('')}
+            <button class="panel-close" onclick="App.exitExplorer()" title="Close">&times;</button>
           </div>
           <div class="tree-search">
             <input type="text" id="treeSearchInput" placeholder="Filter requirements…" />
