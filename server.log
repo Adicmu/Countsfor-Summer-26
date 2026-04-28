@@ -1,0 +1,8 @@
+::1 - - [28/Apr/2026 22:14:22] "GET / HTTP/1.1" 200 -
+::1 - - [28/Apr/2026 22:14:46] "GET / HTTP/1.1" 304 -
+::1 - - [28/Apr/2026 22:14:46] "GET /js/utils.js HTTP/1.1" 304 -
+::1 - - [28/Apr/2026 22:14:46] "GET /css/styles.css HTTP/1.1" 200 -
+::1 - - [28/Apr/2026 22:14:46] "GET /js/data.js HTTP/1.1" 304 -
+::1 - - [28/Apr/2026 22:14:46] "GET /js/api.js HTTP/1.1" 304 -
+::1 - - [28/Apr/2026 22:14:46] "GET /js/app.js HTTP/1.1" 200 -
+::1 - - [28/Apr/2026 22:14:48] "GET /data/courses.json HTTP/1.1" 200 -

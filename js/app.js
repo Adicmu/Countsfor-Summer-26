@@ -364,6 +364,13 @@ const App = {
     if (course.offered_qatar) locFlags.push('🇶🇦 Qatar');
     if (course.offered_pitts) locFlags.push('🇺🇸 Pittsburgh');
 
+    // Delivery mode from SOC sections
+    const deliveryModes = new Set();
+    const sections = course.soc_sections || [];
+    for (const s of sections) {
+      if (s.delivery_mode) deliveryModes.add(s.delivery_mode);
+    }
+
     // Build counts-for section
     let cfHtml = '';
     for (const majorCode of MAJOR_ORDER) {
@@ -389,6 +396,45 @@ const App = {
       cfHtml = '<div style="padding:8px 0;color:var(--text-tertiary);font-size:0.8rem;font-style:italic;">This course does not count toward any tracked major requirements.</div>';
     }
 
+    // Build SOC schedule section
+    let schedHtml = '';
+    if (sections.length > 0) {
+      // Group sections by location for clarity
+      const qatarSections = sections.filter(s => s.location && (s.location.includes('Qatar') || s.location.includes('Doha')));
+      const pittsSections = sections.filter(s => s.location && s.location.includes('Pittsburgh'));
+      const otherSections = sections.filter(s => s.location && !s.location.includes('Qatar') && !s.location.includes('Doha') && !s.location.includes('Pittsburgh'));
+
+      const buildRows = (secs) => secs.map(s => {
+        const dmClass = (s.delivery_mode || '').toLowerCase().includes('remote') ? 'dm-remote'
+          : (s.delivery_mode || '').toLowerCase().includes('in-person') ? 'dm-inperson'
+          : 'dm-other';
+        return `<tr>
+          <td class="sched-sec">${esc(s.section)}</td>
+          <td class="sched-days">${esc(s.days) || 'TBA'}</td>
+          <td class="sched-time">${s.begin_time && s.begin_time !== 'TBA' ? esc(s.begin_time) + '–' + esc(s.end_time) : 'TBA'}</td>
+          <td><span class="dm-badge ${dmClass}">${esc(s.delivery_mode) || '—'}</span></td>
+        </tr>`;
+      }).join('');
+
+      schedHtml = '<div class="sched-container">';
+
+      if (qatarSections.length > 0) {
+        schedHtml += `<div class="sched-loc-header"><span class="sched-loc-flag">🇶🇦</span> Doha, Qatar</div>`;
+        schedHtml += `<table class="sched-table">${buildRows(qatarSections)}</table>`;
+      }
+      if (pittsSections.length > 0) {
+        schedHtml += `<div class="sched-loc-header"><span class="sched-loc-flag">🇺🇸</span> Pittsburgh, PA</div>`;
+        schedHtml += `<table class="sched-table">${buildRows(pittsSections)}</table>`;
+      }
+      if (otherSections.length > 0) {
+        schedHtml += `<div class="sched-loc-header">📍 Other Locations</div>`;
+        schedHtml += `<table class="sched-table">${buildRows(otherSections)}</table>`;
+      }
+      schedHtml += '</div>';
+    } else {
+      schedHtml = '<div style="padding:8px 0;color:var(--text-tertiary);font-size:0.8rem;font-style:italic;">Schedule not available for Fall 2026</div>';
+    }
+
     el.innerHTML = `
       <div class="course-card">
         <div class="cc-header">
@@ -399,6 +445,14 @@ const App = {
             <span class="cc-pill">${course.units || '?'} units</span>
             ${locFlags.map(f => `<span class="cc-pill"><span class="emoji">${f.split(' ')[0]}</span> ${f.split(' ').slice(1).join(' ')}</span>`).join('')}
           </div>
+          ${deliveryModes.size > 0 ? `
+            <div class="cc-delivery-modes">
+              ${[...deliveryModes].map(dm => {
+                const cls = dm.toLowerCase().includes('remote') ? 'dm-remote'
+                  : dm.toLowerCase().includes('in-person') ? 'dm-inperson' : 'dm-other';
+                return `<span class="dm-badge ${cls}">${esc(dm)}</span>`;
+              }).join('')}
+            </div>` : ''}
           ${semesters.length > 0 ? `
             <div class="cc-semesters">
               ${semesters.slice(0, 8).map(s => `<span class="sem-pill">${s}</span>`).join('')}
@@ -416,6 +470,9 @@ const App = {
 
         <div class="cc-section-title">Counts For</div>
         <div class="counts-for-list">${cfHtml}</div>
+
+        <div class="cc-section-title">Fall 2026 Schedule</div>
+        ${schedHtml}
 
         ${course.description ? `
           <div class="cc-section-title">Description</div>

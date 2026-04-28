@@ -875,6 +875,108 @@ body {
 .also-tag-bs { background:var(--major-bs-bg); color:var(--major-bs-text); }
 
 /* ============================================================
+   DELIVERY MODE BADGES
+   ============================================================ */
+.cc-delivery-modes {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+  margin-top:8px;
+}
+.dm-badge {
+  display:inline-flex;
+  align-items:center;
+  padding:2px 8px;
+  border-radius:4px;
+  font-size:0.65rem;
+  font-weight:600;
+  letter-spacing:0.02em;
+  white-space:nowrap;
+}
+.dm-inperson {
+  background:rgba(5,150,105,0.12);
+  color:#059669;
+}
+[data-theme="dark"] .dm-inperson {
+  background:rgba(52,211,153,0.14);
+  color:#34D399;
+}
+.dm-remote {
+  background:rgba(217,119,6,0.12);
+  color:#D97706;
+}
+[data-theme="dark"] .dm-remote {
+  background:rgba(251,191,36,0.14);
+  color:#FBBF24;
+}
+.dm-other {
+  background:var(--bg-tertiary);
+  color:var(--text-secondary);
+}
+
+/* ============================================================
+   SOC SCHEDULE TABLE
+   ============================================================ */
+.sched-container {
+  margin-top:4px;
+}
+.sched-loc-header {
+  display:flex;
+  align-items:center;
+  gap:6px;
+  padding:8px 0 4px;
+  font-size:0.72rem;
+  font-weight:700;
+  color:var(--text-secondary);
+  letter-spacing:0.01em;
+}
+.sched-loc-header:first-child {
+  padding-top:0;
+}
+.sched-loc-flag {
+  font-size:0.85rem;
+}
+.sched-table {
+  width:100%;
+  border-collapse:collapse;
+  margin-bottom:10px;
+}
+.sched-table tr {
+  border-bottom:1px solid var(--border-light);
+}
+.sched-table tr:last-child {
+  border-bottom:none;
+}
+.sched-table td {
+  padding:5px 6px;
+  font-size:0.73rem;
+  vertical-align:middle;
+}
+.sched-sec {
+  font-family:'JetBrains Mono',monospace;
+  font-weight:600;
+  color:var(--cmu-red);
+  min-width:42px;
+  white-space:nowrap;
+}
+.sched-days {
+  font-family:'JetBrains Mono',monospace;
+  font-weight:500;
+  color:var(--text-primary);
+  min-width:40px;
+  white-space:nowrap;
+}
+.sched-time {
+  color:var(--text-secondary);
+  white-space:nowrap;
+  min-width:100px;
+}
+.sched-table .dm-badge {
+  font-size:0.6rem;
+  padding:1px 6px;
+}
+
+/* ============================================================
    EMPTY & LOADING STATES
    ============================================================ */
 .empty-state {
