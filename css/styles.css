@@ -463,6 +463,18 @@ body {
   color:var(--text-tertiary);
   white-space:nowrap;
 }
+.typeahead-hint {
+  font-size:0.65rem;
+  color:var(--text-tertiary);
+  background:var(--bg-tertiary);
+  padding:2px 7px;
+  border-radius:4px;
+  white-space:nowrap;
+  flex-shrink:0;
+  max-width:200px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
 
 /* ============================================================
    COURSE CARD
@@ -679,15 +691,15 @@ body {
   padding:8px 0;
   justify-content:center;
   font-size:0.62rem;
+  flex-shrink:0;
+}
+.layout-split .cf-badge .cf-type {
+  display:none;
 }
 .layout-split .cf-text {
   padding:8px 10px;
   font-size:0.76rem;
   flex:1;
-}
-.layout-split .cf-type {
-  padding:8px 10px;
-  color:var(--text-tertiary);
 }
 
 /* ============================================================

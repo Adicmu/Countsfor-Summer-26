@@ -105,7 +105,7 @@ const App = {
             <div class="panel-title">What does this course count for?</div>
             <div class="search-wrapper">
               <span class="search-icon">🔍</span>
-              <input type="text" class="search-input" id="courseSearch" placeholder="Search by code (15-122) or name…" autocomplete="off" />
+              <input type="text" class="search-input" id="courseSearch" placeholder="Search by code, name, requirement, or category…" autocomplete="off" />
               <div class="typeahead" id="typeahead"></div>
             </div>
           </div>
@@ -277,7 +277,20 @@ const App = {
     let results = App.courses.filter(c => {
       const code = c.course_code.replace(/-/g, '').toLowerCase();
       const name = (c.course_name || '').toLowerCase();
-      return code.includes(q) || name.includes(q);
+      if (code.includes(q) || name.includes(q)) return true;
+      // Search requirement paths and category names
+      if (c.requirements) {
+        for (const majorCode of MAJOR_ORDER) {
+          const reqs = c.requirements[majorCode] || [];
+          for (const req of reqs) {
+            if (req.requirement && req.requirement.toLowerCase().includes(q)) return true;
+          }
+        }
+      }
+      // Search department name
+      const dept = getDeptName(c.course_code).toLowerCase();
+      if (dept.includes(q)) return true;
+      return false;
     });
 
     // Apply location filter
@@ -290,13 +303,31 @@ const App = {
     if (results.length === 0) {
       ta.innerHTML = '<div class="typeahead-item" style="cursor:default;color:var(--text-tertiary);font-size:0.8rem;">No courses found</div>';
     } else {
-      ta.innerHTML = results.map((c, i) =>
-        `<div class="typeahead-item" data-idx="${i}" onclick="App.selectSearchResult(${i})">
-          <span class="typeahead-code">${esc(c.course_code)}</span>
-          <span class="typeahead-name">${esc(c.course_name)}</span>
-          <span class="typeahead-units">${c.units || '?'} u</span>
-        </div>`
-      ).join('');
+      ta.innerHTML = results.map((c, i) => {
+        // Show matching context for requirement/category searches
+        let matchHint = '';
+        const codeMatch = c.course_code.replace(/-/g, '').toLowerCase().includes(q);
+        const nameMatch = (c.course_name || '').toLowerCase().includes(q);
+        if (!codeMatch && !nameMatch && c.requirements) {
+          for (const majorCode of MAJOR_ORDER) {
+            const reqs = c.requirements[majorCode] || [];
+            for (const req of reqs) {
+              if (req.requirement && req.requirement.toLowerCase().includes(q)) {
+                const parts = req.requirement.split('---');
+                matchHint = '<span class="typeahead-hint">' + majorCode + ': ' + esc(parts[parts.length - 1]) + '</span>';
+                break;
+              }
+            }
+            if (matchHint) break;
+          }
+        }
+        return '<div class="typeahead-item" data-idx="' + i + '" onclick="App.selectSearchResult(' + i + ')">' +
+          '<span class="typeahead-code">' + esc(c.course_code) + '</span>' +
+          '<span class="typeahead-name">' + esc(c.course_name) + '</span>' +
+          matchHint +
+          '<span class="typeahead-units">' + (c.units || '?') + ' u</span>' +
+        '</div>';
+      }).join('');
     }
     ta.classList.add('visible');
   }, 180),
@@ -433,31 +464,31 @@ const App = {
 
     el.innerHTML = `
       <div class="course-card">
-        <div class="cc-header">
-          <div class="cc-code">${esc(course.course_code)}</div>
-          <div class="cc-name">${esc(course.course_name)}</div>
-          <div class="cc-meta">
-            <span class="cc-pill">${esc(deptName)}</span>
-            <span class="cc-pill">${course.units || '?'} units</span>
-            ${locFlags.map(f => `<span class="cc-pill"><span class="emoji">${f.split(' ')[0]}</span> ${f.split(' ').slice(1).join(' ')}</span>`).join('')}
-          </div>
-          ${deliveryModes.size > 0 ? `
-            <div class="cc-delivery-modes">
-              ${[...deliveryModes].map(dm => {
-                const cls = dm.toLowerCase().includes('remote') ? 'dm-remote'
-                  : dm.toLowerCase().includes('in-person') ? 'dm-inperson' : 'dm-other';
-                return `<span class="dm-badge ${cls}">${esc(dm)}</span>`;
-              }).join('')}
-            </div>` : ''}
-          ${semesters.length > 0 ? `
-            <div class="cc-semesters">
-              ${semesters.slice(0, 8).map(s => `<span class="sem-pill">${s}</span>`).join('')}
-              ${semesters.length > 8 ? `<span class="sem-pill" style="opacity:0.5">+${semesters.length - 8}</span>` : ''}
-            </div>` : ''}
-        </div>
-
         <div class="cc-grid">
-          <div class="cc-grid-col">
+          <div class="cc-grid-col cc-grid-left">
+            <div class="cc-header">
+              <div class="cc-code">${esc(course.course_code)}</div>
+              <div class="cc-name">${esc(course.course_name)}</div>
+              <div class="cc-meta">
+                <span class="cc-pill">${esc(deptName)}</span>
+                <span class="cc-pill">${course.units || '?'} units</span>
+                ${locFlags.map(f => `<span class="cc-pill"><span class="emoji">${f.split(' ')[0]}</span> ${f.split(' ').slice(1).join(' ')}</span>`).join('')}
+              </div>
+              ${deliveryModes.size > 0 ? `
+                <div class="cc-delivery-modes">
+                  ${[...deliveryModes].map(dm => {
+                    const cls = dm.toLowerCase().includes('remote') ? 'dm-remote'
+                      : dm.toLowerCase().includes('in-person') ? 'dm-inperson' : 'dm-other';
+                    return `<span class="dm-badge ${cls}">${esc(dm)}</span>`;
+                  }).join('')}
+                </div>` : ''}
+              ${semesters.length > 0 ? `
+                <div class="cc-semesters">
+                  ${semesters.slice(0, 8).map(s => `<span class="sem-pill">${s}</span>`).join('')}
+                  ${semesters.length > 8 ? `<span class="sem-pill" style="opacity:0.5">+${semesters.length - 8}</span>` : ''}
+                </div>` : ''}
+            </div>
+
             ${prereq ? `
               <div class="cc-section-title">Prerequisites</div>
               <div class="cc-prereq">${esc(prereq)}</div>
@@ -472,8 +503,8 @@ const App = {
             ` : ''}
           </div>
 
-          <div class="cc-grid-col">
-            <div class="cc-section-title">Counts For</div>
+          <div class="cc-grid-col cc-grid-right">
+            <div class="cc-section-title" style="margin-top:0;">Counts For</div>
             <div class="counts-for-list">${cfHtml}</div>
 
             <div class="cc-section-title">Fall 2026 Schedule</div>
