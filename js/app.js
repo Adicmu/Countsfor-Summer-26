@@ -377,19 +377,16 @@ const App = {
       const majorMappings = mappings[majorCode];
       if (!majorMappings || majorMappings.length === 0) continue;
 
-      cfHtml += `<div class="cf-major-group">`;
       for (const m of majorMappings) {
         const typeLabel = m.isGenEd ? 'GEN ED' : 'CORE';
         const typeClass = m.isGenEd ? 'cf-type-gened' : 'cf-type-core';
         const safePath = m.fullPath.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         cfHtml += `
           <div class="cf-row cf-row-${majorCode.toLowerCase()}" data-nav-major="${majorCode}" data-nav-path="${safePath}">
-            <div class="cf-badge cf-badge-${majorCode.toLowerCase()}">${majorCode}</div>
+            <div class="cf-badge cf-badge-${majorCode.toLowerCase()}">${majorCode} <span class="cf-type ${typeClass}">${typeLabel}</span></div>
             <div class="cf-text">${esc(m.shortLabel)}</div>
-            <div class="cf-type ${typeClass}">${typeLabel}</div>
           </div>`;
       }
-      cfHtml += `</div>`;
     }
 
     if (!cfHtml) {
@@ -399,7 +396,6 @@ const App = {
     // Build SOC schedule section
     let schedHtml = '';
     if (sections.length > 0) {
-      // Group sections by location for clarity
       const qatarSections = sections.filter(s => s.location && (s.location.includes('Qatar') || s.location.includes('Doha')));
       const pittsSections = sections.filter(s => s.location && s.location.includes('Pittsburgh'));
       const otherSections = sections.filter(s => s.location && !s.location.includes('Qatar') && !s.location.includes('Doha') && !s.location.includes('Pittsburgh'));
@@ -419,16 +415,16 @@ const App = {
       schedHtml = '<div class="sched-container">';
 
       if (qatarSections.length > 0) {
-        schedHtml += `<div class="sched-loc-header"><span class="sched-loc-flag">🇶🇦</span> Doha, Qatar</div>`;
-        schedHtml += `<table class="sched-table">${buildRows(qatarSections)}</table>`;
+        schedHtml += `<div class="sched-loc-group"><div class="sched-loc-header"><span class="sched-loc-flag">🇶🇦</span> Doha, Qatar</div>`;
+        schedHtml += `<table class="sched-table">${buildRows(qatarSections)}</table></div>`;
       }
       if (pittsSections.length > 0) {
-        schedHtml += `<div class="sched-loc-header"><span class="sched-loc-flag">🇺🇸</span> Pittsburgh, PA</div>`;
-        schedHtml += `<table class="sched-table">${buildRows(pittsSections)}</table>`;
+        schedHtml += `<div class="sched-loc-group"><div class="sched-loc-header"><span class="sched-loc-flag">🇺🇸</span> Pittsburgh, PA</div>`;
+        schedHtml += `<table class="sched-table">${buildRows(pittsSections)}</table></div>`;
       }
       if (otherSections.length > 0) {
-        schedHtml += `<div class="sched-loc-header">📍 Other Locations</div>`;
-        schedHtml += `<table class="sched-table">${buildRows(otherSections)}</table>`;
+        schedHtml += `<div class="sched-loc-group"><div class="sched-loc-header">📍 Other Locations</div>`;
+        schedHtml += `<table class="sched-table">${buildRows(otherSections)}</table></div>`;
       }
       schedHtml += '</div>';
     } else {
@@ -460,24 +456,30 @@ const App = {
             </div>` : ''}
         </div>
 
-        ${prereq ? `
-          <div class="cc-section-title">Prerequisites</div>
-          <div class="cc-prereq">${esc(prereq)}</div>
-        ` : `
-          <div class="cc-section-title">Prerequisites</div>
-          <div class="cc-prereq cc-prereq-none">None</div>
-        `}
+        <div class="cc-grid">
+          <div class="cc-grid-col">
+            ${prereq ? `
+              <div class="cc-section-title">Prerequisites</div>
+              <div class="cc-prereq">${esc(prereq)}</div>
+            ` : `
+              <div class="cc-section-title">Prerequisites</div>
+              <div class="cc-prereq cc-prereq-none">None</div>
+            `}
 
-        <div class="cc-section-title">Counts For</div>
-        <div class="counts-for-list">${cfHtml}</div>
+            ${course.description ? `
+              <div class="cc-section-title">Description</div>
+              <div class="cc-description">${esc(course.description)}</div>
+            ` : ''}
+          </div>
 
-        <div class="cc-section-title">Fall 2026 Schedule</div>
-        ${schedHtml}
+          <div class="cc-grid-col">
+            <div class="cc-section-title">Counts For</div>
+            <div class="counts-for-list">${cfHtml}</div>
 
-        ${course.description ? `
-          <div class="cc-section-title">Description</div>
-          <div class="cc-description">${esc(course.description)}</div>
-        ` : ''}
+            <div class="cc-section-title">Fall 2026 Schedule</div>
+            ${schedHtml}
+          </div>
+        </div>
 
         ${this.layoutMode === 'focused' ? `
           <button class="explore-cta" onclick="App.enterExplorer()">

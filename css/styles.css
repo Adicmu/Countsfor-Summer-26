@@ -295,14 +295,14 @@ body {
   min-height:0;
 }
 
-/* ── Focused Mode: centered content ── */
+/* ── Focused Mode: full-width content ── */
 .layout-focused .panel-body {
   display:flex;
   flex-direction:column;
   align-items:center;
 }
 .layout-focused .course-card {
-  max-width:720px;
+  max-width:1200px;
   width:100%;
 }
 .layout-focused .empty-state {
@@ -318,7 +318,7 @@ body {
 }
 .layout-focused .search-wrapper {
   width:100%;
-  max-width:520px;
+  max-width:560px;
 }
 
 /* ── Explore CTA Button ── */
@@ -468,128 +468,163 @@ body {
    COURSE CARD
    ============================================================ */
 .course-card {
-  padding:20px;
+  padding:28px 32px;
   animation:fadeUp 0.25s ease;
 }
 @keyframes fadeUp {
   from { opacity:0; transform:translateY(6px); }
   to { opacity:1; transform:translateY(0); }
 }
+
+/* ── Card Grid: 2-column layout in focused mode ── */
+.cc-grid {
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:28px 36px;
+  margin-top:20px;
+}
+.cc-grid-col {
+  min-width:0;
+}
+
 .cc-header {
-  margin-bottom:14px;
+  margin-bottom:6px;
 }
 .cc-code {
   font-family:'JetBrains Mono',monospace;
-  font-size:1.4rem;
+  font-size:1.85rem;
   font-weight:700;
   color:var(--cmu-red);
   letter-spacing:-0.5px;
 }
 .cc-name {
-  font-size:1rem;
+  font-size:1.15rem;
   font-weight:500;
   color:var(--text-secondary);
-  margin-top:2px;
+  margin-top:4px;
+  line-height:1.4;
 }
 .cc-meta {
   display:flex;
   flex-wrap:wrap;
   gap:8px;
-  margin-top:10px;
+  margin-top:12px;
 }
 .cc-pill {
   display:inline-flex;
   align-items:center;
-  gap:4px;
-  padding:3px 10px;
+  gap:5px;
+  padding:5px 14px;
   border-radius:20px;
-  font-size:0.72rem;
+  font-size:0.78rem;
   font-weight:500;
   border:1px solid var(--border-light);
   color:var(--text-secondary);
   background:var(--bg-secondary);
 }
-.cc-pill .emoji { font-size:0.8rem; }
+.cc-pill .emoji { font-size:0.9rem; }
 /* Semester pills */
 .cc-semesters {
   display:flex;
   flex-wrap:wrap;
-  gap:4px;
-  margin-top:8px;
+  gap:5px;
+  margin-top:10px;
 }
 .sem-pill {
-  padding:2px 7px;
-  border-radius:4px;
+  padding:3px 9px;
+  border-radius:5px;
   font-family:'JetBrains Mono',monospace;
-  font-size:0.68rem;
+  font-size:0.72rem;
   font-weight:500;
   background:var(--bg-tertiary);
   color:var(--text-secondary);
 }
 /* Prerequisites */
 .cc-section-title {
-  font-size:0.65rem;
+  font-size:0.7rem;
   font-weight:700;
   letter-spacing:0.1em;
   text-transform:uppercase;
   color:var(--text-tertiary);
-  margin:18px 0 8px;
+  margin:20px 0 10px;
 }
 .cc-prereq {
-  font-size:0.82rem;
+  font-size:0.85rem;
   color:var(--text-secondary);
-  line-height:1.5;
+  line-height:1.6;
 }
 .cc-prereq-none {
   color:var(--text-tertiary);
   font-style:italic;
 }
 .cc-description {
-  font-size:0.8rem;
+  font-size:0.84rem;
   color:var(--text-secondary);
-  line-height:1.65;
-  padding:8px 12px;
+  line-height:1.7;
+  padding:12px 16px;
   background:var(--bg-secondary);
   border-radius:var(--radius-sm);
   border-left:3px solid var(--border-medium);
 }
 
-/* Counts For section */
+/* ── Split mode: revert to compact ── */
+.layout-split .course-card {
+  padding:16px 18px;
+}
+.layout-split .cc-code {
+  font-size:1.3rem;
+}
+.layout-split .cc-name {
+  font-size:0.95rem;
+}
+.layout-split .cc-pill {
+  padding:3px 10px;
+  font-size:0.72rem;
+}
+.layout-split .cc-grid {
+  grid-template-columns:1fr;
+  gap:0;
+}
+.layout-split .cc-section-title {
+  margin:14px 0 6px;
+}
+
+/* Counts For section — Horizontal Card Grid in focused mode */
 .counts-for-list {
-  display:flex;
-  flex-direction:column;
-  gap:2px;
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(240px, 1fr));
+  gap:10px;
 }
 .cf-major-group {
-  margin-bottom:4px;
+  /* No extra margin needed in grid */
 }
+/* ── Major Card Style ── */
 .cf-row {
   display:flex;
-  align-items:center;
-  gap:0;
-  border-radius:8px;
+  flex-direction:column;
+  border-radius:var(--radius-md);
   overflow:hidden;
   cursor:pointer;
   transition:all var(--transition);
-  margin-bottom:2px;
+  border:1px solid transparent;
+  position:relative;
 }
 .cf-row:hover {
-  filter:brightness(0.97);
-  transform:translateX(2px);
+  transform:translateY(-2px);
+  box-shadow:var(--shadow-md);
 }
 [data-theme="dark"] .cf-row:hover {
-  filter:brightness(1.1);
+  filter:brightness(1.08);
 }
 .cf-badge {
-  width:38px;
+  width:100%;
   display:flex;
   align-items:center;
-  justify-content:center;
-  padding:9px 0;
-  font-size:0.65rem;
+  justify-content:space-between;
+  padding:10px 14px;
+  font-size:0.72rem;
   font-weight:800;
   letter-spacing:0.04em;
-  flex-shrink:0;
   color:white;
 }
 .cf-badge-cs { background:var(--major-cs); }
@@ -598,36 +633,60 @@ body {
 .cf-badge-bs { background:var(--major-bs); }
 
 .cf-text {
-  flex:1;
-  padding:9px 10px;
-  font-size:0.78rem;
+  padding:10px 14px 12px;
+  font-size:0.82rem;
   font-weight:500;
-  line-height:1.3;
+  line-height:1.4;
 }
-.cf-row-cs { background:var(--major-cs-bg); }
+.cf-row-cs { background:var(--major-cs-bg); border-color:var(--major-cs-border); }
 .cf-row-cs .cf-text { color:var(--major-cs-text); }
-.cf-row-is { background:var(--major-is-bg); }
+.cf-row-is { background:var(--major-is-bg); border-color:var(--major-is-border); }
 .cf-row-is .cf-text { color:var(--major-is-text); }
-.cf-row-ba { background:var(--major-ba-bg); }
+.cf-row-ba { background:var(--major-ba-bg); border-color:var(--major-ba-border); }
 .cf-row-ba .cf-text { color:var(--major-ba-text); }
-.cf-row-bs { background:var(--major-bs-bg); }
+.cf-row-bs { background:var(--major-bs-bg); border-color:var(--major-bs-border); }
 .cf-row-bs .cf-text { color:var(--major-bs-text); }
 
-/* Type badge */
+/* Type badge — now inside the card header */
 .cf-type {
-  padding:9px 10px;
-  font-size:0.62rem;
+  font-size:0.6rem;
   font-weight:700;
   letter-spacing:0.04em;
   text-transform:uppercase;
   white-space:nowrap;
-  flex-shrink:0;
+  opacity:0.85;
+  color:rgba(255,255,255,0.85);
 }
-.cf-type-core {
-  color:var(--text-primary);
-  opacity:0.8;
+.cf-type-core { color:rgba(255,255,255,0.95); }
+.cf-type-gened { color:rgba(255,255,255,0.7); }
+
+/* ── Split mode: revert to compact stacked list ── */
+.layout-split .counts-for-list {
+  grid-template-columns:1fr;
+  gap:3px;
 }
-.cf-type-gened {
+.layout-split .cf-row {
+  flex-direction:row;
+  border-radius:6px;
+  border:none;
+}
+.layout-split .cf-row:hover {
+  transform:translateX(2px);
+  box-shadow:none;
+}
+.layout-split .cf-badge {
+  width:38px;
+  padding:8px 0;
+  justify-content:center;
+  font-size:0.62rem;
+}
+.layout-split .cf-text {
+  padding:8px 10px;
+  font-size:0.76rem;
+  flex:1;
+}
+.layout-split .cf-type {
+  padding:8px 10px;
   color:var(--text-tertiary);
 }
 
@@ -918,7 +977,17 @@ body {
    SOC SCHEDULE TABLE
    ============================================================ */
 .sched-container {
-  margin-top:4px;
+  display:grid;
+  grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));
+  gap:8px 24px;
+  margin-top:6px;
+}
+.sched-loc-group {
+  min-width:0;
+}
+.layout-split .sched-container {
+  grid-template-columns:1fr;
+  gap:4px;
 }
 .sched-loc-header {
   display:flex;
