@@ -1,0 +1,39 @@
+name: Scrape SOC
+
+# When this runs:
+on:
+  schedule:
+    # Daily at 12:00 UTC (~7am EST / 8am EDT — well before students wake up)
+    - cron: '0 12 * * *'
+  # run it manually from the Actions tab in GitHub
+  workflow_dispatch:
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # needed so the job can commit data/soc.json back to the repo
+
+    steps:
+      - name: Check out repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run scraper
+        run: python scraper/scrape_soc.py
+
+      - name: Commit data if it changed
+        run: |
+          git config user.name  "soc-bot"
+          git config user.email "soc-bot@users.noreply.github.com"
+          git add data/soc.json
+          if git diff --staged --quiet; then
+            echo "No changes — nothing to commit."
+          else
+            git commit -m "Update SOC data ($(date -u +%Y-%m-%d))"
+            git push
+          fi
