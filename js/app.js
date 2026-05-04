@@ -103,10 +103,13 @@ const App = {
           <div class="panel-header">
             <div class="panel-tag">Course Lookup</div>
             <div class="panel-title">What does this course count for?</div>
-            <div class="search-wrapper">
-              <span class="search-icon">🔍</span>
-              <input type="text" class="search-input" id="courseSearch" placeholder="Search by code, name, requirement, or category…" autocomplete="off" />
-              <div class="typeahead" id="typeahead"></div>
+            <div class="search-row">
+              <div class="search-wrapper">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-input" id="courseSearch" placeholder="Search by code, name, requirement, or category…" autocomplete="off" />
+                <div class="typeahead" id="typeahead"></div>
+              </div>
+              <button class="explore-btn-inline" id="exploreInlineBtn" onclick="App.enterExplorer()" style="display:none;">🗂 Explore Map</button>
             </div>
           </div>
           <div class="panel-body" id="leftBody"></div>
@@ -180,8 +183,16 @@ const App = {
     document.querySelectorAll('.loc-btn').forEach(b => {
       b.classList.toggle('active', b.textContent.includes(loc === 'all' ? 'All' : loc === 'qatar' ? 'Qatar' : 'Pittsburgh'));
     });
-    // If there's a selected course, re-render it
-    if (this.selectedCourse) this.renderCourseCard(this.selectedCourse);
+    // If there's a selected course, check if it's offered at the selected campus
+    if (this.selectedCourse) {
+      if (!this.filterByLocation(this.selectedCourse) && loc !== 'all') {
+        const campus = loc === 'qatar' ? '\ud83c\uddf6\ud83c\udde6 Qatar' : '\ud83c\uddfa\ud83c\uddf8 Pittsburgh';
+        const el = document.getElementById('leftBody');
+        if (el) el.innerHTML = '<div class="empty-state"><div class="empty-icon">\ud83d\udeab</div><div class="empty-text">' + esc(this.selectedCourse.course_code) + ' is not offered at the ' + campus + ' campus</div><div class="empty-hint">Try switching to "All" to see this course, or search for another.</div></div>';
+      } else {
+        this.renderCourseCard(this.selectedCourse);
+      }
+    }
     // Re-render tree
     this.renderTree();
     showToast(loc === 'all' ? 'Showing all courses' : loc === 'qatar' ? 'Showing Qatar courses only' : 'Showing Pittsburgh courses only');
@@ -233,6 +244,9 @@ const App = {
     // Show right panel
     const rightPanel = document.getElementById('panelRight');
     if (rightPanel) rightPanel.style.display = 'flex';
+    // Hide inline explore button in split mode
+    const explBtn = document.getElementById('exploreInlineBtn');
+    if (explBtn) explBtn.style.display = 'none';
     // Render tree if not yet rendered
     this.renderTree();
     // Navigate to specific node if provided
@@ -371,6 +385,9 @@ const App = {
   renderLeftEmpty() {
     const el = document.getElementById('leftBody');
     if (!el) return;
+    // Hide inline explore button when no course is selected
+    const explBtn = document.getElementById('exploreInlineBtn');
+    if (explBtn) explBtn.style.display = 'none';
     el.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">📚</div>
@@ -424,40 +441,58 @@ const App = {
       cfHtml = '<div style="padding:8px 0;color:var(--text-tertiary);font-size:0.8rem;font-style:italic;">This course does not count toward any tracked major requirements.</div>';
     }
 
-    // Build SOC schedule section
+    // Build SOC schedule section (filtered by location)
     let schedHtml = '';
+    const dayFullForms = { M:'Monday', T:'Tuesday', W:'Wednesday', R:'Thursday', F:'Friday', U:'Sunday', S:'Saturday' };
+    const expandDays = (d) => {
+      if (!d) return 'TBA';
+      const full = d.split('').map(c => dayFullForms[c] || c).join(', ');
+      return '<span title="' + full + '">' + esc(d) + '</span>';
+    };
+
     if (sections.length > 0) {
-      const qatarSections = sections.filter(s => s.location && (s.location.includes('Qatar') || s.location.includes('Doha')));
-      const pittsSections = sections.filter(s => s.location && s.location.includes('Pittsburgh'));
-      const otherSections = sections.filter(s => s.location && !s.location.includes('Qatar') && !s.location.includes('Doha') && !s.location.includes('Pittsburgh'));
+      let qatarSections = sections.filter(s => s.location && (s.location.includes('Qatar') || s.location.includes('Doha')));
+      let pittsSections = sections.filter(s => s.location && s.location.includes('Pittsburgh'));
+      let otherSections = sections.filter(s => s.location && !s.location.includes('Qatar') && !s.location.includes('Doha') && !s.location.includes('Pittsburgh'));
+
+      // Filter by active location
+      if (this.locationFilter === 'qatar') { pittsSections = []; otherSections = []; }
+      if (this.locationFilter === 'pittsburgh') { qatarSections = []; otherSections = []; }
 
       const buildRows = (secs) => secs.map(s => {
         const dmClass = (s.delivery_mode || '').toLowerCase().includes('remote') ? 'dm-remote'
           : (s.delivery_mode || '').toLowerCase().includes('in-person') ? 'dm-inperson'
           : 'dm-other';
-        return `<tr>
-          <td class="sched-sec">${esc(s.section)}</td>
-          <td class="sched-days">${esc(s.days) || 'TBA'}</td>
-          <td class="sched-time">${s.begin_time && s.begin_time !== 'TBA' ? esc(s.begin_time) + '–' + esc(s.end_time) : 'TBA'}</td>
-          <td><span class="dm-badge ${dmClass}">${esc(s.delivery_mode) || '—'}</span></td>
-        </tr>`;
+        return '<tr>' +
+          '<td class="sched-sec">' + esc(s.section) + '</td>' +
+          '<td class="sched-days">' + expandDays(s.days) + '</td>' +
+          '<td class="sched-time">' + (s.begin_time && s.begin_time !== 'TBA' ? esc(s.begin_time) + '\u2013' + esc(s.end_time) : 'TBA') + '</td>' +
+          '<td><span class="dm-badge ' + dmClass + '">' + (esc(s.delivery_mode) || '\u2014') + '</span></td>' +
+        '</tr>';
       }).join('');
 
-      schedHtml = '<div class="sched-container">';
+      const hasAnySections = qatarSections.length > 0 || pittsSections.length > 0 || otherSections.length > 0;
 
-      if (qatarSections.length > 0) {
-        schedHtml += `<div class="sched-loc-group"><div class="sched-loc-header"><span class="sched-loc-flag">🇶🇦</span> Doha, Qatar</div>`;
-        schedHtml += `<table class="sched-table">${buildRows(qatarSections)}</table></div>`;
+      if (hasAnySections) {
+        schedHtml = '<div class="sched-legend">U=Sun, M=Mon, T=Tue, W=Wed, R=Thu, F=Fri, S=Sat</div>';
+        schedHtml += '<div class="sched-container">';
+        if (qatarSections.length > 0) {
+          schedHtml += '<div class="sched-loc-group"><div class="sched-loc-header"><span class="sched-loc-flag">\uD83C\uDDF6\uD83C\uDDE6</span> Doha, Qatar</div>';
+          schedHtml += '<table class="sched-table">' + buildRows(qatarSections) + '</table></div>';
+        }
+        if (pittsSections.length > 0) {
+          schedHtml += '<div class="sched-loc-group"><div class="sched-loc-header"><span class="sched-loc-flag">\uD83C\uDDFA\uD83C\uDDF8</span> Pittsburgh, PA</div>';
+          schedHtml += '<table class="sched-table">' + buildRows(pittsSections) + '</table></div>';
+        }
+        if (otherSections.length > 0) {
+          schedHtml += '<div class="sched-loc-group"><div class="sched-loc-header">\uD83D\uDCCD Other Locations</div>';
+          schedHtml += '<table class="sched-table">' + buildRows(otherSections) + '</table></div>';
+        }
+        schedHtml += '</div>';
+      } else {
+        const campus = this.locationFilter === 'qatar' ? 'Qatar' : 'Pittsburgh';
+        schedHtml = '<div style="padding:8px 0;color:var(--text-tertiary);font-size:0.8rem;font-style:italic;">No sections at ' + campus + ' for Fall 2026</div>';
       }
-      if (pittsSections.length > 0) {
-        schedHtml += `<div class="sched-loc-group"><div class="sched-loc-header"><span class="sched-loc-flag">🇺🇸</span> Pittsburgh, PA</div>`;
-        schedHtml += `<table class="sched-table">${buildRows(pittsSections)}</table></div>`;
-      }
-      if (otherSections.length > 0) {
-        schedHtml += `<div class="sched-loc-group"><div class="sched-loc-header">📍 Other Locations</div>`;
-        schedHtml += `<table class="sched-table">${buildRows(otherSections)}</table></div>`;
-      }
-      schedHtml += '</div>';
     } else {
       schedHtml = '<div style="padding:8px 0;color:var(--text-tertiary);font-size:0.8rem;font-style:italic;">Schedule not available for Fall 2026</div>';
     }
@@ -483,9 +518,12 @@ const App = {
                   }).join('')}
                 </div>` : ''}
               ${semesters.length > 0 ? `
-                <div class="cc-semesters">
-                  ${semesters.slice(0, 8).map(s => `<span class="sem-pill">${s}</span>`).join('')}
-                  ${semesters.length > 8 ? `<span class="sem-pill" style="opacity:0.5">+${semesters.length - 8}</span>` : ''}
+                <div class="cc-semesters" id="semesterPills">
+                  ${semesters.slice(0, 8).map(s => {
+                    const tip = s.charAt(0) === 'F' ? 'Fall 20' + s.slice(1) : s.charAt(0) === 'S' ? 'Spring 20' + s.slice(1) : s.charAt(0) === 'M' ? 'Mini (Summer) 20' + s.slice(1) : s;
+                    return '<span class="sem-pill" title="' + tip + '">' + s + '</span>';
+                  }).join('')}
+                  ${semesters.length > 8 ? '<span class="sem-pill sem-pill-more" onclick="App.expandSemesters(event)" title="Click to show all semesters">+' + (semesters.length - 8) + '</span>' : ''}
                 </div>` : ''}
             </div>
 
@@ -512,12 +550,25 @@ const App = {
           </div>
         </div>
 
-        ${this.layoutMode === 'focused' ? `
-          <button class="explore-cta" onclick="App.enterExplorer()">
-            🗂 Explore Requirement Map <span class="arrow">→</span>
-          </button>
-        ` : ''}
+
       </div>`;
+
+    // Show/hide inline explore button
+    const explBtn = document.getElementById('exploreInlineBtn');
+    if (explBtn) explBtn.style.display = this.layoutMode === 'focused' ? 'flex' : 'none';
+  },
+
+  // Expand all hidden semester pills
+  expandSemesters(e) {
+    e.stopPropagation();
+    if (!this.selectedCourse) return;
+    const semesters = sortSemesters(this.selectedCourse.offered || []);
+    const container = document.getElementById('semesterPills');
+    if (!container) return;
+    container.innerHTML = semesters.map(s => {
+      const tip = s.charAt(0) === 'F' ? 'Fall 20' + s.slice(1) : s.charAt(0) === 'S' ? 'Spring 20' + s.slice(1) : s.charAt(0) === 'M' ? 'Mini (Summer) 20' + s.slice(1) : s;
+      return '<span class="sem-pill" title="' + tip + '">' + s + '</span>';
+    }).join('');
   },
 
   // ══════════════════════════════════════════════════════════

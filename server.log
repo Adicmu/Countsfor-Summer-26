@@ -1,9 +1,0 @@
-::1 - - [02/May/2026 16:49:17] "GET / HTTP/1.1" 200 -
-::1 - - [02/May/2026 16:50:19] "GET /js/app.js HTTP/1.1" 200 -
-::1 - - [02/May/2026 16:50:19] "GET /css/styles.css HTTP/1.1" 200 -
-::1 - - [02/May/2026 16:57:34] "GET /css/styles.css HTTP/1.1" 304 -
-::1 - - [02/May/2026 16:57:34] "GET /js/app.js HTTP/1.1" 304 -
-::1 - - [02/May/2026 17:03:43] "GET /js/app.js HTTP/1.1" 304 -
-::1 - - [02/May/2026 17:03:43] "GET /css/styles.css HTTP/1.1" 304 -
-::1 - - [02/May/2026 17:13:20] "GET /js/app.js HTTP/1.1" 304 -
-::1 - - [02/May/2026 17:13:20] "GET /css/styles.css HTTP/1.1" 304 -
