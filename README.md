@@ -69,15 +69,15 @@ cd Countsfor-Summer-26
 
 Mac / Linux:
 ```bash
-python3 -m http.server 8080 --directory frontend
+python3 -m http.server 8080
 ```
 
 Windows:
 ```bash
-py -m http.server 8080 --directory frontend
+py -m http.server 8080
 ```
 
-Or if you're already inside the `frontend/` folder:
+Or if you're already inside the folder:
 ```bash
 python3 -m http.server 8080
 ```
@@ -106,7 +106,7 @@ That's it. The app loads all 1,700+ courses from the bundled `data/courses.json`
 ## Project Structure
 
 ```
-frontend/
+.
 ├── index.html              # Entry point (single HTML shell)
 ├── css/
 │   └── styles.css          # Full design system — layout modes, themes, major colors, all components
@@ -164,8 +164,8 @@ Transitions between modes are animated via CSS Grid (`grid-template-columns`).
 
 1. Fork the repo
 2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make your changes in `frontend/`
-4. Test locally: `python3 -m http.server 8080 --directory frontend`
+3. Make your changes
+4. Test locally: `python3 -m http.server 8080`
 5. Push and open a Pull Request
 
 ---
