@@ -1334,3 +1334,82 @@ body {
   .onboarding-card { padding: 24px 18px; }
   .onboarding-question { font-size: 20px; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   Role Badge (navbar)
+   ════════════════════════════════════════════════════════════ */
+
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0;
+  margin-left: 12px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 120ms ease;
+  font-family: inherit;
+}
+
+.role-badge:hover {
+  border-color: var(--text-secondary);
+}
+
+.role-badge .rb-segment {
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.role-badge .rb-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--border);
+}
+
+.role-badge.rb-cs   .rb-primary { background: var(--major-cs-bg); color: var(--major-cs); }
+.role-badge.rb-is   .rb-primary { background: var(--major-is-bg); color: var(--major-is); }
+.role-badge.rb-ba   .rb-primary { background: var(--major-ba-bg); color: var(--major-ba); }
+.role-badge.rb-bs   .rb-primary { background: var(--major-bs-bg); color: var(--major-bs); }
+.role-badge.rb-as   .rb-primary { background: var(--bg-tertiary); color: var(--text-secondary); }
+.role-badge.rb-ah   .rb-primary { background: var(--bg-tertiary); color: var(--text-secondary); }
+
+.role-badge.rb-cs-ba .rb-secondary { background: var(--major-ba-bg); color: var(--major-ba); }
+.role-badge.rb-cs-is .rb-secondary { background: var(--major-is-bg); color: var(--major-is); }
+.role-badge.rb-cs-bs .rb-secondary { background: var(--major-bs-bg); color: var(--major-bs); }
+.role-badge.rb-is-cs .rb-secondary { background: var(--major-cs-bg); color: var(--major-cs); }
+.role-badge.rb-is-ba .rb-secondary { background: var(--major-ba-bg); color: var(--major-ba); }
+.role-badge.rb-is-bs .rb-secondary { background: var(--major-bs-bg); color: var(--major-bs); }
+.role-badge.rb-ba-cs .rb-secondary { background: var(--major-cs-bg); color: var(--major-cs); }
+.role-badge.rb-ba-is .rb-secondary { background: var(--major-is-bg); color: var(--major-is); }
+.role-badge.rb-ba-bs .rb-secondary { background: var(--major-bs-bg); color: var(--major-bs); }
+.role-badge.rb-bs-cs .rb-secondary { background: var(--major-cs-bg); color: var(--major-cs); }
+.role-badge.rb-bs-is .rb-secondary { background: var(--major-is-bg); color: var(--major-is); }
+.role-badge.rb-bs-ba .rb-secondary { background: var(--major-ba-bg); color: var(--major-ba); }
+
+.role-badge .rb-suffix {
+  font-weight: 500;
+  color: var(--text-tertiary);
+  margin-left: 4px;
+}
+
+.role-badge .rb-edit-hint {
+  display: none;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+  background: var(--bg-tertiary);
+}
+
+.role-badge:hover .rb-edit-hint { display: inline-flex; align-items: center; }
+
+@media (max-width: 860px) {
+  .navbar { flex-wrap: wrap; }
+  .role-badge { margin-left: 0; margin-top: 6px; flex-basis: 100%; justify-content: flex-start; }
+}
