@@ -1197,18 +1197,36 @@ const App = {
 
       // Leaf courses
       if (hasCourses) {
+        const vm = computeViewMode(this.profile);
         for (const c of filteredCourses) {
-          const alsoMajors = getAlsoCountsFor(this.courseIndex[c.code] || c, major);
+          const fullCourse = this.courseIndex[c.code] || c;
+          const alsoMajors = getAlsoCountsFor(fullCourse, major);
           const isActive = this.selectedCourse && this.selectedCourse.course_code === c.code;
           const courseIndent = 16 + (depth + 1) * 18 + 16; // extra indent for leaf
+
+          // Double-counter tag (focused-dual): if this course also fills the secondary, tag it
+          let dcTag = '';
+          if (vm === 'focused-dual' && fullCourse._doubleCounter) {
+            const other = (this.profile.secondary === major) ? this.profile.primary : this.profile.secondary;
+            if (other) {
+              dcTag = `<span class="dc-leaf-tag dc-leaf-tag-${other.toLowerCase()}">${other}</span>`;
+            }
+          }
+          // Multi-program chip (cross-program view, 3+ programs)
+          let mpChip = '';
+          if (vm === 'cross-program' && (fullCourse._programCount || 0) >= 3) {
+            mpChip = `<span class="mp-chip">${fullCourse._programCount} programs</span>`;
+          }
 
           html += `<div class="tree-course ${isActive ? 'active-course' : ''}" style="padding-left:${courseIndent}px" data-course-code="${esc(c.code)}">`;
           html += `<span class="tree-course-code">${esc(c.code)}</span>`;
           html += `<span class="tree-course-name">${esc(c.name)}</span>`;
           if (c.units) html += `<span class="tree-course-units">${c.units}u</span>`;
-          if (alsoMajors.length > 0) {
+          if (alsoMajors.length > 0 && vm !== 'focused-dual' && vm !== 'cross-program') {
             html += `<span class="also-tags">${alsoMajors.map(m => `<span class="also-tag also-tag-${m.toLowerCase()}">${m}</span>`).join('')}</span>`;
           }
+          html += dcTag;
+          html += mpChip;
           html += `</div>`;
         }
       }
