@@ -1904,3 +1904,111 @@ body {
   .cc2-code { font-size: 26px; }
   .cc2-name { font-size: 16px; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   Tree v2 — bigger rows, denser, double-counter tags
+   ════════════════════════════════════════════════════════════ */
+
+.major-tabs .major-tab {
+  font-size: 13px;
+  font-weight: 700;
+  padding: 10px 16px;
+}
+
+.tree-node-row {
+  min-height: 36px;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tree-node-row .tree-arrow {
+  font-size: 12px;
+  width: 14px;
+  text-align: center;
+}
+
+.tree-node-row .tree-label {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tree-node-row .tree-label-l1 { font-size: 14px; font-weight: 800; }
+
+.tree-node-row .rule-chip {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 4px 10px;
+}
+
+.tree-node-row .course-count {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-tertiary);
+}
+
+.tree-section-divider {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding: 16px 16px 6px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.tree-course {
+  min-height: 36px;
+  align-items: center;
+}
+
+.tree-course .tree-course-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.tree-course .tree-course-name { font-size: 13px; }
+.tree-course .tree-course-units { font-size: 12px; font-weight: 600; }
+
+.tree-course.active-course {
+  background: var(--major-cs-bg);
+  border-left: 2px solid var(--major-cs);
+}
+
+.tree-course:hover {
+  background: var(--bg-secondary);
+}
+
+/* Double-counter tag at end of leaf row */
+.dc-leaf-tag {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 800;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.dc-leaf-tag-cs { background: var(--major-cs); }
+.dc-leaf-tag-is { background: var(--major-is); }
+.dc-leaf-tag-ba { background: var(--major-ba); }
+.dc-leaf-tag-bs { background: var(--major-bs); }
+
+/* Multi-program chip (cross-program view) */
+.mp-chip {
+  margin-left: auto;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+}
+
+.tree-search input {
+  font-size: 14px;
+  padding: 12px 14px;
+  border-radius: 8px;
+}
