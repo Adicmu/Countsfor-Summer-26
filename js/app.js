@@ -281,12 +281,61 @@ const App = {
     this.renderTree();
   },
 
+  _roleBadgeHtml() {
+    const p = this.profile;
+    if (!p) return '';
+    const PROGRAM_LABEL = { CS: 'CS', IS: 'IS', BA: 'BA', BS: 'BS', AS: 'A&S' };
+
+    if (p.role === 'area_head') {
+      return `
+        <button class="role-badge rb-ah" onclick="App.editRole()" title="Click to change role">
+          <span class="rb-segment rb-primary">Area Head <span class="rb-suffix">· All programs</span></span>
+          <span class="rb-edit-hint">Edit</span>
+        </button>`;
+    }
+
+    if (p.role === 'professor' && p.primary === 'AS') {
+      return `
+        <button class="role-badge rb-as" onclick="App.editRole()" title="Click to change role">
+          <span class="rb-segment rb-primary">Arts &amp; Sciences <span class="rb-suffix">· Faculty</span></span>
+          <span class="rb-edit-hint">Edit</span>
+        </button>`;
+    }
+
+    const primaryLower = (p.primary || '').toLowerCase();
+    const secondaryLower = (p.secondary || '').toLowerCase();
+    const facultySuffix = p.role === 'professor' ? '<span class="rb-suffix">· Faculty</span>' : '';
+
+    if (this.profile && this.profile.role === 'student' && p.secondary && p.secondary !== p.primary) {
+      const cls = 'rb-' + primaryLower + '-' + secondaryLower;
+      return `
+        <button class="role-badge rb-${primaryLower} ${cls}" onclick="App.editRole()" title="Click to change role">
+          <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]}</span>
+          <span class="rb-divider"></span>
+          <span class="rb-segment rb-secondary">${PROGRAM_LABEL[p.secondary]} <span class="rb-suffix">minor</span></span>
+          <span class="rb-edit-hint">Edit</span>
+        </button>`;
+    }
+
+    const suffix = p.role === 'student' ? '<span class="rb-suffix">major</span>' : facultySuffix;
+    return `
+      <button class="role-badge rb-${primaryLower}" onclick="App.editRole()" title="Click to change role">
+        <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} ${suffix}</span>
+        <span class="rb-edit-hint">Edit</span>
+      </button>`;
+  },
+
+  editRole() {
+    this.renderOnboarding(true);
+  },
+
   // ── Shell Rendering ───────────────────────────────────────
   renderShell() {
     const isSplit = this.layoutMode === 'split';
     document.getElementById('app').innerHTML = `
       <nav class="navbar">
         <div class="navbar-brand" onclick="App.reset()">CountsFor <span class="subtitle">CMU-Q</span></div>
+        ${this._roleBadgeHtml()}
         <div class="navbar-right">
           <div class="navbar-location-toggle">
             <button class="loc-btn ${this.locationFilter==='all'?'active':''}" onclick="App.setLocation('all')">All</button>
