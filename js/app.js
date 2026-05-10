@@ -607,10 +607,16 @@ const App = {
             if (matchHint) break;
           }
         }
+        const vm = computeViewMode(App.profile);
+        let dcTag = '';
+        if (vm === 'focused-dual' && c._doubleCounter && App.profile.secondary) {
+          dcTag = '<span class="dc-leaf-tag dc-leaf-tag-' + App.profile.secondary.toLowerCase() + '" style="margin-left:6px">' + App.profile.secondary + '</span>';
+        }
         return '<div class="typeahead-item" data-idx="' + i + '" onclick="App.selectSearchResult(' + i + ')">' +
           '<span class="typeahead-code">' + esc(c.course_code) + '</span>' +
           '<span class="typeahead-name">' + esc(c.course_name) + '</span>' +
           matchHint +
+          dcTag +
           '<span class="typeahead-units">' + (c.units || '?') + ' u</span>' +
         '</div>';
       }).join('');
