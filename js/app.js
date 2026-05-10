@@ -886,158 +886,136 @@ const App = {
     const semesters = sortSemesters(course.offered || []);
     const prereq = formatPrereq(course.prerequisites);
     const mappings = getCourseMappings(course);
+    const sections = course.soc_sections || [];
+    const isDoubleCounter = !!course._doubleCounter;
+    const profile = this.profile;
+    const pLower = profile && profile.primary ? profile.primary.toLowerCase() : 'cs';
+    const sLower = profile && profile.secondary ? profile.secondary.toLowerCase() : 'cs';
 
-    // Location flags
+    // ── Double-counter banner ───────────────────────────────
+    let dcBannerHtml = '';
+    if (isDoubleCounter && profile && profile.secondary) {
+      dcBannerHtml = `
+        <div class="dc-banner" style="cursor:default">
+          <span class="dc-banner-badges">
+            <span class="dc-mini-badge dc-mini-${pLower}">${profile.primary}</span>
+            <span class="dc-mini-badge dc-mini-${sLower}">${profile.secondary}</span>
+          </span>
+          <span class="dc-banner-text">Counts for BOTH your ${profile.primary} major and ${profile.secondary} minor</span>
+        </div>`;
+    }
+
+    // ── Header pills ───────────────────────────────────────────────────
     const locFlags = [];
     if (course.offered_qatar) locFlags.push('🇶🇦 Qatar');
     if (course.offered_pitts) locFlags.push('🇺🇸 Pittsburgh');
 
-    // Delivery mode from SOC sections
-    const deliveryModes = new Set();
-    const sections = course.soc_sections || [];
-    for (const s of sections) {
-      if (s.delivery_mode) deliveryModes.add(s.delivery_mode);
+    let semPillsHtml = '';
+    if (semesters.length > 0) {
+      const visible = semesters.slice(0, 4);
+      const more = semesters.length > 4 ? ` · +${semesters.length - 4}` : '';
+      semPillsHtml = `<button class="cc2-pill cc2-pill-offered" onclick="App.expandSemestersV2(event)" id="semesterPillsV2" data-expanded="0" title="Click to show all">Offered ${visible.join(' · ')}${more}</button>`;
     }
 
-    // Build counts-for section
+    // ── Counts For ─────────────────────────────────────────────────────
     let cfHtml = '';
     for (const majorCode of MAJOR_ORDER) {
       const majorMappings = mappings[majorCode];
       if (!majorMappings || majorMappings.length === 0) continue;
-
       for (const m of majorMappings) {
         const typeLabel = m.isGenEd ? 'GEN ED' : 'CORE';
-        const typeClass = m.isGenEd ? 'cf-type-gened' : 'cf-type-core';
         const safePath = m.fullPath.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         cfHtml += `
-          <div class="cf-row cf-row-${majorCode.toLowerCase()}" data-nav-major="${majorCode}" data-nav-path="${safePath}">
-            <div class="cf-badge cf-badge-${majorCode.toLowerCase()}">${majorCode} <span class="cf-type ${typeClass}">${typeLabel}</span></div>
-            <div class="cf-text">${esc(m.shortLabel)}</div>
+          <div class="cc2-counts-row cf-row-${majorCode.toLowerCase()}" data-nav-major="${majorCode}" data-nav-path="${safePath}">
+            <span class="cc2-counts-badge">${majorCode}</span>
+            <span class="cc2-counts-type">${typeLabel}</span>
+            <span class="cc2-counts-text">${esc(m.shortLabel)}</span>
+            <span class="cc2-counts-arrow">→</span>
           </div>`;
       }
     }
+    if (!cfHtml) cfHtml = '<div style="font-size:12px;color:var(--text-tertiary);font-style:italic">This course does not count toward any tracked major requirements.</div>';
 
-    if (!cfHtml) {
-      cfHtml = '<div style="padding:8px 0;color:var(--text-tertiary);font-size:0.8rem;font-style:italic;">This course does not count toward any tracked major requirements.</div>';
-    }
+    // ── Prereq + Schedule (2-col block) ─────────────────────────
+    const prereqHtml = prereq
+      ? `<div class="cc2-prereq-text">${esc(prereq)}</div>`
+      : `<div class="cc2-prereq-text cc2-prereq-none">None</div>`;
 
-    // Build SOC schedule section (filtered by location)
     let schedHtml = '';
-    const dayFullForms = { M:'Monday', T:'Tuesday', W:'Wednesday', R:'Thursday', F:'Friday', U:'Sunday', S:'Saturday' };
-    const expandDays = (d) => {
-      if (!d) return 'TBA';
-      const full = d.split('').map(c => dayFullForms[c] || c).join(', ');
-      return '<span title="' + full + '">' + esc(d) + '</span>';
+    const dmCls = (dm) => {
+      const d = (dm || '').toLowerCase();
+      if (d.includes('remote')) return 'cc2-dm-remote';
+      if (d.includes('in-person')) return 'cc2-dm-inperson';
+      return 'cc2-dm-other';
     };
 
-    if (sections.length > 0) {
-      let qatarSections = sections.filter(s => s.location && (s.location.includes('Qatar') || s.location.includes('Doha')));
-      let pittsSections = sections.filter(s => s.location && s.location.includes('Pittsburgh'));
-      let otherSections = sections.filter(s => s.location && !s.location.includes('Qatar') && !s.location.includes('Doha') && !s.location.includes('Pittsburgh'));
+    // Filter by location
+    let filtered = sections.slice();
+    if (this.locationFilter === 'qatar') {
+      filtered = filtered.filter(s => s.location && (s.location.includes('Qatar') || s.location.includes('Doha')));
+    } else if (this.locationFilter === 'pittsburgh') {
+      filtered = filtered.filter(s => s.location && s.location.includes('Pittsburgh'));
+    }
 
-      // Filter by active location
-      if (this.locationFilter === 'qatar') { pittsSections = []; otherSections = []; }
-      if (this.locationFilter === 'pittsburgh') { qatarSections = []; otherSections = []; }
-
-      const buildRows = (secs) => secs.map(s => {
-        const dmClass = (s.delivery_mode || '').toLowerCase().includes('remote') ? 'dm-remote'
-          : (s.delivery_mode || '').toLowerCase().includes('in-person') ? 'dm-inperson'
-          : 'dm-other';
-        return '<tr>' +
-          '<td class="sched-sec">' + esc(s.section) + '</td>' +
-          '<td class="sched-days">' + expandDays(s.days) + '</td>' +
-          '<td class="sched-time">' + (s.begin_time && s.begin_time !== 'TBA' ? esc(s.begin_time) + '\u2013' + esc(s.end_time) : 'TBA') + '</td>' +
-          '<td><span class="dm-badge ' + dmClass + '">' + (esc(s.delivery_mode) || '\u2014') + '</span></td>' +
-        '</tr>';
-      }).join('');
-
-      const hasAnySections = qatarSections.length > 0 || pittsSections.length > 0 || otherSections.length > 0;
-
-      if (hasAnySections) {
-        schedHtml = '<div class="sched-legend">U=Sun, M=Mon, T=Tue, W=Wed, R=Thu, F=Fri, S=Sat</div>';
-        schedHtml += '<div class="sched-container">';
-        if (qatarSections.length > 0) {
-          schedHtml += '<div class="sched-loc-group"><div class="sched-loc-header"><span class="sched-loc-flag">\uD83C\uDDF6\uD83C\uDDE6</span> Doha, Qatar</div>';
-          schedHtml += '<table class="sched-table">' + buildRows(qatarSections) + '</table></div>';
-        }
-        if (pittsSections.length > 0) {
-          schedHtml += '<div class="sched-loc-group"><div class="sched-loc-header"><span class="sched-loc-flag">\uD83C\uDDFA\uD83C\uDDF8</span> Pittsburgh, PA</div>';
-          schedHtml += '<table class="sched-table">' + buildRows(pittsSections) + '</table></div>';
-        }
-        if (otherSections.length > 0) {
-          schedHtml += '<div class="sched-loc-group"><div class="sched-loc-header">\uD83D\uDCCD Other Locations</div>';
-          schedHtml += '<table class="sched-table">' + buildRows(otherSections) + '</table></div>';
-        }
-        schedHtml += '</div>';
-      } else {
-        const campus = this.locationFilter === 'qatar' ? 'Qatar' : 'Pittsburgh';
-        schedHtml = '<div style="padding:8px 0;color:var(--text-tertiary);font-size:0.8rem;font-style:italic;">No sections at ' + campus + ' for Fall 2026</div>';
-      }
+    if (filtered.length > 0) {
+      const first = filtered[0];
+      const moreCount = filtered.length - 1;
+      const timeStr = first.begin_time && first.begin_time !== 'TBA'
+        ? `${esc(first.begin_time)}–${esc(first.end_time)}`
+        : 'TBA';
+      const dm = first.delivery_mode ? `<span class="cc2-dm-pill ${dmCls(first.delivery_mode)}">${esc(first.delivery_mode).toUpperCase()}</span>` : '';
+      schedHtml = `
+        <div class="cc2-sched-section">
+          <div class="cc2-sched-secline">Sec ${esc(first.section)} · ${esc(first.days || 'TBA')} ${timeStr}</div>
+          ${dm}
+          ${moreCount > 0 ? `<button class="cc2-sched-more" onclick="App.expandScheduleV2(event)" id="cc2SchedMore" data-expanded="0">+${moreCount} more sections</button><div id="cc2SchedExtra" style="display:none;margin-top:6px;font-size:11px;color:var(--text-secondary);line-height:1.5"></div>` : ''}
+        </div>`;
     } else {
-      schedHtml = '<div style="padding:8px 0;color:var(--text-tertiary);font-size:0.8rem;font-style:italic;">Schedule not available for Fall 2026</div>';
+      const campus = this.locationFilter === 'qatar' ? 'Qatar' : this.locationFilter === 'pittsburgh' ? 'Pittsburgh' : 'this filter';
+      schedHtml = `<div style="font-size:12px;color:var(--text-tertiary);font-style:italic">Not offered at ${campus} for Fall 2026</div>`;
     }
 
     el.innerHTML = `
-      <div class="course-card">
-        <div class="cc-grid">
-          <div class="cc-grid-col cc-grid-left">
-            <div class="cc-header">
-              <div class="cc-code">${esc(course.course_code)}</div>
-              <div class="cc-name">${esc(course.course_name)}</div>
-              <div class="cc-meta">
-                <span class="cc-pill">${esc(deptName)}</span>
-                <span class="cc-pill">${course.units || '?'} units</span>
-                ${locFlags.map(f => `<span class="cc-pill"><span class="emoji">${f.split(' ')[0]}</span> ${f.split(' ').slice(1).join(' ')}</span>`).join('')}
-              </div>
-              ${deliveryModes.size > 0 ? `
-                <div class="cc-delivery-modes">
-                  ${[...deliveryModes].map(dm => {
-                    const cls = dm.toLowerCase().includes('remote') ? 'dm-remote'
-                      : dm.toLowerCase().includes('in-person') ? 'dm-inperson' : 'dm-other';
-                    return `<span class="dm-badge ${cls}">${esc(dm)}</span>`;
-                  }).join('')}
-                </div>` : ''}
-              ${semesters.length > 0 ? `
-                <div class="cc-semesters" id="semesterPills">
-                  ${semesters.slice(0, 8).map(s => {
-                    const tip = s.charAt(0) === 'F' ? 'Fall 20' + s.slice(1) : s.charAt(0) === 'S' ? 'Spring 20' + s.slice(1) : s.charAt(0) === 'M' ? 'Mini (Summer) 20' + s.slice(1) : s;
-                    return '<span class="sem-pill" title="' + tip + '">' + s + '</span>';
-                  }).join('')}
-                  ${semesters.length > 8 ? '<span class="sem-pill sem-pill-more" onclick="App.expandSemesters(event)" title="Click to show all semesters">+' + (semesters.length - 8) + '</span>' : ''}
-                </div>` : ''}
-            </div>
+      <div class="course-card-v2">
+        ${dcBannerHtml}
 
-            ${prereq ? `
-              <div class="cc-section-title">Prerequisites</div>
-              <div class="cc-prereq">${esc(prereq)}</div>
-            ` : `
-              <div class="cc-section-title">Prerequisites</div>
-              <div class="cc-prereq cc-prereq-none">None</div>
-            `}
+        <div class="cc2-header">
+          <div class="cc2-code">${esc(course.course_code)}</div>
+          <div class="cc2-units">${course.units || '?'} units</div>
+        </div>
+        <div class="cc2-name">${esc(course.course_name)}</div>
 
-            ${course.description ? `
-              <div class="cc-section-title">Description</div>
-              <div class="cc-description">${esc(course.description)}</div>
-            ` : ''}
+        <div class="cc2-pills">
+          <span class="cc2-pill">${esc(deptName)} (${course.course_code.split('-')[0]})</span>
+          ${locFlags.map(f => `<span class="cc2-pill">${f}</span>`).join('')}
+          ${semPillsHtml}
+        </div>
+
+        <div class="cc2-section-title">Counts For</div>
+        <div class="cc2-counts-list">${cfHtml}</div>
+
+        <div class="cc2-grid-2">
+          <div>
+            <div class="cc2-section-title">Prerequisites</div>
+            ${prereqHtml}
           </div>
-
-          <div class="cc-grid-col cc-grid-right">
-            <div class="cc-section-title" style="margin-top:0;">Counts For</div>
-            <div class="counts-for-list">${cfHtml}</div>
-
-            <div class="cc-section-title">Fall 2026 Schedule</div>
+          <div>
+            <div class="cc2-section-title">Fall 2026</div>
             ${schedHtml}
           </div>
         </div>
 
-
+        ${course.description ? `
+          <div class="cc2-section-title">Description</div>
+          <div class="cc2-description">${esc(course.description)}</div>
+        ` : ''}
       </div>`;
 
-    // Show/hide inline explore button
     const explBtn = document.getElementById('exploreInlineBtn');
     if (explBtn) explBtn.style.display = this.layoutMode === 'focused' ? 'flex' : 'none';
-  },
 
+    this._cc2Sections = filtered;  // used by expand handler
+  },
   // Expand all hidden semester pills
   expandSemesters(e) {
     e.stopPropagation();
@@ -1049,6 +1027,46 @@ const App = {
       const tip = s.charAt(0) === 'F' ? 'Fall 20' + s.slice(1) : s.charAt(0) === 'S' ? 'Spring 20' + s.slice(1) : s.charAt(0) === 'M' ? 'Mini (Summer) 20' + s.slice(1) : s;
       return '<span class="sem-pill" title="' + tip + '">' + s + '</span>';
     }).join('');
+  },
+
+  expandSemestersV2(e) {
+    e.stopPropagation();
+    if (!this.selectedCourse) return;
+    const btn = document.getElementById('semesterPillsV2');
+    if (!btn) return;
+    const semesters = sortSemesters(this.selectedCourse.offered || []);
+    const expanded = btn.dataset.expanded === '1';
+    if (expanded) {
+      const visible = semesters.slice(0, 4);
+      const more = semesters.length > 4 ? ` · +${semesters.length - 4}` : '';
+      btn.textContent = 'Offered ' + visible.join(' · ') + more;
+      btn.dataset.expanded = '0';
+    } else {
+      btn.textContent = 'Offered ' + semesters.join(' · ');
+      btn.dataset.expanded = '1';
+    }
+  },
+
+  expandScheduleV2(e) {
+    e.stopPropagation();
+    const btn = document.getElementById('cc2SchedMore');
+    const extra = document.getElementById('cc2SchedExtra');
+    if (!btn || !extra) return;
+    const expanded = btn.dataset.expanded === '1';
+    const sections = (this._cc2Sections || []).slice(1);
+    if (!expanded) {
+      extra.style.display = 'block';
+      extra.innerHTML = sections.map(s => {
+        const time = s.begin_time && s.begin_time !== 'TBA' ? esc(s.begin_time) + '–' + esc(s.end_time) : 'TBA';
+        return 'Sec ' + esc(s.section) + ' · ' + esc(s.days || 'TBA') + ' ' + time + ' · ' + esc(s.delivery_mode || '—');
+      }).join('<br>');
+      btn.textContent = 'Hide extra sections';
+      btn.dataset.expanded = '1';
+    } else {
+      extra.style.display = 'none';
+      btn.textContent = '+' + sections.length + ' more sections';
+      btn.dataset.expanded = '0';
+    }
   },
 
   // ══════════════════════════════════════════════════════════
