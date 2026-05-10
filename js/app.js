@@ -19,6 +19,8 @@ const App = {
   highlightedPath: null,
   mobileLens: 'lookup', // 'lookup' | 'map'
 
+  profile: null,
+
   // ── Init ──────────────────────────────────────────────────
   async init() {
     this.applyTheme();
@@ -49,6 +51,10 @@ const App = {
     try {
       this.courses = await fetchAllCourses();
       this.courseIndex = buildCourseIndex(this.courses);
+
+      // Profile-aware annotations
+      annotateDoubleCounters(this.courses, this.profile);
+      annotateMultiProgram(this.courses);
 
       // Build trees for each major
       for (const m of MAJOR_ORDER) {
