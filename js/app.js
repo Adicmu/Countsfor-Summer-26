@@ -167,8 +167,48 @@ const App = {
   },
 
   _renderOnboardingStudentProgram() {
-    // Stub — implemented in Task 10
-    return '<div>(student program picker — coming in Task 10)</div>';
+    const s = this._onboardingState;
+    const PROGRAMS = ['CS', 'IS', 'BA', 'BS'];
+    const majorSel = (m) => s.primary === m ? 'selected' : '';
+    const minorSel = (m) => s.secondary === m ? 'selected' : '';
+    const minorDisabled = (m) => s.primary === m ? 'aria-disabled="true" disabled' : '';
+    const continueDisabled = !s.primary;
+
+    return `
+      <div class="onboarding-step-label">Step 2 of 2</div>
+      <div class="onboarding-question">What's your program?</div>
+
+      <div class="onboarding-section-label">MAJOR</div>
+      <div class="onboarding-options options-2col" style="grid-template-columns:repeat(4,1fr)">
+        ${PROGRAMS.map(p => `
+          <button class="onboarding-option ${majorSel(p)}" onclick="App._pickStudentMajor('${p}')">${p}</button>
+        `).join('')}
+      </div>
+
+      <div class="onboarding-section-label">MINOR <span class="opt-note">— optional</span></div>
+      <div class="onboarding-options" style="grid-template-columns:repeat(5,1fr)">
+        <button class="onboarding-option ${s.secondary === null ? 'selected' : ''}" onclick="App._pickStudentMinor(null)">None</button>
+        ${PROGRAMS.map(p => `
+          <button class="onboarding-option ${minorSel(p)}" ${minorDisabled(p)} onclick="App._pickStudentMinor('${p}')">${p}</button>
+        `).join('')}
+      </div>
+
+      <button class="onboarding-continue" ${continueDisabled ? 'disabled' : ''} onclick="App._finishOnboarding()">Continue →</button>
+    `;
+  },
+
+  _pickStudentMajor(program) {
+    this._onboardingState.primary = program;
+    // If selected major equals current minor, clear minor
+    if (this._onboardingState.secondary === program) {
+      this._onboardingState.secondary = null;
+    }
+    this._renderOnboardingStep();
+  },
+
+  _pickStudentMinor(program) {
+    this._onboardingState.secondary = program;
+    this._renderOnboardingStep();
   },
 
   _renderOnboardingProfessorProgram() {
