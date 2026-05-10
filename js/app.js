@@ -24,6 +24,11 @@ const App = {
   // ── Init ──────────────────────────────────────────────────
   async init() {
     this.applyTheme();
+    this.profile = loadProfile();
+    if (!this.profile) {
+      this.renderOnboarding(false);
+      return;
+    }
     this.renderShell();
     this.bindGlobalEvents();
     await this.loadData();
@@ -80,6 +85,105 @@ const App = {
     for (const node of [...sections.degree, ...sections.gened]) {
       this.expandedNodes.add(major + '::' + node.path);
     }
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // ONBOARDING
+  // ══════════════════════════════════════════════════════════
+
+  _onboardingState: {
+    step: 'role',          // 'role' | 'student-program' | 'professor-program'
+    role: null,            // 'student' | 'professor' | 'area_head'
+    primary: null,
+    secondary: null,
+    isEdit: false,         // true when re-entering from navbar role badge
+  },
+
+  renderOnboarding(isEdit) {
+    // Initialize state — pre-fill from current profile if editing
+    this._onboardingState = {
+      step: 'role',
+      role: this.profile ? this.profile.role : null,
+      primary: this.profile ? this.profile.primary : null,
+      secondary: this.profile ? this.profile.secondary : null,
+      isEdit: !!isEdit,
+    };
+    this._renderOnboardingStep();
+  },
+
+  _renderOnboardingStep() {
+    const s = this._onboardingState;
+    const cancelHtml = s.isEdit
+      ? '<button class="onboarding-cancel" onclick="App._cancelOnboarding()">Cancel</button>'
+      : '';
+
+    let stepHtml = '';
+    if (s.step === 'role') {
+      stepHtml = this._renderOnboardingRole();
+    } else if (s.step === 'student-program') {
+      stepHtml = this._renderOnboardingStudentProgram();
+    } else if (s.step === 'professor-program') {
+      stepHtml = this._renderOnboardingProfessorProgram();
+    }
+
+    document.getElementById('app').innerHTML = `
+      <div class="onboarding-splash">
+        <div class="onboarding-card">
+          <div class="onboarding-brand">CountsFor</div>
+          <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
+          ${stepHtml}
+        </div>
+        ${cancelHtml}
+      </div>
+    `;
+  },
+
+  _renderOnboardingRole() {
+    const s = this._onboardingState;
+    const sel = (r) => s.role === r ? 'selected' : '';
+    return `
+      <div class="onboarding-step-label">Step 1 of 2</div>
+      <div class="onboarding-question">Who are you?</div>
+      <div class="onboarding-help">We'll only show what matters to your role.</div>
+      <div class="onboarding-options">
+        <button class="onboarding-option ${sel('student')}" onclick="App._pickRole('student')">Student</button>
+        <button class="onboarding-option ${sel('professor')}" onclick="App._pickRole('professor')">Professor</button>
+        <button class="onboarding-option ${sel('area_head')}" onclick="App._pickRole('area_head')">Area Head</button>
+      </div>
+    `;
+  },
+
+  _pickRole(role) {
+    this._onboardingState.role = role;
+    if (role === 'area_head') {
+      this._onboardingState.primary = null;
+      this._onboardingState.secondary = null;
+      this._finishOnboarding();
+      return;
+    }
+    if (role === 'student') this._onboardingState.step = 'student-program';
+    if (role === 'professor') this._onboardingState.step = 'professor-program';
+    this._renderOnboardingStep();
+  },
+
+  _renderOnboardingStudentProgram() {
+    // Stub — implemented in Task 10
+    return '<div>(student program picker — coming in Task 10)</div>';
+  },
+
+  _renderOnboardingProfessorProgram() {
+    // Stub — implemented in Task 11
+    return '<div>(professor program picker — coming in Task 11)</div>';
+  },
+
+  _finishOnboarding() {
+    // Stub — implemented in Task 12
+    console.log('finish onboarding', this._onboardingState);
+  },
+
+  _cancelOnboarding() {
+    // Stub — implemented in Task 12
+    console.log('cancel onboarding');
   },
 
   // ── Shell Rendering ───────────────────────────────────────
