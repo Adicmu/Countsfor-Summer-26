@@ -403,3 +403,15 @@ function annotateDoubleCounters(courses, profile) {
     c._doubleCounter = hasPrimary && hasSecondary;
   }
 }
+
+function annotateMultiProgram(courses) {
+  const PROGRAMS = ['CS', 'IS', 'BA', 'BS'];
+  for (const c of courses) {
+    const req = c.requirements || {};
+    let n = 0;
+    for (const p of PROGRAMS) {
+      if (Array.isArray(req[p]) && req[p].length > 0) n++;
+    }
+    c._programCount = n;
+  }
+}
