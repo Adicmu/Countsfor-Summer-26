@@ -829,8 +829,53 @@ const App = {
   },
 
   showDoubleCounterList() {
-    // Implemented in Task 21
-    console.log('TODO: render double-counter list view');
+    if (computeViewMode(this.profile) !== 'focused-dual') return;
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+
+    const p = this.profile.primary;
+    const s = this.profile.secondary;
+    const pLower = p.toLowerCase();
+    const sLower = s.toLowerCase();
+
+    const list = this.courses.filter(c => c._doubleCounter);
+
+    const lastSegment = (req) => {
+      const parts = (req || '').split('---');
+      return parts[parts.length - 1] || req || '';
+    };
+
+    const rowsHtml = list.map(c => {
+      const pReqs = (c.requirements[p] || []).map(r => esc(lastSegment(r.requirement))).slice(0, 2);
+      const sReqs = (c.requirements[s] || []).map(r => esc(lastSegment(r.requirement))).slice(0, 2);
+      const fills = [
+        ...pReqs.map(r => `<span class="dc-row-fill"><strong style="color:var(--major-${pLower})">${p}:</strong> ${r}</span>`),
+        ...sReqs.map(r => `<span class="dc-row-fill"><strong style="color:var(--major-${sLower})">${s}:</strong> ${r}</span>`),
+      ].join('');
+      return `
+        <div class="dc-row" onclick="App.selectCourseFromTree('${esc(c.course_code)}')">
+          <div class="dc-row-code">${esc(c.course_code)}</div>
+          <div class="dc-row-main">
+            <div class="dc-row-name">${esc(c.course_name)}</div>
+            <div class="dc-row-fills">${fills}</div>
+          </div>
+          <div class="dc-row-side">
+            <span class="dc-mini-badge dc-mini-${pLower}">${p}</span>
+            <span class="dc-mini-badge dc-mini-${sLower}">${s}</span>
+            <span class="dc-row-units">${c.units || '?'}u</span>
+          </div>
+        </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="dc-list-view">
+        <div class="dc-list-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <div class="dc-list-count">${list.length} courses count for both ${p} and ${s}</div>
+        </div>
+        <div class="dc-list">${rowsHtml || '<div class="empty-state"><div class="empty-text">No double-counter courses found.</div></div>'}</div>
+      </div>
+    `;
   },
 
   renderCourseCard(course) {
