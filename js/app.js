@@ -1022,18 +1022,6 @@ const App = {
 
     this._cc2Sections = filtered;  // used by expand handler
   },
-  // Expand all hidden semester pills
-  expandSemesters(e) {
-    e.stopPropagation();
-    if (!this.selectedCourse) return;
-    const semesters = sortSemesters(this.selectedCourse.offered || []);
-    const container = document.getElementById('semesterPills');
-    if (!container) return;
-    container.innerHTML = semesters.map(s => {
-      const tip = s.charAt(0) === 'F' ? 'Fall 20' + s.slice(1) : s.charAt(0) === 'S' ? 'Spring 20' + s.slice(1) : s.charAt(0) === 'M' ? 'Mini (Summer) 20' + s.slice(1) : s;
-      return '<span class="sem-pill" title="' + tip + '">' + s + '</span>';
-    }).join('');
-  },
 
   expandSemestersV2(e) {
     e.stopPropagation();
