@@ -38,3 +38,28 @@ function validateProfile(profile) {
 
   return false;
 }
+
+function saveProfile(profile) {
+  if (!validateProfile(profile)) {
+    throw new Error('saveProfile: profile failed validation');
+  }
+  localStorage.setItem('cf_role', profile.role);
+  localStorage.setItem('cf_primary', profile.primary || '');
+  localStorage.setItem('cf_secondary', profile.secondary || '');
+}
+
+function loadProfile() {
+  const role = localStorage.getItem('cf_role');
+  if (!role) return null;
+  const primary = localStorage.getItem('cf_primary') || null;
+  const secondary = localStorage.getItem('cf_secondary') || null;
+  const profile = { role, primary: primary || null, secondary: secondary || null };
+  if (!validateProfile(profile)) return null;
+  return profile;
+}
+
+function clearProfile() {
+  localStorage.removeItem('cf_role');
+  localStorage.removeItem('cf_primary');
+  localStorage.removeItem('cf_secondary');
+}
