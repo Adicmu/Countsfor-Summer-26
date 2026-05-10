@@ -245,13 +245,40 @@ const App = {
   },
 
   _finishOnboarding() {
-    // Stub — implemented in Task 12
-    console.log('finish onboarding', this._onboardingState);
+    const s = this._onboardingState;
+    const profile = {
+      role: s.role,
+      primary: s.primary,
+      secondary: s.secondary,
+    };
+    if (!validateProfile(profile)) {
+      console.error('invalid profile, refusing to save', profile);
+      return;
+    }
+    saveProfile(profile);
+    const wasEdit = s.isEdit;
+    this.profile = profile;
+
+    // Render the main app
+    this.renderShell();
+    this.bindGlobalEvents();
+
+    if (wasEdit) {
+      // Re-annotate using the new profile, then re-render whatever's visible
+      annotateDoubleCounters(this.courses, this.profile);
+      this.renderLeftEmpty();
+      this.renderTree();
+    } else {
+      this.loadData();
+    }
   },
 
   _cancelOnboarding() {
-    // Stub — implemented in Task 12
-    console.log('cancel onboarding');
+    if (!this._onboardingState.isEdit) return;  // not allowed during first-run
+    this.renderShell();
+    this.bindGlobalEvents();
+    this.renderLeftEmpty();
+    this.renderTree();
   },
 
   // ── Shell Rendering ───────────────────────────────────────
