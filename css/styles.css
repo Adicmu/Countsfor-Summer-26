@@ -1343,7 +1343,7 @@ body {
   display: inline-flex;
   align-items: center;
   background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-light);
   border-radius: 8px;
   padding: 0;
   margin-left: 12px;
@@ -1369,7 +1369,7 @@ body {
 .role-badge .rb-divider {
   width: 1px;
   align-self: stretch;
-  background: var(--border);
+  background: var(--border-light);
 }
 
 .role-badge.rb-cs   .rb-primary { background: var(--major-cs-bg); color: var(--major-cs); }
@@ -1514,14 +1514,14 @@ body {
 .es-card-bs { border: 2px solid var(--major-bs); background: var(--major-bs-bg); }
 .es-card-bs .es-card-label { color: var(--major-bs); }
 .es-card-bs .es-card-code { background: var(--major-bs); color: #fff; }
-.es-card-all { border: 1.5px solid var(--border); background: var(--bg-secondary); grid-column: 1 / -1; }
+.es-card-all { border: 1.5px solid var(--border-light); background: var(--bg-secondary); grid-column: 1 / -1; }
 .es-card-all .es-card-label { color: var(--text-tertiary); }
 
 /* Double-counter banner (also used inside course card) */
 .dc-banner {
   position: relative;
   background: linear-gradient(90deg, rgba(196,18,48,0.04), rgba(37,99,235,0.04));
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--border-light);
   border-radius: 8px;
   padding: 10px 12px 10px 18px;
   display: flex;
@@ -1600,7 +1600,7 @@ body {
   font-size: 12px;
   padding: 6px 10px;
   background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   color: var(--text-secondary);
   cursor: pointer;
@@ -1630,7 +1630,7 @@ body {
 
 .dc-back-link {
   background: none;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-light);
   border-radius: 6px;
   padding: 6px 10px;
   font-size: 12px;
@@ -1660,7 +1660,7 @@ body {
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  border: 1.5px solid var(--border);
+  border: 1.5px solid var(--border-light);
   border-radius: 10px;
   cursor: pointer;
   transition: border-color 120ms ease, background 120ms ease;
@@ -1696,7 +1696,7 @@ body {
   font-size: 10px;
   color: var(--text-secondary);
   background: var(--bg-secondary);
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-light);
   border-radius: 4px;
   padding: 2px 6px;
 }
@@ -1953,7 +1953,7 @@ body {
   text-transform: uppercase;
   color: var(--text-secondary);
   padding: 16px 16px 6px;
-  border-bottom: 1px solid var(--border);
+  border-bottom: 1px solid var(--border-light);
   margin-bottom: 6px;
 }
 

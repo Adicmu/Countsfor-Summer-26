@@ -404,7 +404,10 @@ const App = {
   },
 
   // ── Events ────────────────────────────────────────────────
+  _globalEventsBound: false,
   bindGlobalEvents() {
+    if (this._globalEventsBound) return;
+    this._globalEventsBound = true;
     document.addEventListener('input', (e) => {
       if (e.target.id === 'courseSearch') this.handleSearch(e.target.value);
       if (e.target.id === 'treeSearchInput') {
