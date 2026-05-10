@@ -212,8 +212,36 @@ const App = {
   },
 
   _renderOnboardingProfessorProgram() {
-    // Stub — implemented in Task 11
-    return '<div>(professor program picker — coming in Task 11)</div>';
+    const s = this._onboardingState;
+    const PROGRAMS = ['CS', 'IS', 'BA', 'BS'];
+    const sel = (p) => s.primary === p ? 'selected' : '';
+    const continueDisabled = !s.primary;
+
+    return `
+      <div class="onboarding-step-label">Step 2 of 2</div>
+      <div class="onboarding-question">Which program do you teach in?</div>
+
+      <div class="onboarding-options" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">
+        ${PROGRAMS.map(p => `
+          <button class="onboarding-option ${sel(p)}" onclick="App._pickProfProgram('${p}')">${p}</button>
+        `).join('')}
+      </div>
+
+      <div class="onboarding-options options-stacked">
+        <button class="onboarding-option ${sel('AS')}" onclick="App._pickProfProgram('AS')">
+          Arts &amp; Sciences (Cross-program)
+          <span class="opt-sub">I teach courses that apply across all programs</span>
+        </button>
+      </div>
+
+      <button class="onboarding-continue" ${continueDisabled ? 'disabled' : ''} onclick="App._finishOnboarding()">Continue →</button>
+    `;
+  },
+
+  _pickProfProgram(program) {
+    this._onboardingState.primary = program;
+    this._onboardingState.secondary = null;
+    this._renderOnboardingStep();
   },
 
   _finishOnboarding() {
