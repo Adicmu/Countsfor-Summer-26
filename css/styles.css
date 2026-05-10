@@ -1612,3 +1612,103 @@ body {
 @media (max-width: 860px) {
   .es-cards { grid-template-columns: 1fr; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   Double-Counter List View
+   ════════════════════════════════════════════════════════════ */
+
+.dc-list-view {
+  padding: 18px 24px 40px;
+}
+
+.dc-list-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 18px;
+}
+
+.dc-back-link {
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.dc-back-link:hover { border-color: var(--text-primary); color: var(--text-primary); }
+
+.dc-list-count {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.dc-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dc-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+
+.dc-row:hover {
+  border-color: var(--text-primary);
+  background: var(--bg-secondary);
+}
+
+.dc-row .dc-row-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--major-cs);
+}
+
+.dc-row .dc-row-main { display: flex; flex-direction: column; gap: 4px; }
+
+.dc-row .dc-row-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dc-row .dc-row-fills {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.dc-row .dc-row-fill {
+  font-size: 10px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.dc-row .dc-row-side {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dc-row .dc-row-units {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-weight: 600;
+}
