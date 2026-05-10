@@ -29,6 +29,9 @@ const App = {
       this.renderOnboarding(false);
       return;
     }
+    if (this.profile.primary && this.profile.primary !== 'AS') {
+      this.activeMajor = this.profile.primary;
+    }
     this.renderShell();
     this.bindGlobalEvents();
     await this.loadData();
@@ -258,6 +261,9 @@ const App = {
     saveProfile(profile);
     const wasEdit = s.isEdit;
     this.profile = profile;
+    if (this.profile.primary && this.profile.primary !== 'AS') {
+      this.activeMajor = this.profile.primary;
+    }
 
     // Render the main app
     this.renderShell();
@@ -329,6 +335,14 @@ const App = {
     this.renderOnboarding(true);
   },
 
+  _visibleMajors() {
+    const vm = computeViewMode(this.profile);
+    if (vm === 'cross-program') return MAJOR_ORDER.slice();
+    if (vm === 'focused-dual') return [this.profile.primary, this.profile.secondary];
+    if (vm === 'focused-single') return [this.profile.primary];
+    return MAJOR_ORDER.slice();
+  },
+
   // ── Shell Rendering ───────────────────────────────────────
   renderShell() {
     const isSplit = this.layoutMode === 'split';
@@ -372,7 +386,11 @@ const App = {
         <!-- RIGHT: Requirement Map (hidden in focused mode via CSS) -->
         <div class="panel panel-right ${isSplit && this.mobileLens==='lookup'?'hidden-mobile':''}" id="panelRight">
           <div class="major-tabs" id="majorTabs">
-            ${MAJOR_ORDER.map(m => `<button class="major-tab ${m===this.activeMajor?'active':''}" data-major="${m}" onclick="App.switchMajor('${m}')">${m}</button>`).join('')}
+            ${this._visibleMajors().map(m => {
+              const isMinor = this.profile && m === this.profile.secondary && m !== this.profile.primary;
+              const minorSuffix = isMinor ? '<span class="major-tab-suffix">minor</span>' : '';
+              return `<button class="major-tab ${m===this.activeMajor?'active':''}" data-major="${m}" onclick="App.switchMajor('${m}')">${m}${minorSuffix}</button>`;
+            }).join('')}
             <button class="panel-close" onclick="App.exitExplorer()" title="Close">&times;</button>
           </div>
           <div class="tree-search">
