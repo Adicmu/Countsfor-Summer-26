@@ -1172,3 +1172,165 @@ body {
     padding:24px 16px 16px;
   }
 }
+
+/* ════════════════════════════════════════════════════════════
+   Onboarding Splash
+   ════════════════════════════════════════════════════════════ */
+
+.onboarding-splash {
+  position: fixed;
+  inset: 0;
+  background: linear-gradient(135deg, #C41230 0%, #7a0a1d 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 100;
+  overflow-y: auto;
+}
+
+.onboarding-card {
+  width: 100%;
+  max-width: 600px;
+  padding: 32px 28px;
+  text-align: center;
+  color: #fff;
+}
+
+.onboarding-brand {
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  margin-bottom: 4px;
+}
+
+.onboarding-brand-sub {
+  font-size: 12px;
+  opacity: 0.8;
+  margin-bottom: 28px;
+}
+
+.onboarding-step-label {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  opacity: 0.7;
+  margin-bottom: 6px;
+}
+
+.onboarding-question {
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 6px;
+  letter-spacing: -0.3px;
+}
+
+.onboarding-help {
+  font-size: 13px;
+  opacity: 0.85;
+  margin-bottom: 24px;
+}
+
+.onboarding-options {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.onboarding-options.options-2col { grid-template-columns: 1fr 1fr; }
+.onboarding-options.options-stacked { grid-template-columns: 1fr; }
+
+.onboarding-option {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  border-radius: 12px;
+  padding: 18px 12px;
+  color: #fff;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background 120ms ease, transform 80ms ease;
+  text-align: center;
+}
+
+.onboarding-option:hover {
+  background: rgba(255, 255, 255, 0.22);
+}
+
+.onboarding-option.selected {
+  background: #fff;
+  color: #C41230;
+  border-color: #fff;
+}
+
+.onboarding-option .opt-sub {
+  display: block;
+  font-size: 11px;
+  font-weight: 500;
+  opacity: 0.85;
+  margin-top: 4px;
+}
+
+.onboarding-option.selected .opt-sub { opacity: 0.7; }
+
+.onboarding-option:disabled,
+.onboarding-option[aria-disabled="true"] {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.onboarding-section-label {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+  opacity: 0.85;
+  margin: 18px 0 8px;
+  text-align: left;
+}
+
+.onboarding-section-label .opt-note {
+  font-weight: 400;
+  opacity: 0.65;
+  margin-left: 4px;
+}
+
+.onboarding-continue {
+  background: #fff;
+  color: #222;
+  border: none;
+  border-radius: 10px;
+  padding: 13px 28px;
+  font-weight: 700;
+  font-size: 14px;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: opacity 120ms ease;
+}
+
+.onboarding-continue:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.onboarding-cancel {
+  position: absolute;
+  bottom: 24px;
+  right: 24px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
+  font-family: inherit;
+}
+
+.onboarding-cancel:hover { color: #fff; }
+
+@media (max-width: 860px) {
+  .onboarding-options { grid-template-columns: 1fr; }
+  .onboarding-options.options-2col { grid-template-columns: 1fr; }
+  .onboarding-card { padding: 24px 18px; }
+  .onboarding-question { font-size: 20px; }
+}
