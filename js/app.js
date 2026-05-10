@@ -654,12 +654,110 @@ const App = {
     this.renderCourseCard(course);
   },
 
+  _pickTryCourses() {
+    const FALLBACK = ['15-122', '21-259', '73-102', '67-262', '70-311'];
+    const vm = computeViewMode(this.profile);
+    let picks = [];
+
+    if (vm === 'focused-dual') {
+      picks = this.courses.filter(c => c._doubleCounter).map(c => c.course_code);
+    } else if (vm === 'focused-single') {
+      const primaryCourses = this.courses.filter(c => {
+        const r = c.requirements || {};
+        return Array.isArray(r[this.profile.primary]) && r[this.profile.primary].length > 0;
+      });
+      picks = primaryCourses.map(c => c.course_code);
+    } else if (vm === 'cross-program') {
+      picks = this.courses.filter(c => (c._programCount || 0) >= 3).map(c => c.course_code);
+    }
+
+    picks = picks.slice(0, 5);
+    if (picks.length < 3) {
+      for (const code of FALLBACK) {
+        if (picks.length >= 5) break;
+        if (!picks.includes(code)) picks.push(code);
+      }
+    }
+    return picks.slice(0, 5);
+  },
+
+  _renderEmptyDual() {
+    const PROGRAM_NAME = { CS: 'Computer Science', IS: 'Information Systems', BA: 'Business Administration', BS: 'Biological Sciences' };
+    const p = this.profile.primary;
+    const s = this.profile.secondary;
+    const pLower = p.toLowerCase();
+    const sLower = s.toLowerCase();
+
+    const primaryCount = this.courses.filter(c => {
+      const r = c.requirements || {};
+      return Array.isArray(r[p]) && r[p].length > 0;
+    }).length;
+
+    const secondaryCount = this.courses.filter(c => {
+      const r = c.requirements || {};
+      return Array.isArray(r[s]) && r[s].length > 0;
+    }).length;
+
+    const dcCount = this.courses.filter(c => c._doubleCounter).length;
+
+    const tryCodes = this._pickTryCourses();
+    const tryHtml = tryCodes.map(code => `<button class="es-try-chip" onclick="App.selectCourseFromTree('${esc(code)}')">${esc(code)}</button>`).join('');
+
+    return `
+      <div class="empty-state-v2">
+        <div class="es-hero">
+          <div class="es-hero-title">What does this course count for?</div>
+          <div class="es-hero-sub">Search any of ${this.courses.length.toLocaleString()} CMU-Q courses</div>
+        </div>
+
+        <div class="es-cards">
+          <div class="es-card es-card-${pLower}" onclick="App.enterExplorer('${p}')">
+            <div class="es-card-label">Your major</div>
+            <div class="es-card-title-row">
+              <span class="es-card-code">${p}</span>
+              <span class="es-card-name">${PROGRAM_NAME[p]}</span>
+            </div>
+            <div class="es-card-meta">${primaryCount} courses</div>
+          </div>
+          <div class="es-card es-card-${sLower}" onclick="App.enterExplorer('${s}')">
+            <div class="es-card-label">Your minor</div>
+            <div class="es-card-title-row">
+              <span class="es-card-code">${s}</span>
+              <span class="es-card-name">${PROGRAM_NAME[s]}</span>
+            </div>
+            <div class="es-card-meta">${secondaryCount} courses</div>
+          </div>
+        </div>
+
+        <div class="dc-banner" onclick="App.showDoubleCounterList()">
+          <span class="dc-banner-badges">
+            <span class="dc-mini-badge dc-mini-${pLower}">${p}</span>
+            <span class="dc-mini-badge dc-mini-${sLower}">${s}</span>
+          </span>
+          <span class="dc-banner-text">${dcCount} courses count for BOTH your ${p} major and ${s} minor</span>
+          <span class="dc-banner-cta">View all →</span>
+        </div>
+
+        <div class="es-try-row">
+          <div class="es-try-label">Try a course</div>
+          <div class="es-try-chips">${tryHtml}</div>
+        </div>
+      </div>
+    `;
+  },
+
   renderLeftEmpty() {
     const el = document.getElementById('leftBody');
     if (!el) return;
-    // Hide inline explore button when no course is selected
     const explBtn = document.getElementById('exploreInlineBtn');
     if (explBtn) explBtn.style.display = 'none';
+
+    const vm = computeViewMode(this.profile);
+    if (vm === 'focused-dual') {
+      el.innerHTML = this._renderEmptyDual();
+      return;
+    }
+    // Other modes will be implemented in Tasks 18, 19. Until then, fall back:
     el.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">📚</div>
@@ -668,6 +766,11 @@ const App = {
           Try <code>15-122</code> · <code>21-259</code> · <code>73-102</code> · <code>67-262</code> · <code>70-311</code>
         </div>
       </div>`;
+  },
+
+  showDoubleCounterList() {
+    // Implemented in Task 21
+    console.log('TODO: render double-counter list view');
   },
 
   renderCourseCard(course) {
