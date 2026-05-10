@@ -385,3 +385,21 @@ function getDeptName(courseCode) {
   const prefix = courseCode.replace('-', '').substring(0, 2);
   return DEPT_NAMES[prefix] || `Dept ${prefix}`;
 }
+
+// ── Profile-aware annotations ────────────────────────────
+
+function annotateDoubleCounters(courses, profile) {
+  const viewMode = computeViewMode(profile);
+  if (viewMode !== 'focused-dual') {
+    for (const c of courses) c._doubleCounter = false;
+    return;
+  }
+  const p = profile.primary;
+  const s = profile.secondary;
+  for (const c of courses) {
+    const req = c.requirements || {};
+    const hasPrimary = Array.isArray(req[p]) && req[p].length > 0;
+    const hasSecondary = Array.isArray(req[s]) && req[s].length > 0;
+    c._doubleCounter = hasPrimary && hasSecondary;
+  }
+}
