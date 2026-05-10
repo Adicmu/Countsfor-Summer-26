@@ -787,6 +787,35 @@ const App = {
     `;
   },
 
+  _renderEmptyCross() {
+    const tryCodes = this._pickTryCourses();
+    const tryHtml = tryCodes.map(code => `<button class="es-try-chip" onclick="App.selectCourseFromTree('${esc(code)}')">${esc(code)}</button>`).join('');
+
+    return `
+      <div class="empty-state-v2">
+        <div class="es-hero">
+          <div class="es-hero-title">What does this course count for?</div>
+          <div class="es-hero-sub">Search any of ${this.courses.length.toLocaleString()} CMU-Q courses</div>
+        </div>
+
+        <div class="es-cards">
+          <div class="es-card es-card-all" onclick="App.enterExplorer('CS')">
+            <div class="es-card-label">All programs</div>
+            <div class="es-card-title-row">
+              <span class="es-card-name">${this.courses.length.toLocaleString()} courses across CS · IS · BA · BS</span>
+            </div>
+            <div class="es-card-meta">Click to open the requirement map</div>
+          </div>
+        </div>
+
+        <div class="es-try-row">
+          <div class="es-try-label">Try a course (cross-cutting)</div>
+          <div class="es-try-chips">${tryHtml}</div>
+        </div>
+      </div>
+    `;
+  },
+
   renderLeftEmpty() {
     const el = document.getElementById('leftBody');
     if (!el) return;
@@ -794,18 +823,9 @@ const App = {
     if (explBtn) explBtn.style.display = 'none';
 
     const vm = computeViewMode(this.profile);
-    if (vm === 'focused-dual') { el.innerHTML = this._renderEmptyDual(); return; }
-    if (vm === 'focused-single') { el.innerHTML = this._renderEmptySingle(); return; }
-
-    // Cross-program — implemented in Task 19
-    el.innerHTML = `
-      <div class="empty-state">
-        <div class="empty-icon">📚</div>
-        <div class="empty-text">Type a course code or name above</div>
-        <div class="empty-hint">
-          Try <code>15-122</code> · <code>21-259</code> · <code>73-102</code> · <code>67-262</code> · <code>70-311</code>
-        </div>
-      </div>`;
+    if (vm === 'focused-dual') el.innerHTML = this._renderEmptyDual();
+    else if (vm === 'focused-single') el.innerHTML = this._renderEmptySingle();
+    else el.innerHTML = this._renderEmptyCross();
   },
 
   showDoubleCounterList() {
