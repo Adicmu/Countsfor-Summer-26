@@ -746,6 +746,47 @@ const App = {
     `;
   },
 
+  _renderEmptySingle() {
+    const PROGRAM_NAME = { CS: 'Computer Science', IS: 'Information Systems', BA: 'Business Administration', BS: 'Biological Sciences' };
+    const p = this.profile.primary;
+    const pLower = p.toLowerCase();
+
+    const primaryCount = this.courses.filter(c => {
+      const r = c.requirements || {};
+      return Array.isArray(r[p]) && r[p].length > 0;
+    }).length;
+
+    const tryCodes = this._pickTryCourses();
+    const tryHtml = tryCodes.map(code => `<button class="es-try-chip" onclick="App.selectCourseFromTree('${esc(code)}')">${esc(code)}</button>`).join('');
+
+    const cardLabel = this.profile.role === 'professor' ? 'You teach in' : 'Your program';
+
+    return `
+      <div class="empty-state-v2">
+        <div class="es-hero">
+          <div class="es-hero-title">What does this course count for?</div>
+          <div class="es-hero-sub">Search any of ${this.courses.length.toLocaleString()} CMU-Q courses</div>
+        </div>
+
+        <div class="es-cards" style="grid-template-columns:1fr">
+          <div class="es-card es-card-${pLower}" onclick="App.enterExplorer('${p}')">
+            <div class="es-card-label">${cardLabel}</div>
+            <div class="es-card-title-row">
+              <span class="es-card-code">${p}</span>
+              <span class="es-card-name">${PROGRAM_NAME[p]}</span>
+            </div>
+            <div class="es-card-meta">${primaryCount} courses</div>
+          </div>
+        </div>
+
+        <div class="es-try-row">
+          <div class="es-try-label">Try a course</div>
+          <div class="es-try-chips">${tryHtml}</div>
+        </div>
+      </div>
+    `;
+  },
+
   renderLeftEmpty() {
     const el = document.getElementById('leftBody');
     if (!el) return;
@@ -753,11 +794,10 @@ const App = {
     if (explBtn) explBtn.style.display = 'none';
 
     const vm = computeViewMode(this.profile);
-    if (vm === 'focused-dual') {
-      el.innerHTML = this._renderEmptyDual();
-      return;
-    }
-    // Other modes will be implemented in Tasks 18, 19. Until then, fall back:
+    if (vm === 'focused-dual') { el.innerHTML = this._renderEmptyDual(); return; }
+    if (vm === 'focused-single') { el.innerHTML = this._renderEmptySingle(); return; }
+
+    // Cross-program — implemented in Task 19
     el.innerHTML = `
       <div class="empty-state">
         <div class="empty-icon">📚</div>
