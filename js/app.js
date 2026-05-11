@@ -638,178 +638,96 @@ const App = {
     this.renderCourseCard(course);
   },
 
-  _pickTryCourses() {
-    const FALLBACK = ['15-122', '21-259', '73-102', '67-262', '70-311'];
-    const vm = computeViewMode(this.profile);
-    let picks = [];
-
-    if (vm === 'focused-dual') {
-      picks = this.courses.filter(c => c._doubleCounter).map(c => c.course_code);
-    } else if (vm === 'focused-single') {
-      const primaryCourses = this.courses.filter(c => {
-        const r = c.requirements || {};
-        return Array.isArray(r[this.profile.primary]) && r[this.profile.primary].length > 0;
-      });
-      picks = primaryCourses.map(c => c.course_code);
-    } else if (vm === 'cross-program') {
-      picks = this.courses.filter(c => (c._programCount || 0) >= 3).map(c => c.course_code);
-    }
-
-    picks = picks.slice(0, 5);
-    if (picks.length < 3) {
-      for (const code of FALLBACK) {
-        if (picks.length >= 5) break;
-        if (!picks.includes(code)) picks.push(code);
-      }
-    }
-    return picks.slice(0, 5);
-  },
-
-  _renderEmptyDual() {
-    const PROGRAM_NAME = { CS: 'Computer Science', IS: 'Information Systems', BA: 'Business Administration', BS: 'Biological Sciences' };
-    const p = this.profile.primary;
-    const s = this.profile.secondary;
-    const pLower = p.toLowerCase();
-    const sLower = s.toLowerCase();
-
-    const primaryCount = this.courses.filter(c => {
-      const r = c.requirements || {};
-      return Array.isArray(r[p]) && r[p].length > 0;
-    }).length;
-
-    const secondaryCount = this.courses.filter(c => {
-      const r = c.requirements || {};
-      return Array.isArray(r[s]) && r[s].length > 0;
-    }).length;
-
-    const dcCount = this.courses.filter(c => c._doubleCounter).length;
-
-    const tryCodes = this._pickTryCourses();
-    const tryHtml = tryCodes.map(code => `<button class="es-try-chip" onclick="App.selectCourseFromTree('${esc(code)}')">${esc(code)}</button>`).join('');
-
-    return `
-      <div class="empty-state-v2">
-        <div class="es-hero">
-          <div class="es-hero-title">What does this course count for?</div>
-          <div class="es-hero-sub">Search any of ${this.courses.length.toLocaleString()} CMU-Q courses</div>
-        </div>
-
-        <div class="es-cards">
-          <div class="es-card es-card-${pLower}" onclick="App.enterExplorer('${p}')">
-            <div class="es-card-label">Your major</div>
-            <div class="es-card-title-row">
-              <span class="es-card-code">${p}</span>
-              <span class="es-card-name">${PROGRAM_NAME[p]}</span>
-            </div>
-            <div class="es-card-meta">${primaryCount} courses</div>
-          </div>
-          <div class="es-card es-card-${sLower}" onclick="App.enterExplorer('${s}')">
-            <div class="es-card-label">Your minor</div>
-            <div class="es-card-title-row">
-              <span class="es-card-code">${s}</span>
-              <span class="es-card-name">${PROGRAM_NAME[s]}</span>
-            </div>
-            <div class="es-card-meta">${secondaryCount} courses</div>
-          </div>
-        </div>
-
-        <div class="dc-banner" onclick="App.showDoubleCounterList()">
-          <span class="dc-banner-badges">
-            <span class="dc-mini-badge dc-mini-${pLower}">${p}</span>
-            <span class="dc-mini-badge dc-mini-${sLower}">${s}</span>
-          </span>
-          <span class="dc-banner-text">${dcCount} courses count for BOTH your ${p} major and ${s} minor</span>
-          <span class="dc-banner-cta">View all →</span>
-        </div>
-
-        <div class="es-try-row">
-          <div class="es-try-label">Try a course</div>
-          <div class="es-try-chips">${tryHtml}</div>
-        </div>
-      </div>
-    `;
-  },
-
-  _renderEmptySingle() {
-    const PROGRAM_NAME = { CS: 'Computer Science', IS: 'Information Systems', BA: 'Business Administration', BS: 'Biological Sciences' };
-    const p = this.profile.primary;
-    const pLower = p.toLowerCase();
-
-    const primaryCount = this.courses.filter(c => {
-      const r = c.requirements || {};
-      return Array.isArray(r[p]) && r[p].length > 0;
-    }).length;
-
-    const tryCodes = this._pickTryCourses();
-    const tryHtml = tryCodes.map(code => `<button class="es-try-chip" onclick="App.selectCourseFromTree('${esc(code)}')">${esc(code)}</button>`).join('');
-
-    const cardLabel = this.profile.role === 'professor' ? 'You teach in' : 'Your program';
-
-    return `
-      <div class="empty-state-v2">
-        <div class="es-hero">
-          <div class="es-hero-title">What does this course count for?</div>
-          <div class="es-hero-sub">Search any of ${this.courses.length.toLocaleString()} CMU-Q courses</div>
-        </div>
-
-        <div class="es-cards" style="grid-template-columns:1fr">
-          <div class="es-card es-card-${pLower}" onclick="App.enterExplorer('${p}')">
-            <div class="es-card-label">${cardLabel}</div>
-            <div class="es-card-title-row">
-              <span class="es-card-code">${p}</span>
-              <span class="es-card-name">${PROGRAM_NAME[p]}</span>
-            </div>
-            <div class="es-card-meta">${primaryCount} courses</div>
-          </div>
-        </div>
-
-        <div class="es-try-row">
-          <div class="es-try-label">Try a course</div>
-          <div class="es-try-chips">${tryHtml}</div>
-        </div>
-      </div>
-    `;
-  },
-
-  _renderEmptyCross() {
-    const tryCodes = this._pickTryCourses();
-    const tryHtml = tryCodes.map(code => `<button class="es-try-chip" onclick="App.selectCourseFromTree('${esc(code)}')">${esc(code)}</button>`).join('');
-
-    return `
-      <div class="empty-state-v2">
-        <div class="es-hero">
-          <div class="es-hero-title">What does this course count for?</div>
-          <div class="es-hero-sub">Search any of ${this.courses.length.toLocaleString()} CMU-Q courses</div>
-        </div>
-
-        <div class="es-cards">
-          <div class="es-card es-card-all" onclick="App.enterExplorer('CS')">
-            <div class="es-card-label">All programs</div>
-            <div class="es-card-title-row">
-              <span class="es-card-name">${this.courses.length.toLocaleString()} courses across CS · IS · BA · BS</span>
-            </div>
-            <div class="es-card-meta">Click to open the requirement map</div>
-          </div>
-        </div>
-
-        <div class="es-try-row">
-          <div class="es-try-label">Try a course (cross-cutting)</div>
-          <div class="es-try-chips">${tryHtml}</div>
-        </div>
-      </div>
-    `;
-  },
-
   renderLeftEmpty() {
     const el = document.getElementById('leftBody');
     if (!el) return;
     const explBtn = document.getElementById('exploreInlineBtn');
     if (explBtn) explBtn.style.display = 'none';
+    el.innerHTML = this._renderHome();
+  },
 
+  _renderHome() {
     const vm = computeViewMode(this.profile);
-    if (vm === 'focused-dual') el.innerHTML = this._renderEmptyDual();
-    else if (vm === 'focused-single') el.innerHTML = this._renderEmptySingle();
-    else el.innerHTML = this._renderEmptyCross();
+    const p = this.profile && this.profile.primary;
+    const s = this.profile && this.profile.secondary;
+
+    // Lead sentence per spec § 4.3
+    let lead;
+    if (vm === 'focused-dual') {
+      lead = `See what it counts for in your ${p} major and ${s} minor.`;
+    } else if (vm === 'focused-single' && this.profile.role === 'professor') {
+      lead = `See what it counts for in the program you teach.`;
+    } else if (vm === 'focused-single') {
+      lead = `See what it counts for in your ${p} program.`;
+    } else {
+      lead = `See what it counts for across CS, IS, BA, and BS.`;
+    }
+
+    // Browse-button subtitle
+    let browseSub;
+    if (vm === 'focused-dual') browseSub = `${p} + ${s} requirement tree — find courses by slot`;
+    else if (vm === 'focused-single') browseSub = `${p} requirement tree`;
+    else browseSub = `CS · IS · BA · BS requirement tree`;
+
+    // The major to open when Browse is clicked
+    const browseMajor = (vm === 'cross-program') ? this.activeMajor : (p || this.activeMajor);
+
+    // Double-counter banner (focused-dual only)
+    let dcBannerHtml = '';
+    if (vm === 'focused-dual') {
+      const dcCount = this.courses.filter(c => c._doubleCounter).length;
+      dcBannerHtml = `
+        <div class="home-insight" onclick="App.showDoubleCounterList()">
+          <div class="home-insight-num">${dcCount}</div>
+          <div class="home-insight-col">
+            <div class="home-insight-label">${p} MAJOR + ${s} MINOR</div>
+            <div class="home-insight-text">courses count for both — pick these first</div>
+          </div>
+          <span class="home-insight-cta">See all →</span>
+        </div>
+      `;
+    }
+
+    // Multi-program lane (cross-program only) replaces the dc banner
+    let mpBannerHtml = '';
+    if (vm === 'cross-program') {
+      const mpCount = this.courses.filter(c => (c._programCount || 0) >= 3).length;
+      const majorForBrowse = this.activeMajor || 'CS';
+      mpBannerHtml = `
+        <div class="home-insight home-insight-mp" onclick="App.enterExplorer('${majorForBrowse}')">
+          <div class="home-insight-num">${mpCount}</div>
+          <div class="home-insight-col">
+            <div class="home-insight-label">CROSS-PROGRAM</div>
+            <div class="home-insight-text">courses count for 3+ programs</div>
+          </div>
+          <span class="home-insight-cta">Browse →</span>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="home">
+        <h1 class="home-hero">Find a course.</h1>
+        <p class="home-lead">${lead}</p>
+
+        <div class="home-search">
+          <span class="home-search-icon">🔍</span>
+          <input type="text" class="home-search-input" id="courseSearch" placeholder='Try "15-122" or "Probability"' autocomplete="off" />
+          <div class="typeahead" id="typeahead"></div>
+        </div>
+
+        <button class="home-browse" onclick="App.enterExplorer('${browseMajor}')">
+          <span class="home-browse-icon">🗂</span>
+          <span class="home-browse-text">
+            <span class="home-browse-title">Browse requirements</span>
+            <span class="home-browse-sub">${browseSub}</span>
+          </span>
+          <span class="home-browse-arrow">→</span>
+        </button>
+
+        ${dcBannerHtml}${mpBannerHtml}
+      </div>
+    `;
   },
 
   showDoubleCounterList() {
