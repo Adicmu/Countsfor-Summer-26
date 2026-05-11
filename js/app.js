@@ -95,156 +95,120 @@ const App = {
   // ══════════════════════════════════════════════════════════
 
   _onboardingState: {
-    step: 'role',          // 'role' | 'student-program' | 'professor-program'
-    role: null,            // 'student' | 'professor' | 'area_head'
+    role: null,
     primary: null,
     secondary: null,
-    isEdit: false,         // true when re-entering from navbar role badge
+    isEdit: false,
   },
 
   renderOnboarding(isEdit) {
-    // Initialize state — pre-fill from current profile if editing
     this._onboardingState = {
-      step: 'role',
       role: this.profile ? this.profile.role : null,
       primary: this.profile ? this.profile.primary : null,
       secondary: this.profile ? this.profile.secondary : null,
       isEdit: !!isEdit,
     };
-    this._renderOnboardingStep();
+    this._renderOnboardingScreen();
   },
 
-  _renderOnboardingStep() {
+  _renderOnboardingScreen() {
     const s = this._onboardingState;
+    const PROGRAMS = ['CS', 'IS', 'BA', 'BS'];
+    const roleSel = (r) => s.role === r ? 'selected' : '';
+    const majorSel = (m) => s.primary === m ? 'selected' : '';
+    const minorSel = (m) => s.secondary === m ? 'selected' : '';
+    const showMajor = s.role === 'student' || s.role === 'professor';
+    const showMinor = s.role === 'student' && !!s.primary;
+    const showProfAS = s.role === 'professor';
+
+    const valid =
+      (s.role === 'area_head') ||
+      (s.role === 'professor' && (s.primary === 'AS' || PROGRAMS.includes(s.primary))) ||
+      (s.role === 'student' && PROGRAMS.includes(s.primary));
+
     const cancelHtml = s.isEdit
       ? '<button class="onboarding-cancel" onclick="App._cancelOnboarding()">Cancel</button>'
       : '';
 
-    let stepHtml = '';
-    if (s.step === 'role') {
-      stepHtml = this._renderOnboardingRole();
-    } else if (s.step === 'student-program') {
-      stepHtml = this._renderOnboardingStudentProgram();
-    } else if (s.step === 'professor-program') {
-      stepHtml = this._renderOnboardingProfessorProgram();
-    }
+    const majorStage = showMajor ? 'on' : 'off';
+    const minorStage = showMinor ? 'on' : 'off';
+
+    const majorBtns = PROGRAMS.map(p => `
+      <button class="ob-pill ${majorSel(p)}" onclick="App._obPickMajor('${p}')">${p}<span class="ob-pill-sub">${this._programFullName(p)}</span></button>
+    `).join('');
+
+    const profASBtn = showProfAS
+      ? `<button class="ob-pill ob-pill-wide ${s.primary === 'AS' ? 'selected' : ''}" onclick="App._obPickMajor('AS')">Arts &amp; Sciences<span class="ob-pill-sub">Cross-program teaching</span></button>`
+      : '';
+
+    const minorBtns = PROGRAMS.map(p => {
+      const disabled = (s.primary === p) ? 'disabled aria-disabled="true"' : '';
+      return `<button class="ob-pill ${minorSel(p)}" ${disabled} onclick="App._obPickMinor('${p}')">${p}</button>`;
+    }).join('');
 
     document.getElementById('app').innerHTML = `
       <div class="onboarding-splash">
         <div class="onboarding-card">
           <div class="onboarding-brand">CountsFor</div>
           <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
-          ${stepHtml}
+
+          <div class="ob-heading">Tell us who you are.</div>
+          <div class="ob-sub">We'll tailor the curriculum view to your role. Takes 5 seconds.</div>
+
+          <div class="ob-section">
+            <div class="ob-section-label">I AM A</div>
+            <div class="ob-row3">
+              <button class="ob-pill ${roleSel('student')}" onclick="App._obPickRole('student')">Student</button>
+              <button class="ob-pill ${roleSel('professor')}" onclick="App._obPickRole('professor')">Professor</button>
+              <button class="ob-pill ${roleSel('area_head')}" onclick="App._obPickRole('area_head')">Area Head</button>
+            </div>
+          </div>
+
+          <div class="ob-section ob-stage-${majorStage}">
+            <div class="ob-section-label">${s.role === 'professor' ? 'I TEACH IN' : 'MAJORING IN'}</div>
+            <div class="ob-row4">${majorBtns}</div>
+            ${profASBtn}
+          </div>
+
+          <div class="ob-section ob-stage-${minorStage}">
+            <div class="ob-section-label">WITH A MINOR IN <span class="ob-optional">— optional</span></div>
+            <div class="ob-row5">
+              <button class="ob-pill ${s.secondary === null ? 'selected' : ''}" onclick="App._obPickMinor(null)">None</button>
+              ${minorBtns}
+            </div>
+          </div>
+
+          <button class="onboarding-continue" ${valid ? '' : 'disabled'} onclick="App._finishOnboarding()">Continue →</button>
         </div>
         ${cancelHtml}
       </div>
     `;
   },
 
-  _renderOnboardingRole() {
-    const s = this._onboardingState;
-    const sel = (r) => s.role === r ? 'selected' : '';
-    return `
-      <div class="onboarding-step-label">Step 1 of 2</div>
-      <div class="onboarding-question">Who are you?</div>
-      <div class="onboarding-help">We'll only show what matters to your role.</div>
-      <div class="onboarding-options">
-        <button class="onboarding-option ${sel('student')}" onclick="App._pickRole('student')">Student</button>
-        <button class="onboarding-option ${sel('professor')}" onclick="App._pickRole('professor')">Professor</button>
-        <button class="onboarding-option ${sel('area_head')}" onclick="App._pickRole('area_head')">Area Head</button>
-      </div>
-    `;
+  _programFullName(p) {
+    return ({ CS: 'Computer Sci', IS: 'Info Systems', BA: 'Business', BS: 'Biology' })[p] || p;
   },
 
-  _pickRole(role) {
+  _obPickRole(role) {
     this._onboardingState.role = role;
     if (role === 'area_head') {
       this._onboardingState.primary = null;
       this._onboardingState.secondary = null;
-      this._finishOnboarding();
-      return;
     }
-    if (role === 'student') this._onboardingState.step = 'student-program';
-    if (role === 'professor') this._onboardingState.step = 'professor-program';
-    this._renderOnboardingStep();
+    this._renderOnboardingScreen();
   },
 
-  _renderOnboardingStudentProgram() {
-    const s = this._onboardingState;
-    const PROGRAMS = ['CS', 'IS', 'BA', 'BS'];
-    const majorSel = (m) => s.primary === m ? 'selected' : '';
-    const minorSel = (m) => s.secondary === m ? 'selected' : '';
-    const minorDisabled = (m) => s.primary === m ? 'aria-disabled="true" disabled' : '';
-    const continueDisabled = !s.primary;
-
-    return `
-      <div class="onboarding-step-label">Step 2 of 2</div>
-      <div class="onboarding-question">What's your program?</div>
-
-      <div class="onboarding-section-label">MAJOR</div>
-      <div class="onboarding-options options-2col" style="grid-template-columns:repeat(4,1fr)">
-        ${PROGRAMS.map(p => `
-          <button class="onboarding-option ${majorSel(p)}" onclick="App._pickStudentMajor('${p}')">${p}</button>
-        `).join('')}
-      </div>
-
-      <div class="onboarding-section-label">MINOR <span class="opt-note">— optional</span></div>
-      <div class="onboarding-options" style="grid-template-columns:repeat(5,1fr)">
-        <button class="onboarding-option ${s.secondary === null ? 'selected' : ''}" onclick="App._pickStudentMinor(null)">None</button>
-        ${PROGRAMS.map(p => `
-          <button class="onboarding-option ${minorSel(p)}" ${minorDisabled(p)} onclick="App._pickStudentMinor('${p}')">${p}</button>
-        `).join('')}
-      </div>
-
-      <button class="onboarding-continue" ${continueDisabled ? 'disabled' : ''} onclick="App._finishOnboarding()">Continue →</button>
-    `;
-  },
-
-  _pickStudentMajor(program) {
+  _obPickMajor(program) {
     this._onboardingState.primary = program;
-    // If selected major equals current minor, clear minor
     if (this._onboardingState.secondary === program) {
       this._onboardingState.secondary = null;
     }
-    this._renderOnboardingStep();
+    this._renderOnboardingScreen();
   },
 
-  _pickStudentMinor(program) {
+  _obPickMinor(program) {
     this._onboardingState.secondary = program;
-    this._renderOnboardingStep();
-  },
-
-  _renderOnboardingProfessorProgram() {
-    const s = this._onboardingState;
-    const PROGRAMS = ['CS', 'IS', 'BA', 'BS'];
-    const sel = (p) => s.primary === p ? 'selected' : '';
-    const continueDisabled = !s.primary;
-
-    return `
-      <div class="onboarding-step-label">Step 2 of 2</div>
-      <div class="onboarding-question">Which program do you teach in?</div>
-
-      <div class="onboarding-options" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">
-        ${PROGRAMS.map(p => `
-          <button class="onboarding-option ${sel(p)}" onclick="App._pickProfProgram('${p}')">${p}</button>
-        `).join('')}
-      </div>
-
-      <div class="onboarding-options options-stacked">
-        <button class="onboarding-option ${sel('AS')}" onclick="App._pickProfProgram('AS')">
-          Arts &amp; Sciences (Cross-program)
-          <span class="opt-sub">I teach courses that apply across all programs</span>
-        </button>
-      </div>
-
-      <button class="onboarding-continue" ${continueDisabled ? 'disabled' : ''} onclick="App._finishOnboarding()">Continue →</button>
-    `;
-  },
-
-  _pickProfProgram(program) {
-    this._onboardingState.primary = program;
-    this._onboardingState.secondary = null;
-    this._renderOnboardingStep();
+    this._renderOnboardingScreen();
   },
 
   _finishOnboarding() {
