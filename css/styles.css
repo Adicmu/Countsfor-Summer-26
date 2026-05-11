@@ -982,7 +982,7 @@ body {
 }
 .dm-inperson {
   background:rgba(5,150,105,0.12);
-  color:#059669;
+  color:var(--major-bs-text);
 }
 [data-theme="dark"] .dm-inperson {
   background:rgba(52,211,153,0.14);
@@ -990,7 +990,7 @@ body {
 }
 .dm-remote {
   background:rgba(217,119,6,0.12);
-  color:#D97706;
+  color:var(--major-is-text);
 }
 [data-theme="dark"] .dm-remote {
   background:rgba(251,191,36,0.14);
