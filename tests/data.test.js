@@ -86,3 +86,35 @@ test('annotateMultiProgram: missing requirements → 0', () => {
   annotateMultiProgram(courses);
   assertEqual(courses[0]._programCount, 0);
 });
+
+// === pickAccentColor (spec § 4.5) ===
+
+test('pickAccentColor: math nodes get purple', () => {
+  assertEqual(pickAccentColor('Math & Probability', 'CS'), '#6b21a8');
+  assertEqual(pickAccentColor('Probability Theory', 'CS'), '#6b21a8');
+});
+
+test('pickAccentColor: humanities/arts/gened get amber', () => {
+  assertEqual(pickAccentColor('Humanities & Arts', 'CS'), '#B45309');
+  assertEqual(pickAccentColor('GenEd Distribution', 'CS'), '#B45309');
+});
+
+test('pickAccentColor: electives/technical get green', () => {
+  assertEqual(pickAccentColor('Technical Electives', 'CS'), '#047857');
+  assertEqual(pickAccentColor('Elective Pool', 'CS'), '#047857');
+});
+
+test('pickAccentColor: core/required falls back to major brand', () => {
+  assertEqual(pickAccentColor('CS Core', 'CS'), '#C41230');
+  assertEqual(pickAccentColor('Required Courses', 'BA'), '#2563EB');
+});
+
+test('pickAccentColor: unknown label uses major brand', () => {
+  assertEqual(pickAccentColor('Something Random', 'IS'), '#D97706');
+  assertEqual(pickAccentColor('Foo Bar', 'BS'), '#059669');
+});
+
+test('pickAccentColor: case-insensitive matching', () => {
+  assertEqual(pickAccentColor('MATH & PROBABILITY', 'CS'), '#6b21a8');
+  assertEqual(pickAccentColor('humanities & arts', 'CS'), '#B45309');
+});

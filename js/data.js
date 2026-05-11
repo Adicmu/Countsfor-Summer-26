@@ -12,6 +12,34 @@ const MAJOR_META = {
 
 const MAJOR_ORDER = ['CS', 'IS', 'BA', 'BS'];
 
+// ── Accent-color helpers (spec § 4.5) ──────────────────────
+const MAJOR_BRAND = {
+  CS: '#C41230',
+  IS: '#D97706',
+  BA: '#2563EB',
+  BS: '#059669',
+};
+
+// First match in this ordered list wins. rule.color === null means "use major brand".
+const ACCENT_RULES = [
+  { match: /math|probabil/i,           color: '#6b21a8' },
+  { match: /elective|technical/i,      color: '#047857' },
+  { match: /humanit|arts|gened/i,      color: '#B45309' },
+  { match: /science|lab/i,             color: '#047857' },
+  { match: /core|required/i,           color: null /* major brand */ },
+];
+
+function pickAccentColor(label, activeMajor) {
+  const brand = MAJOR_BRAND[activeMajor] || '#C41230';
+  if (!label) return brand;
+  for (const rule of ACCENT_RULES) {
+    if (rule.match.test(label)) {
+      return rule.color || brand;
+    }
+  }
+  return brand;
+}
+
 // ── Label overrides for nicer display ──────────────────────
 const LABEL_OVERRIDES = {
   'BS in Computer Science': 'CS Degree Requirements',
