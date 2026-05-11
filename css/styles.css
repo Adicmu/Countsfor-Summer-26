@@ -72,15 +72,10 @@
   --navbar-h: 52px;
   --panel-divider: 1px solid var(--border-light);
 
-  /* Per-major accent tokens (spec § 3) */
-  --major-cs: #C41230;
-  --major-is: #B45309;
-  --major-ba: #2563EB;
-  --major-bs: #047857;
-  /* Tree accent extras */
+  /* Tree section accent tokens (consumed in Phase E — distinct from --major-is/bs) */
   --accent-math: #6b21a8;
-  --accent-humanities: #B45309;
-  --accent-science: #047857;
+  --accent-humanities: #B45309;   /* darker amber — distinct from --major-is */
+  --accent-science: #047857;      /* darker green — distinct from --major-bs */
 }
 
 /* ---------- Dark Theme ---------- */
