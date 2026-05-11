@@ -111,6 +111,17 @@
   --major-bs-text: #34D399;
 }
 
+/* === Type scale (spec § 3) === */
+.t-hero      { font-size: 26px; font-weight: 800; line-height: 1.15; letter-spacing: -0.01em; color: var(--text-primary); }
+.t-display   { font-size: 28px; font-weight: 800; line-height: 1.05; letter-spacing: -0.01em; color: var(--text-primary); }
+.t-section   { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.t-body      { font-size: 13px; font-weight: 500; color: var(--text-primary); line-height: 1.45; }
+.t-body-sm   { font-size: 12.5px; font-weight: 500; color: var(--text-primary); line-height: 1.4; }
+.t-label     { font-size: 11px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
+.t-label-sm  { font-size: 10px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
+.t-caption   { font-size: 11px; font-weight: 500; color: var(--text-tertiary); }
+.t-mono      { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; }
+
 /* ---------- Reset & Base ---------- */
 *,*::before,*::after { margin:0; padding:0; box-sizing:border-box; }
 html { -webkit-font-smoothing:antialiased; -moz-osx-font-smoothing:grayscale; scroll-behavior:smooth; }
