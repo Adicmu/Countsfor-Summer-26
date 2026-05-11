@@ -46,9 +46,9 @@
   --bg-highlight: rgba(196,18,48,0.06);
 
   /* Text */
-  --text-primary: #111827;
-  --text-secondary: #4B5563;
-  --text-tertiary: #9CA3AF;
+  --text-primary: #1a1a1a;     /* was #111827 — slight softening */
+  --text-secondary: #4a4a4a;   /* was #4B5563 */
+  --text-tertiary: #6a6a6a;    /* was #9CA3AF — CRITICAL contrast fix */
   --text-inverse: #FFFFFF;
 
   /* Borders */
@@ -71,6 +71,16 @@
   --transition-slow: 0.35s cubic-bezier(0.4,0,0.2,1);
   --navbar-h: 52px;
   --panel-divider: 1px solid var(--border-light);
+
+  /* Per-major accent tokens (spec § 3) */
+  --major-cs: #C41230;
+  --major-is: #B45309;
+  --major-ba: #2563EB;
+  --major-bs: #047857;
+  /* Tree accent extras */
+  --accent-math: #6b21a8;
+  --accent-humanities: #B45309;
+  --accent-science: #047857;
 }
 
 /* ---------- Dark Theme ---------- */
@@ -84,9 +94,9 @@
   --bg-tree-hover: rgba(255,255,255,0.04);
   --bg-highlight: rgba(196,18,48,0.10);
 
-  --text-primary: #F1F5F9;
-  --text-secondary: #94A3B8;
-  --text-tertiary: #4B5563;
+  --text-primary: #f1f5f9;
+  --text-secondary: #cbd5e1;   /* was #94A3B8 — was too dim against panel bg */
+  --text-tertiary: #94a3b8;    /* was #4B5563 — was unreadable on dark panels */
   --text-inverse: #0B0F19;
 
   --border-light: #1E293B;
