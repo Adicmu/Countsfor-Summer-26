@@ -462,7 +462,7 @@ const App = {
   reset() {
     this.selectedCourse = null;
     if (this.layoutMode === 'split') {
-      this.exitExplorer();
+      this.exitExplorer();   // resets internal flags; the DOM mutations it makes get rebuilt by renderShell()
     }
     const input = document.getElementById('courseSearch');
     if (input) input.value = '';
@@ -583,7 +583,7 @@ const App = {
         const vm = computeViewMode(App.profile);
         let dcTag = '';
         if (vm === 'focused-dual' && c._doubleCounter && App.profile.secondary) {
-          dcTag = '<span class="dc-leaf-tag dc-leaf-tag-' + App.profile.secondary.toLowerCase() + '" style="margin-left:6px">' + App.profile.secondary + '</span>';
+          dcTag = '<span class="tr-leaf-tag tr-leaf-tag-' + App.profile.secondary.toLowerCase() + '" style="margin-left:6px">' + App.profile.secondary + '</span>';
         }
         return '<div class="typeahead-item" data-idx="' + i + '" onclick="App.selectSearchResult(' + i + ')">' +
           '<span class="typeahead-code">' + esc(c.course_code) + '</span>' +
@@ -622,20 +622,25 @@ const App = {
     }
   },
 
+  _selectCourse(course) {
+    if (!course) return;
+    const wasEmpty = !this.selectedCourse;
+    this.selectedCourse = course;
+    if (wasEmpty) this.renderShell();
+    const input = document.getElementById('courseSearch');
+    if (input) input.value = course.course_code;
+    this.renderCourseCard(course);
+  },
+
   selectSearchResult(idx) {
     const course = this._searchResults[idx];
     if (!course) return;
     const wasEmpty = !this.selectedCourse;
-    this.selectedCourse = course;
-    if (wasEmpty) {
-      this.renderShell();   // re-attach the search header (replaces DOM)
-    } else {
+    if (!wasEmpty) {
       const ta = document.getElementById('typeahead');
       if (ta) ta.classList.remove('visible');
     }
-    const input = document.getElementById('courseSearch');
-    if (input) input.value = course.course_code;
-    this.renderCourseCard(course);
+    this._selectCourse(course);
   },
 
   renderLeftEmpty() {
@@ -814,7 +819,7 @@ const App = {
     // About column rows
     const aboutRows = `
       <div class="cc-kv"><span class="cc-k">Dept</span><span class="cc-v">${esc(deptName)} (${esc(course.course_code.split('-')[0])})</span></div>
-      <div class="cc-kv"><span class="cc-k">Offered</span><span class="cc-v">${semesters.length ? semesters.join(' · ') : '—'}</span></div>
+      <div class="cc-kv"><span class="cc-k">Offered</span><span class="cc-v">${semesters.length ? semesters.map(esc).join(' · ') : '—'}</span></div>
       <div class="cc-kv"><span class="cc-k">Where</span><span class="cc-v">${whereStr}</span></div>
       <div class="cc-kv"><span class="cc-k">Prereq</span><span class="cc-v">${prereq ? esc(prereq) : '<em>None</em>'}</span></div>
     `;
@@ -826,29 +831,16 @@ const App = {
     } else if (this.locationFilter === 'pittsburgh') {
       filtered = filtered.filter(s => s.location && s.location.includes('Pittsburgh'));
     }
-    const dmCls = (dm) => {
-      const d = (dm || '').toLowerCase();
-      if (d.includes('remote')) return 'cc-dm-remote';
-      if (d.includes('in-person')) return 'cc-dm-inperson';
-      return 'cc-dm-other';
-    };
-    const renderSchedRow = (s) => {
-      const time = (s.begin_time && s.begin_time !== 'TBA')
-        ? `${esc(s.begin_time)}–${esc(s.end_time)}`
-        : 'TBA';
-      const dm = s.delivery_mode ? `<span class="cc-dm-pill ${dmCls(s.delivery_mode)}">${esc(s.delivery_mode).toUpperCase()}</span>` : '';
-      return `<div class="cc-kv"><span class="cc-k">Sec ${esc(s.section)}</span><span class="cc-v">${esc(s.days || 'TBA')} ${time} ${dm}</span></div>`;
-    };
     let schedHtml = '';
     if (filtered.length === 0) {
       const campus = this.locationFilter === 'qatar' ? 'Qatar' : this.locationFilter === 'pittsburgh' ? 'Pittsburgh' : 'this filter';
       schedHtml = `<div class="cc-empty">Not offered at ${campus} for Fall 2026</div>`;
     } else {
-      const inline = filtered.slice(0, 4).map(renderSchedRow).join('');
+      const inline = filtered.slice(0, 4).map(s => this._renderSchedRow(s)).join('');
       const extraCount = filtered.length - 4;
       const more = extraCount > 0
-        ? `<button class="cc-more" onclick="App.expandScheduleV2(event)" id="cc2SchedMore" data-expanded="0">+${extraCount} more sections</button>
-           <div id="cc2SchedExtra" style="display:none;margin-top:6px;font-size:11px;color:var(--text-secondary);line-height:1.5"></div>`
+        ? `<button class="cc-more" onclick="App.expandScheduleV2(event)" id="cc-sched-more" data-expanded="0">+${extraCount} more sections</button>
+           <div id="cc-sched-extra" style="display:none;margin-top:6px"></div>`
         : '';
       schedHtml = inline + more;
     }
@@ -907,22 +899,33 @@ const App = {
     const explBtn = document.getElementById('exploreInlineBtn');
     if (explBtn) explBtn.style.display = this.layoutMode === 'focused' ? 'flex' : 'none';
 
-    this._cc2Sections = filtered;  // used by expand handler
+    this._schedSections = filtered;  // used by expand handler
+  },
+
+  _renderSchedRow(s) {
+    const time = (s.begin_time && s.begin_time !== 'TBA')
+      ? `${esc(s.begin_time)}–${esc(s.end_time)}`
+      : 'TBA';
+    const dmCls = (dm) => {
+      const d = (dm || '').toLowerCase();
+      if (d.includes('remote')) return 'cc-dm-remote';
+      if (d.includes('in-person')) return 'cc-dm-inperson';
+      return 'cc-dm-other';
+    };
+    const dm = s.delivery_mode ? `<span class="cc-dm-pill ${dmCls(s.delivery_mode)}">${esc(s.delivery_mode).toUpperCase()}</span>` : '';
+    return `<div class="cc-kv"><span class="cc-k">Sec ${esc(s.section)}</span><span class="cc-v">${esc(s.days || 'TBA')} ${time} ${dm}</span></div>`;
   },
 
   expandScheduleV2(e) {
     e.stopPropagation();
-    const btn = document.getElementById('cc2SchedMore');
-    const extra = document.getElementById('cc2SchedExtra');
+    const btn = document.getElementById('cc-sched-more');
+    const extra = document.getElementById('cc-sched-extra');
     if (!btn || !extra) return;
     const expanded = btn.dataset.expanded === '1';
-    const sections = (this._cc2Sections || []).slice(4);
+    const sections = (this._schedSections || []).slice(4);
     if (!expanded) {
       extra.style.display = 'block';
-      extra.innerHTML = sections.map(s => {
-        const time = s.begin_time && s.begin_time !== 'TBA' ? esc(s.begin_time) + '–' + esc(s.end_time) : 'TBA';
-        return 'Sec ' + esc(s.section) + ' · ' + esc(s.days || 'TBA') + ' ' + time + ' · ' + esc(s.delivery_mode || '—');
-      }).join('<br>');
+      extra.innerHTML = sections.map(s => this._renderSchedRow(s)).join('');
       btn.textContent = 'Hide extra sections';
       btn.dataset.expanded = '1';
     } else {
@@ -994,7 +997,7 @@ const App = {
 
     const ruleHtml = node.rule ? `<span class="tr-rule">${esc(node.rule.label)}</span>` : '';
     const countHtml = (!expanded && filteredTotalCourses > 0 && isExpandable)
-      ? `<span class="tr-count">${filteredTotalCourses} courses</span>`
+      ? `<span class="tr-count">${filteredTotalCourses} course${filteredTotalCourses === 1 ? '' : 's'}</span>`
       : '';
     const safePath = node.path.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
@@ -1114,12 +1117,7 @@ const App = {
   selectCourseFromTree(code) {
     const course = this.courseIndex[code];
     if (!course) return;
-    const wasEmpty = !this.selectedCourse;
-    this.selectedCourse = course;
-    if (wasEmpty) this.renderShell();   // re-attach the search header
-    const input = document.getElementById('courseSearch');
-    if (input) input.value = code;
-    this.renderCourseCard(course);
+    this._selectCourse(course);
 
     // On mobile, switch to lookup lens
     if (window.innerWidth <= 860) {
@@ -1162,7 +1160,7 @@ const App = {
 
     // Scroll to highlighted node
     setTimeout(() => {
-      const highlighted = document.querySelector('.tree-node-row.highlighted');
+      const highlighted = document.querySelector('.tr-card-head.highlighted, .tr-sub-row.highlighted');
       if (highlighted) {
         highlighted.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }

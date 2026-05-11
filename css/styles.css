@@ -290,20 +290,6 @@ body {
   flex-shrink:0;
   border-bottom:var(--panel-divider);
 }
-.panel-tag {
-  font-size:0.65rem;
-  font-weight:700;
-  letter-spacing:0.12em;
-  text-transform:uppercase;
-  color:var(--text-tertiary);
-  margin-bottom:8px;
-}
-.panel-title {
-  font-size:1.1rem;
-  font-weight:700;
-  color:var(--text-primary);
-  line-height:1.3;
-}
 .panel-body {
   flex:1;
   overflow-y:auto;
@@ -1564,22 +1550,6 @@ body {
   font-weight: 700;
   padding: 10px 16px;
 }
-
-/* Double-counter tag at end of leaf row (still used by course-card DC banner) */
-.dc-leaf-tag {
-  margin-left: auto;
-  font-size: 10px;
-  font-weight: 800;
-  padding: 2px 6px;
-  border-radius: 4px;
-  color: #fff;
-  letter-spacing: 0.5px;
-}
-
-.dc-leaf-tag-cs { background: var(--major-cs); }
-.dc-leaf-tag-is { background: var(--major-is); }
-.dc-leaf-tag-ba { background: var(--major-ba); }
-.dc-leaf-tag-bs { background: var(--major-bs); }
 
 .tree-search input {
   font-size: 14px;
