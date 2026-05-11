@@ -182,7 +182,7 @@ Design and implementation docs live in `docs/superpowers/specs/` and `docs/super
 
 - Course and requirement data sourced from [open-cmuq/CountsFor](https://github.com/open-cmuq/CountsFor)
 - Course descriptions scraped from [countsfor.qatar.cmu.edu](https://countsfor.qatar.cmu.edu)
-- Built for CMU-Q students by [Aditya Vivek](https://github.com/Adicmu)
+- Built for CMU-Q students by [Aditya Vivek](https://github.com/Adicmu) and [Hind Jendara](https://github.com/HindJendara)
 
 ---
 
