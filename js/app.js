@@ -967,45 +967,16 @@ const App = {
   },
 
   renderTree() {
-    const el = document.getElementById('rightBody');
-    if (!el) return;
+    const rightBody = document.getElementById('rightBody');
+    if (!rightBody) return;
     const sections = this.treeSections[this.activeMajor];
-    if (!sections) { el.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No data</div></div>'; return; }
-
-    let html = '<div class="tree-container">';
-
-    // Degree requirements
-    if (sections.degree.length > 0) {
-      html += '<div class="tree-section-divider">Degree Requirements</div>';
-      for (const node of sections.degree) {
-        html += this.renderTreeNode(node, this.activeMajor, 0);
-      }
+    if (!sections) { rightBody.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No data</div></div>'; return; }
+    let html = '';
+    // degree + gened both render as a flat list of cards — no separate section headers
+    for (const node of [...sections.degree, ...sections.gened]) {
+      html += this.renderTreeNode(node, this.activeMajor, 0);
     }
-
-    // GenEd requirements
-    if (sections.gened.length > 0) {
-      html += '<div class="tree-section-divider">General Education</div>';
-      for (const node of sections.gened) {
-        // For GenEd, skip the wrapper "GenEd" node and render its children directly
-        if (node.children && node.children.length > 0 && (node.rawLabel === 'GenEd' || node.rawLabel.includes('EY2022') || node.rawLabel.includes('EY2024'))) {
-          // If it has a child also called 'GenEd', unwrap that too
-          for (const child of node.children) {
-            if (child.rawLabel === 'GenEd') {
-              for (const grandchild of child.children) {
-                html += this.renderTreeNode(grandchild, this.activeMajor, 0);
-              }
-            } else {
-              html += this.renderTreeNode(child, this.activeMajor, 0);
-            }
-          }
-        } else {
-          html += this.renderTreeNode(node, this.activeMajor, 0);
-        }
-      }
-    }
-
-    html += '</div>';
-    el.innerHTML = html;
+    rightBody.innerHTML = html;
   },
 
   renderTreeNode(node, major, depth) {
@@ -1015,90 +986,92 @@ const App = {
     const expanded = this.isExpanded(major, node.path);
     const isHighlighted = this.highlightedPath === node.path;
 
-    // Tree search filtering
     const matchesSearch = this.nodeMatchesSearch(node);
     if (this.treeSearchQuery && !matchesSearch) return '';
 
-    const indent = depth * 18;
-    const labelClass = depth === 0 ? 'tree-label tree-label-l1' : 'tree-label';
-
-    // Filter courses by location
     const filteredCourses = (node.courses || []).filter(c => this.filterByLocation(c));
     const filteredTotalCourses = this.countFilteredCourses(node);
 
-    // Rule chip
-    let ruleHtml = '';
-    if (node.rule) {
-      ruleHtml = `<span class="rule-chip">${esc(node.rule.label)}</span>`;
-    }
-
-    // Course count
-    let countHtml = '';
-    if (!expanded && filteredTotalCourses > 0 && isExpandable) {
-      countHtml = `<span class="course-count">${filteredTotalCourses} course${filteredTotalCourses !== 1 ? 's' : ''}</span>`;
-    }
-
+    const ruleHtml = node.rule ? `<span class="tr-rule">${esc(node.rule.label)}</span>` : '';
+    const countHtml = (!expanded && filteredTotalCourses > 0 && isExpandable)
+      ? `<span class="tr-count">${filteredTotalCourses} courses</span>`
+      : '';
     const safePath = node.path.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-    let html = `<div class="tree-node">`;
-    html += `<div class="tree-node-row ${isHighlighted ? 'highlighted' : ''}" data-tree-major="${major}" data-tree-path="${safePath}" style="padding-left:${16 + indent}px">`;
-    html += `<span class="tree-arrow ${expanded ? 'expanded' : ''} ${!isExpandable ? 'leaf' : ''}">▶</span>`;
-    html += `<span class="${labelClass}">${esc(node.label)}</span>`;
+
+    // ── Depth 0: render as a card ─────────────────────────────
+    if (depth === 0) {
+      const accent = pickAccentColor(node.label, major);
+      const openCls = expanded ? 'open' : '';
+      const cardHead = `
+        <div class="tr-card-head ${isHighlighted ? 'highlighted' : ''}" data-tree-major="${major}" data-tree-path="${safePath}">
+          <span class="tr-arrow ${expanded ? 'expanded' : ''}">▶</span>
+          <span class="tr-accent" style="background:${accent}"></span>
+          <span class="tr-card-title">${esc(node.label)}</span>
+          <span class="tr-card-meta">${ruleHtml}${countHtml}</span>
+        </div>`;
+      let body = '';
+      if (isExpandable && expanded) {
+        let inner = '';
+        if (hasChildren) {
+          for (const child of node.children) inner += this.renderTreeNode(child, major, depth + 1);
+        }
+        if (hasCourses) {
+          for (const c of filteredCourses) inner += this._renderLeafCourse(c, major);
+        }
+        body = `<div class="tr-card-body">${inner}</div>`;
+      }
+      return `<div class="tr-card ${openCls}" style="--tr-accent:${accent}">${cardHead}${body}</div>`;
+    }
+
+    // ── Depth ≥ 1: regular sub-node ──────────────────────────
+    const indent = (depth - 1) * 14;
+    let html = `<div class="tr-sub" style="padding-left:${indent}px">`;
+    html += `<div class="tr-sub-row ${isHighlighted ? 'highlighted' : ''}" data-tree-major="${major}" data-tree-path="${safePath}">`;
+    html += `<span class="tr-arrow ${expanded ? 'expanded' : ''} ${!isExpandable ? 'leaf' : ''}">▶</span>`;
+    html += `<span class="tr-sub-label">${esc(node.label)}</span>`;
     html += ruleHtml;
     html += countHtml;
     html += `</div>`;
-
-    // Children + courses
     if (isExpandable) {
-      html += `<div class="tree-children ${expanded ? '' : 'collapsed'}">`;
-
-      // Child nodes
+      html += `<div class="tr-children ${expanded ? '' : 'collapsed'}">`;
       if (hasChildren) {
-        for (const child of node.children) {
-          html += this.renderTreeNode(child, major, depth + 1);
-        }
+        for (const child of node.children) html += this.renderTreeNode(child, major, depth + 1);
       }
-
-      // Leaf courses
       if (hasCourses) {
-        const vm = computeViewMode(this.profile);
-        for (const c of filteredCourses) {
-          const fullCourse = this.courseIndex[c.code] || c;
-          const alsoMajors = getAlsoCountsFor(fullCourse, major);
-          const isActive = this.selectedCourse && this.selectedCourse.course_code === c.code;
-          const courseIndent = 16 + (depth + 1) * 18 + 16; // extra indent for leaf
-
-          // Double-counter tag (focused-dual): if this course also fills the secondary, tag it
-          let dcTag = '';
-          if (vm === 'focused-dual' && fullCourse._doubleCounter) {
-            const other = (this.profile.secondary === major) ? this.profile.primary : this.profile.secondary;
-            if (other) {
-              dcTag = `<span class="dc-leaf-tag dc-leaf-tag-${other.toLowerCase()}">${other}</span>`;
-            }
-          }
-          // Multi-program chip (cross-program view, 3+ programs)
-          let mpChip = '';
-          if (vm === 'cross-program' && (fullCourse._programCount || 0) >= 3) {
-            mpChip = `<span class="mp-chip">${fullCourse._programCount} programs</span>`;
-          }
-
-          html += `<div class="tree-course ${isActive ? 'active-course' : ''}" style="padding-left:${courseIndent}px" data-course-code="${esc(c.code)}">`;
-          html += `<span class="tree-course-code">${esc(c.code)}</span>`;
-          html += `<span class="tree-course-name">${esc(c.name)}</span>`;
-          if (c.units) html += `<span class="tree-course-units">${c.units}u</span>`;
-          if (alsoMajors.length > 0 && vm !== 'focused-dual' && vm !== 'cross-program') {
-            html += `<span class="also-tags">${alsoMajors.map(m => `<span class="also-tag also-tag-${m.toLowerCase()}">${m}</span>`).join('')}</span>`;
-          }
-          html += dcTag;
-          html += mpChip;
-          html += `</div>`;
-        }
+        for (const c of filteredCourses) html += this._renderLeafCourse(c, major);
       }
-
       html += `</div>`;
     }
-
     html += `</div>`;
     return html;
+  },
+
+  _renderLeafCourse(c, major) {
+    const fullCourse = this.courseIndex[c.code] || c;
+    const isActive = this.selectedCourse && this.selectedCourse.course_code === c.code;
+    const vm = computeViewMode(this.profile);
+
+    let dcTag = '';
+    if (vm === 'focused-dual' && fullCourse._doubleCounter) {
+      const other = (this.profile.secondary === major) ? this.profile.primary : this.profile.secondary;
+      if (other) dcTag = `<span class="tr-leaf-tag tr-leaf-tag-${other.toLowerCase()}">${other}</span>`;
+    }
+    let mpChip = '';
+    if (vm === 'cross-program' && (fullCourse._programCount || 0) >= 3) {
+      mpChip = `<span class="tr-mp-chip">${fullCourse._programCount} programs</span>`;
+    }
+    const alsoMajors = (vm !== 'focused-dual' && vm !== 'cross-program') ? getAlsoCountsFor(fullCourse, major) : [];
+    const alsoHtml = alsoMajors.length
+      ? `<span class="tr-also">${alsoMajors.map(m => `<span class="tr-leaf-tag tr-leaf-tag-${m.toLowerCase()}">${m}</span>`).join('')}</span>`
+      : '';
+
+    return `
+      <div class="tr-leaf ${isActive ? 'active' : ''}" data-course-code="${esc(c.code)}">
+        <span class="tr-leaf-code">${esc(c.code)}</span>
+        <span class="tr-leaf-name">${esc(c.name)}</span>
+        ${c.units ? `<span class="tr-leaf-units">${c.units}u</span>` : ''}
+        ${alsoHtml}${dcTag}${mpChip}
+      </div>`;
   },
 
   countFilteredCourses(node) {
