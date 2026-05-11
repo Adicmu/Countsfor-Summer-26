@@ -48,12 +48,13 @@ These principles drove every layout choice below. Implementation should refer ba
 | `--bg` | `#f6f6f7` | App background |
 | `--panel` | `#ffffff` | Panel / card background |
 | `--border` | `#e3e3e5` | All standard borders |
-| `--cs` | `#C41230` | Computer Science (CMU red) |
-| `--ba` | `#2563EB` | Business Administration |
-| `--is` | `#B45309` | Information Systems |
-| `--bs` | `#047857` | Biological Sciences |
-| `--math` | `#6b21a8` | Math accent (tree sections) |
-| `--humanities` | `#B45309` | Humanities accent (tree sections) |
+| `--major-cs` (existing) | `#C41230` | Computer Science (CMU red) — unchanged |
+| `--major-ba` (existing) | `#2563EB` | Business Administration — unchanged |
+| `--major-is` (existing) | `#D97706` | Information Systems — unchanged |
+| `--major-bs` (existing) | `#059669` | Biological Sciences — unchanged |
+| `--accent-math` (new) | `#6b21a8` | Math accent (tree sections) |
+| `--accent-humanities` (new) | `#B45309` | Humanities accent (tree sections) — darker amber, distinct from `--major-is` |
+| `--accent-science` (new) | `#047857` | Science / electives accent (tree sections) — darker green, distinct from `--major-bs` |
 
 Dark-mode equivalents will be derived in the implementation plan; this spec defines the light-mode contract. Dark mode must respect the inverse contrast rule (body text ≥ `#dddddd` on dark backgrounds).
 

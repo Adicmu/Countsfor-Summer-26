@@ -43,18 +43,13 @@ Lay down the token + type system Phases B–E will use. Single commit; small and
   --text-tertiary: #6a6a6a;    /* was #9CA3AF — CRITICAL contrast fix */
   ```
 
-  Append the following new tokens at the end of the same `:root` block (don't replace existing major-color tokens like `--cmu-red`):
+  Append the following **new** tokens at the end of the same `:root` block. **Do not** re-declare `--major-cs/is/ba/bs` — those already exist in the same block with companion `-bg`/`-text`/`-border` tokens; redeclaring would silently shift the base hue while leaving the companions on the old hue, producing visual inconsistency.
 
   ```css
-  /* Per-major accent tokens (spec § 3) */
-  --major-cs: #C41230;
-  --major-is: #B45309;
-  --major-ba: #2563EB;
-  --major-bs: #047857;
-  /* Tree accent extras */
+  /* Tree section accent tokens (consumed in Phase E) */
   --accent-math: #6b21a8;
-  --accent-humanities: #B45309;
-  --accent-science: #047857;
+  --accent-humanities: #B45309;   /* darker amber — distinct from --major-is */
+  --accent-science: #047857;      /* darker green — distinct from --major-bs */
   ```
 
 - [ ] **Step 3: Adjust dark-mode token values** in the `[data-theme="dark"]` block to keep parity:
@@ -956,8 +951,8 @@ Spec § 4.5.
   });
 
   test('pickAccentColor: unknown label uses major brand', () => {
-    assertEqual(pickAccentColor('Something Random', 'IS'), '#B45309');
-    assertEqual(pickAccentColor('Foo Bar', 'BS'), '#047857');
+    assertEqual(pickAccentColor('Something Random', 'IS'), '#D97706');
+    assertEqual(pickAccentColor('Foo Bar', 'BS'), '#059669');
   });
 
   test('pickAccentColor: case-insensitive matching', () => {
@@ -973,9 +968,9 @@ Spec § 4.5.
   ```js
   const MAJOR_BRAND = {
     CS: '#C41230',
-    IS: '#B45309',
+    IS: '#D97706',
     BA: '#2563EB',
-    BS: '#047857',
+    BS: '#059669',
   };
 
   // spec § 4.5: pick a tree section accent color from the node label.
