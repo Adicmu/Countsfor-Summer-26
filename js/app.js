@@ -190,8 +190,11 @@ const App = {
   },
 
   _obPickRole(role) {
+    const prev = this._onboardingState.role;
     this._onboardingState.role = role;
-    if (role === 'area_head') {
+    // Clear program selections whenever the role changes — a major picked as
+    // a professor (or AS) doesn't apply to a student profile, and vice versa.
+    if (role !== prev) {
       this._onboardingState.primary = null;
       this._onboardingState.secondary = null;
     }
