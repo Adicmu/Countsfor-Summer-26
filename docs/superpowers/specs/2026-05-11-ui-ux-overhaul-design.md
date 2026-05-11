@@ -69,7 +69,7 @@ Dark-mode equivalents will be derived in the implementation plan; this spec defi
 | Body small / leaf rows | 12.5 px / 500 |
 | Label (uppercase) | 10–11 px / 700, letter-spacing 0.08em |
 | Caption / tertiary | 11 px / 500 |
-| Monospace (course codes in tree) | 12 px `SF Mono`, `Menlo`, monospace |
+| Monospace (course codes in tree) | 12 px `'JetBrains Mono'`, `'SF Mono'`, `Menlo`, monospace (JetBrains Mono is already loaded via `@import` at the top of `styles.css`) |
 
 ---
 

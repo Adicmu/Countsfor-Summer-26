@@ -86,7 +86,7 @@ Lay down the token + type system Phases B–E will use. Single commit; small and
   .t-label     { font-size: 11px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
   .t-label-sm  { font-size: 10px; font-weight: 700; color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em; }
   .t-caption   { font-size: 11px; font-weight: 500; color: var(--text-tertiary); }
-  .t-mono      { font-family: "SF Mono", Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; }
+  .t-mono      { font-family: 'JetBrains Mono', "SF Mono", Menlo, Consolas, monospace; font-size: 12px; font-weight: 700; }
   ```
 
 - [ ] **Step 2: Reload http://localhost:8080/** — no visible change (none of the new classes are used yet). Confirm CSS still parses by opening DevTools and checking for parse errors.
@@ -1205,7 +1205,7 @@ Spec § 4.5.
   .tr-leaf:hover  { background: var(--bg-secondary); }
   .tr-leaf.active { background: var(--bg-highlight); border-left-color: var(--cmu-red); }
   .tr-leaf-code {
-    font-family: "SF Mono", Menlo, Consolas, monospace;
+    font-family: 'JetBrains Mono', "SF Mono", Menlo, Consolas, monospace;
     font-size: 12px; font-weight: 700;
     color: var(--cmu-red); min-width: 56px;
   }
