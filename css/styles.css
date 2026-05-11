@@ -1344,102 +1344,70 @@ body {
 }
 
 /* ════════════════════════════════════════════════════════════
-   Empty State v2 — search-first home with role context
+   Home screen (spec § 4.3)
    ════════════════════════════════════════════════════════════ */
 
-.empty-state-v2 {
-  padding: 24px 24px 40px;
+.home { padding: 28px 24px 32px; max-width: 720px; margin: 0 auto; }
+.home-hero {
+  font-size: 28px; font-weight: 800; line-height: 1.1;
+  color: var(--text-primary); margin: 0 0 6px;
+  letter-spacing: -0.01em;
+}
+.home-lead {
+  font-size: 14px; color: var(--text-secondary);
+  margin: 0 0 22px; line-height: 1.45;
 }
 
-.es-hero {
-  text-align: center;
-  margin-bottom: 24px;
+.home-search {
+  position: relative; display: flex; align-items: center; gap: 10px;
+  background: var(--bg-card); border: 2px solid var(--cmu-red); border-radius: 12px;
+  padding: 13px 16px; box-shadow: 0 4px 14px rgba(196,18,48,0.08);
+}
+.home-search-icon { font-size: 16px; }
+.home-search-input {
+  flex: 1; border: 0; outline: 0; background: transparent;
+  font-size: 14px; color: var(--text-primary); font-family: inherit;
+}
+.home-search-input::placeholder { color: var(--text-tertiary); }
+
+.home-browse {
+  width: 100%; display: flex; align-items: center; gap: 14px;
+  padding: 14px 16px; margin-top: 12px;
+  background: #1a1a1a; color: #fff; border: 0; border-radius: 12px;
+  font-family: inherit; cursor: pointer; text-align: left;
+  transition: background 120ms;
+}
+.home-browse:hover { background: #2a2a2a; }
+.home-browse-icon { font-size: 18px; }
+.home-browse-text { flex: 1; display: flex; flex-direction: column; }
+.home-browse-title { font-size: 14px; font-weight: 600; }
+.home-browse-sub   { font-size: 11px; font-weight: 400; opacity: 0.72; margin-top: 2px; }
+.home-browse-arrow { font-size: 16px; opacity: 0.85; }
+
+.home-insight {
+  display: flex; align-items: center; gap: 14px;
+  background: linear-gradient(135deg, #C41230 0%, #7d0a1f 100%); color: #fff;
+  border-radius: 14px; padding: 16px 18px; margin-top: 18px;
+  cursor: pointer; transition: transform 120ms;
+}
+.home-insight:hover { transform: translateY(-1px); }
+.home-insight-num   { font-size: 40px; font-weight: 800; line-height: 1; min-width: 56px; }
+.home-insight-col   { flex: 1; }
+.home-insight-label { font-size: 11px; opacity: 0.85; text-transform: uppercase; letter-spacing: 0.06em; }
+.home-insight-text  { font-size: 13px; font-weight: 600; margin-top: 2px; }
+.home-insight-cta   { background: #fff; color: var(--cmu-red); padding: 7px 14px; border-radius: 999px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+.home-insight-mp    { background: linear-gradient(135deg, #1f2937 0%, #0f172a 100%); }
+.home-insight-mp .home-insight-cta { color: #1f2937; }
+
+@media (max-width: 480px) {
+  .home { padding: 22px 16px 28px; }
+  .home-hero { font-size: 22px; }
+  .home-lead { margin-bottom: 18px; }
+  .home-insight { flex-direction: column; align-items: flex-start; gap: 8px; padding: 14px; }
+  .home-insight-cta { align-self: stretch; text-align: center; }
 }
 
-.es-hero-title {
-  font-size: 24px;
-  font-weight: 800;
-  color: var(--text-primary);
-  letter-spacing: -0.5px;
-  margin-bottom: 4px;
-}
-
-.es-hero-sub {
-  font-size: 13px;
-  color: var(--text-secondary);
-  margin-bottom: 16px;
-}
-
-.es-cards {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  margin-bottom: 14px;
-}
-
-.es-card {
-  border-radius: 12px;
-  padding: 14px 16px;
-  cursor: pointer;
-  transition: transform 120ms ease, box-shadow 120ms ease;
-}
-
-.es-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.06);
-}
-
-.es-card .es-card-label {
-  font-size: 11px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  font-weight: 800;
-  margin-bottom: 6px;
-}
-
-.es-card .es-card-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.es-card .es-card-code {
-  font-size: 14px;
-  font-weight: 800;
-  padding: 4px 8px;
-  border-radius: 5px;
-  color: #fff;
-}
-
-.es-card .es-card-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-primary);
-}
-
-.es-card .es-card-meta {
-  font-size: 11px;
-  color: var(--text-tertiary);
-}
-
-/* Major-color variants */
-.es-card-cs { border: 2px solid var(--major-cs); background: var(--major-cs-bg); }
-.es-card-cs .es-card-label, .es-card-cs .es-card-code { color: var(--major-cs); }
-.es-card-cs .es-card-code { background: var(--major-cs); color: #fff; }
-.es-card-is { border: 2px solid var(--major-is); background: var(--major-is-bg); }
-.es-card-is .es-card-label { color: var(--major-is); }
-.es-card-is .es-card-code { background: var(--major-is); color: #fff; }
-.es-card-ba { border: 2px solid var(--major-ba); background: var(--major-ba-bg); }
-.es-card-ba .es-card-label { color: var(--major-ba); }
-.es-card-ba .es-card-code { background: var(--major-ba); color: #fff; }
-.es-card-bs { border: 2px solid var(--major-bs); background: var(--major-bs-bg); }
-.es-card-bs .es-card-label { color: var(--major-bs); }
-.es-card-bs .es-card-code { background: var(--major-bs); color: #fff; }
-.es-card-all { border: 1.5px solid var(--border-light); background: var(--bg-secondary); grid-column: 1 / -1; }
-.es-card-all .es-card-label { color: var(--text-tertiary); }
-
-/* Double-counter banner (also used inside course card) */
+/* Double-counter banner (used inside course card) */
 .dc-banner {
   position: relative;
   background: linear-gradient(90deg, rgba(196,18,48,0.04), rgba(37,99,235,0.04));
@@ -1495,44 +1463,6 @@ body {
   font-size: 11px;
   color: var(--text-secondary);
   font-weight: 600;
-}
-
-.es-try-row {
-  margin-top: 18px;
-}
-
-.es-try-label {
-  font-size: 10px;
-  letter-spacing: 1.5px;
-  text-transform: uppercase;
-  font-weight: 700;
-  color: var(--text-tertiary);
-  margin-bottom: 6px;
-}
-
-.es-try-chips {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-
-.es-try-chip {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  font-size: 12px;
-  padding: 6px 10px;
-  background: var(--bg-secondary);
-  border: 1px solid var(--border-light);
-  border-radius: 6px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: border-color 120ms ease, color 120ms ease;
-}
-
-.es-try-chip:hover { border-color: var(--major-cs); color: var(--major-cs); }
-
-@media (max-width: 860px) {
-  .es-cards { grid-template-columns: 1fr; }
 }
 
 /* ════════════════════════════════════════════════════════════
