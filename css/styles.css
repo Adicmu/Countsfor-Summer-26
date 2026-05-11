@@ -74,8 +74,8 @@
 
   /* Tree section accent tokens (consumed in Phase E — distinct from --major-is/bs) */
   --accent-math: #6b21a8;
-  --accent-humanities: #B45309;   /* darker amber — distinct from --major-is */
-  --accent-science: #047857;      /* darker green — distinct from --major-bs */
+  --accent-humanities: #B45309;   /* darker amber — distinct from --major-is base; value coincidentally matches --major-is-text */
+  --accent-science: #047857;      /* darker green — distinct from --major-bs base; value coincidentally matches --major-bs-text */
 }
 
 /* ---------- Dark Theme ---------- */
