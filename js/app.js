@@ -406,7 +406,7 @@ const App = {
 
       // Handle tree node toggle via data attributes
       const treeRow = e.target.closest('[data-tree-path]');
-      if (treeRow && !e.target.closest('.tree-course')) {
+      if (treeRow && !e.target.closest('.tr-leaf')) {
         const major = treeRow.dataset.treeMajor;
         const path = treeRow.dataset.treePath;
         if (major && path) this.toggleNode(major, path);
