@@ -794,147 +794,120 @@ const App = {
     const pLower = profile && profile.primary ? profile.primary.toLowerCase() : 'cs';
     const sLower = profile && profile.secondary ? profile.secondary.toLowerCase() : 'cs';
 
-    // ── Double-counter banner ───────────────────────────────
+    // Where string
+    const whereParts = [];
+    if (course.offered_qatar) whereParts.push('Qatar');
+    if (course.offered_pitts) whereParts.push('Pittsburgh');
+    const whereStr = whereParts.length ? whereParts.join(' &amp; ') : '—';
+
+    // Slim DC banner (spec § 4.4)
     let dcBannerHtml = '';
     if (isDoubleCounter && profile && profile.secondary) {
       dcBannerHtml = `
-        <div class="dc-banner" style="cursor:default">
-          <span class="dc-banner-badges">
-            <span class="dc-mini-badge dc-mini-${pLower}">${profile.primary}</span>
-            <span class="dc-mini-badge dc-mini-${sLower}">${profile.secondary}</span>
-          </span>
-          <span class="dc-banner-text">Counts for BOTH your ${profile.primary} major and ${profile.secondary} minor</span>
+        <div class="cc-dc-strip">
+          <span class="cc-dc-badge cc-dc-${pLower}">${profile.primary}</span>
+          <span class="cc-dc-badge cc-dc-${sLower}">${profile.secondary}</span>
+          <span class="cc-dc-text">Double-counter</span>
         </div>`;
     }
 
-    // ── Header pills ───────────────────────────────────────────────────
-    const locFlags = [];
-    if (course.offered_qatar) locFlags.push('🇶🇦 Qatar');
-    if (course.offered_pitts) locFlags.push('🇺🇸 Pittsburgh');
+    // About column rows
+    const aboutRows = `
+      <div class="cc-kv"><span class="cc-k">Dept</span><span class="cc-v">${esc(deptName)} (${esc(course.course_code.split('-')[0])})</span></div>
+      <div class="cc-kv"><span class="cc-k">Offered</span><span class="cc-v">${semesters.length ? semesters.join(' · ') : '—'}</span></div>
+      <div class="cc-kv"><span class="cc-k">Where</span><span class="cc-v">${whereStr}</span></div>
+      <div class="cc-kv"><span class="cc-k">Prereq</span><span class="cc-v">${prereq ? esc(prereq) : '<em>None</em>'}</span></div>
+    `;
 
-    let semPillsHtml = '';
-    if (semesters.length > 0) {
-      const visible = semesters.slice(0, 4);
-      const more = semesters.length > 4 ? ` · +${semesters.length - 4}` : '';
-      semPillsHtml = `<button class="cc2-pill cc2-pill-offered" onclick="App.expandSemestersV2(event)" id="semesterPillsV2" data-expanded="0" title="Click to show all">Offered ${visible.join(' · ')}${more}</button>`;
-    }
-
-    // ── Counts For ─────────────────────────────────────────────────────
-    let cfHtml = '';
-    for (const majorCode of MAJOR_ORDER) {
-      const majorMappings = mappings[majorCode];
-      if (!majorMappings || majorMappings.length === 0) continue;
-      for (const m of majorMappings) {
-        const typeLabel = m.isGenEd ? 'GEN ED' : 'CORE';
-        const safePath = m.fullPath.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        cfHtml += `
-          <div class="cc2-counts-row cf-row-${majorCode.toLowerCase()}" data-nav-major="${majorCode}" data-nav-path="${safePath}">
-            <span class="cc2-counts-badge">${majorCode}</span>
-            <span class="cc2-counts-type">${typeLabel}</span>
-            <span class="cc2-counts-text">${esc(m.shortLabel)}</span>
-            <span class="cc2-counts-arrow">→</span>
-          </div>`;
-      }
-    }
-    if (!cfHtml) cfHtml = '<div style="font-size:12px;color:var(--text-tertiary);font-style:italic">This course does not count toward any tracked major requirements.</div>';
-
-    // ── Prereq + Schedule (2-col block) ─────────────────────────
-    const prereqHtml = prereq
-      ? `<div class="cc2-prereq-text">${esc(prereq)}</div>`
-      : `<div class="cc2-prereq-text cc2-prereq-none">None</div>`;
-
-    let schedHtml = '';
-    const dmCls = (dm) => {
-      const d = (dm || '').toLowerCase();
-      if (d.includes('remote')) return 'cc2-dm-remote';
-      if (d.includes('in-person')) return 'cc2-dm-inperson';
-      return 'cc2-dm-other';
-    };
-
-    // Filter by location
+    // Fall 2026 schedule rows (filtered + up to 4 inline; rest behind a button)
     let filtered = sections.slice();
     if (this.locationFilter === 'qatar') {
       filtered = filtered.filter(s => s.location && (s.location.includes('Qatar') || s.location.includes('Doha')));
     } else if (this.locationFilter === 'pittsburgh') {
       filtered = filtered.filter(s => s.location && s.location.includes('Pittsburgh'));
     }
-
-    if (filtered.length > 0) {
-      const first = filtered[0];
-      const moreCount = filtered.length - 1;
-      const timeStr = first.begin_time && first.begin_time !== 'TBA'
-        ? `${esc(first.begin_time)}–${esc(first.end_time)}`
+    const dmCls = (dm) => {
+      const d = (dm || '').toLowerCase();
+      if (d.includes('remote')) return 'cc-dm-remote';
+      if (d.includes('in-person')) return 'cc-dm-inperson';
+      return 'cc-dm-other';
+    };
+    const renderSchedRow = (s) => {
+      const time = (s.begin_time && s.begin_time !== 'TBA')
+        ? `${esc(s.begin_time)}–${esc(s.end_time)}`
         : 'TBA';
-      const dm = first.delivery_mode ? `<span class="cc2-dm-pill ${dmCls(first.delivery_mode)}">${esc(first.delivery_mode).toUpperCase()}</span>` : '';
-      schedHtml = `
-        <div class="cc2-sched-section">
-          <div class="cc2-sched-secline">Sec ${esc(first.section)} · ${esc(first.days || 'TBA')} ${timeStr}</div>
-          ${dm}
-          ${moreCount > 0 ? `<button class="cc2-sched-more" onclick="App.expandScheduleV2(event)" id="cc2SchedMore" data-expanded="0">+${moreCount} more sections</button><div id="cc2SchedExtra" style="display:none;margin-top:6px;font-size:11px;color:var(--text-secondary);line-height:1.5"></div>` : ''}
-        </div>`;
-    } else {
+      const dm = s.delivery_mode ? `<span class="cc-dm-pill ${dmCls(s.delivery_mode)}">${esc(s.delivery_mode).toUpperCase()}</span>` : '';
+      return `<div class="cc-kv"><span class="cc-k">Sec ${esc(s.section)}</span><span class="cc-v">${esc(s.days || 'TBA')} ${time} ${dm}</span></div>`;
+    };
+    let schedHtml = '';
+    if (filtered.length === 0) {
       const campus = this.locationFilter === 'qatar' ? 'Qatar' : this.locationFilter === 'pittsburgh' ? 'Pittsburgh' : 'this filter';
-      schedHtml = `<div style="font-size:12px;color:var(--text-tertiary);font-style:italic">Not offered at ${campus} for Fall 2026</div>`;
+      schedHtml = `<div class="cc-empty">Not offered at ${campus} for Fall 2026</div>`;
+    } else {
+      const inline = filtered.slice(0, 4).map(renderSchedRow).join('');
+      const extraCount = filtered.length - 4;
+      const more = extraCount > 0
+        ? `<button class="cc-more" onclick="App.expandScheduleV2(event)" id="cc2SchedMore" data-expanded="0">+${extraCount} more sections</button>
+           <div id="cc2SchedExtra" style="display:none;margin-top:6px;font-size:11px;color:var(--text-secondary);line-height:1.5"></div>`
+        : '';
+      schedHtml = inline + more;
     }
 
+    // Counts For rows
+    let cfHtml = '';
+    for (const majorCode of MAJOR_ORDER) {
+      const majorMappings = mappings[majorCode];
+      if (!majorMappings || majorMappings.length === 0) continue;
+      for (const m of majorMappings) {
+        const typeLabel = m.isGenEd ? 'GenEd' : 'Required';
+        const safePath = m.fullPath.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        cfHtml += `
+          <div class="cc-cf-row" data-nav-major="${majorCode}" data-nav-path="${safePath}">
+            <span class="cc-cf-badge cc-cf-${majorCode.toLowerCase()}">${majorCode}</span>
+            <span class="cc-cf-text">${esc(m.shortLabel)} — ${typeLabel}</span>
+            <span class="cc-cf-arrow">→</span>
+          </div>`;
+      }
+    }
+    if (!cfHtml) cfHtml = '<div class="cc-empty">This course does not count toward any tracked major requirements.</div>';
+
     el.innerHTML = `
-      <div class="course-card-v2">
+      <div class="cc-card">
         ${dcBannerHtml}
-
-        <div class="cc2-header">
-          <div class="cc2-code">${esc(course.course_code)}</div>
-          <div class="cc2-units">${course.units || '?'} units</div>
-        </div>
-        <div class="cc2-name">${esc(course.course_name)}</div>
-
-        <div class="cc2-pills">
-          <span class="cc2-pill">${esc(deptName)} (${course.course_code.split('-')[0]})</span>
-          ${locFlags.map(f => `<span class="cc2-pill">${f}</span>`).join('')}
-          ${semPillsHtml}
+        <div class="cc-head">
+          <div class="cc-code">${esc(course.course_code)}</div>
+          <div class="cc-name">${esc(course.course_name)} · ${course.units || '?'} units</div>
         </div>
 
-        <div class="cc2-section-title">Counts For</div>
-        <div class="cc2-counts-list">${cfHtml}</div>
-
-        <div class="cc2-grid-2">
-          <div>
-            <div class="cc2-section-title">Prerequisites</div>
-            ${prereqHtml}
+        <div class="cc-cols">
+          <div class="cc-section">
+            <div class="cc-h4">ABOUT</div>
+            ${aboutRows}
           </div>
-          <div>
-            <div class="cc2-section-title">Fall 2026</div>
+          <div class="cc-section">
+            <div class="cc-h4">FALL 2026</div>
             ${schedHtml}
           </div>
         </div>
 
+        <div class="cc-section cc-section-cf">
+          <div class="cc-h4">COUNTS FOR</div>
+          ${cfHtml}
+        </div>
+
         ${course.description ? `
-          <div class="cc2-section-title">Description</div>
-          <div class="cc2-description">${esc(course.description)}</div>
+          <div class="cc-section">
+            <div class="cc-h4">DESCRIPTION</div>
+            <div class="cc-desc">${esc(course.description)}</div>
+          </div>
         ` : ''}
-      </div>`;
+      </div>
+    `;
 
     const explBtn = document.getElementById('exploreInlineBtn');
     if (explBtn) explBtn.style.display = this.layoutMode === 'focused' ? 'flex' : 'none';
 
     this._cc2Sections = filtered;  // used by expand handler
-  },
-
-  expandSemestersV2(e) {
-    e.stopPropagation();
-    if (!this.selectedCourse) return;
-    const btn = document.getElementById('semesterPillsV2');
-    if (!btn) return;
-    const semesters = sortSemesters(this.selectedCourse.offered || []);
-    const expanded = btn.dataset.expanded === '1';
-    if (expanded) {
-      const visible = semesters.slice(0, 4);
-      const more = semesters.length > 4 ? ` · +${semesters.length - 4}` : '';
-      btn.textContent = 'Offered ' + visible.join(' · ') + more;
-      btn.dataset.expanded = '0';
-    } else {
-      btn.textContent = 'Offered ' + semesters.join(' · ');
-      btn.dataset.expanded = '1';
-    }
   },
 
   expandScheduleV2(e) {
@@ -943,7 +916,7 @@ const App = {
     const extra = document.getElementById('cc2SchedExtra');
     if (!btn || !extra) return;
     const expanded = btn.dataset.expanded === '1';
-    const sections = (this._cc2Sections || []).slice(1);
+    const sections = (this._cc2Sections || []).slice(4);
     if (!expanded) {
       extra.style.display = 'block';
       extra.innerHTML = sections.map(s => {
