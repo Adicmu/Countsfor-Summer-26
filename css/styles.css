@@ -798,168 +798,80 @@ body {
   padding:8px 0;
 }
 
-/* Section separator */
-.tree-section-divider {
-  display:flex;
-  align-items:center;
-  gap:10px;
-  padding:14px 16px 6px;
-  font-size:0.62rem;
-  font-weight:700;
-  letter-spacing:0.12em;
-  text-transform:uppercase;
-  color:var(--text-tertiary);
-}
-.tree-section-divider::after {
-  content:'';
-  flex:1;
-  height:1px;
-  background:var(--border-light);
-}
 
-/* Tree node */
-.tree-node {
-  user-select:none;
+/* === Requirement tree (spec § 4.5) === */
+.tr-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
+  border-radius: 12px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  transition: box-shadow 120ms;
 }
-.tree-node-row {
-  display:flex;
-  align-items:center;
-  padding:6px 16px 6px;
-  cursor:pointer;
-  transition:background var(--transition);
-  gap:4px;
-  min-height:34px;
+.tr-card.open { box-shadow: 0 2px 12px rgba(0,0,0,0.04); }
+.tr-card-head {
+  display: flex; align-items: center; gap: 10px;
+  padding: 13px 16px;
+  background: linear-gradient(180deg, var(--bg-card), var(--bg-secondary));
+  cursor: pointer;
+  border-bottom: 1px solid transparent;
 }
-.tree-node-row:hover {
-  background:var(--bg-tree-hover);
+.tr-card.open .tr-card-head { border-bottom-color: var(--border-light); }
+.tr-card-head:hover { background: var(--bg-secondary); }
+.tr-card-head.highlighted { background: var(--bg-highlight); }
+.tr-arrow { font-size: 9px; color: var(--text-tertiary); width: 12px; display: inline-block; transition: transform 150ms; }
+.tr-arrow.expanded { transform: rotate(90deg); }
+.tr-arrow.leaf { visibility: hidden; }
+.tr-accent { width: 4px; height: 22px; border-radius: 2px; flex-shrink: 0; }
+.tr-card-title { flex: 1; font-size: 15px; font-weight: 700; color: var(--text-primary); }
+.tr-card-meta  { display: flex; align-items: center; gap: 8px; }
+.tr-rule {
+  font-size: 10px; font-weight: 700;
+  padding: 3px 8px; border-radius: 999px;
+  background: color-mix(in srgb, var(--tr-accent, var(--cmu-red)) 10%, transparent);
+  color: var(--tr-accent, var(--cmu-red));
+  text-transform: uppercase; letter-spacing: 0.04em;
 }
-.tree-node-row.highlighted {
-  background:var(--bg-highlight);
-  animation:pulseHighlight 1.5s ease;
-}
-@keyframes pulseHighlight {
-  0% { background:rgba(196,18,48,0.15); }
-  100% { background:var(--bg-highlight); }
-}
+.tr-count { font-size: 11px; color: var(--text-secondary); font-weight: 600; }
 
-.tree-indent {
-  flex-shrink:0;
-}
-.tree-arrow {
-  width:16px;
-  height:16px;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  font-size:0.6rem;
-  color:var(--text-tertiary);
-  flex-shrink:0;
-  transition:transform 0.15s ease;
-}
-.tree-arrow.expanded {
-  transform:rotate(90deg);
-}
-.tree-arrow.leaf {
-  visibility:hidden;
-}
-.tree-label {
-  flex:1;
-  font-size:0.82rem;
-  font-weight:500;
-  color:var(--text-primary);
-  line-height:1.3;
-  min-width:0;
-}
-.tree-label-l1 {
-  font-weight:700;
-  font-size:0.84rem;
-}
-.tree-label-dimmed {
-  opacity:0.35;
-}
+.tr-card-body { padding: 6px 12px 10px; }
 
-/* Rule chip */
-.rule-chip {
-  padding:2px 7px;
-  border-radius:4px;
-  font-size:0.62rem;
-  font-weight:600;
-  white-space:nowrap;
-  flex-shrink:0;
-  background:var(--bg-tertiary);
-  color:var(--text-secondary);
-  letter-spacing:0.02em;
+.tr-sub { padding: 0 0 4px; }
+.tr-sub-row {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 10px; border-radius: 7px; cursor: pointer;
 }
+.tr-sub-row:hover { background: var(--bg-secondary); }
+.tr-sub-row.highlighted { background: var(--bg-highlight); }
+.tr-sub-label { flex: 1; font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.tr-children { padding-left: 14px; border-left: 2px solid var(--border-light); margin-left: 8px; }
+.tr-children.collapsed { display: none; }
 
-/* Course count badge */
-.course-count {
-  font-size:0.68rem;
-  color:var(--text-tertiary);
-  white-space:nowrap;
-  flex-shrink:0;
+.tr-leaf {
+  display: flex; align-items: center; gap: 10px;
+  padding: 9px 12px; border-radius: 7px; cursor: pointer;
+  border-left: 2px solid var(--border-light);
+  margin-left: 8px;
 }
-
-/* Tree node children */
-.tree-children {
+.tr-leaf:hover  { background: var(--bg-secondary); }
+.tr-leaf.active { background: var(--bg-highlight); border-left-color: var(--cmu-red); }
+.tr-leaf-code {
+  font-family: 'JetBrains Mono', "SF Mono", Menlo, Consolas, monospace;
+  font-size: 12px; font-weight: 700;
+  color: var(--cmu-red); min-width: 56px;
 }
-.tree-children.collapsed {
-  display:none;
+.tr-leaf-name  { flex: 1; font-size: 12.5px; color: var(--text-primary); line-height: 1.3; }
+.tr-leaf-units { font-size: 11px; color: var(--text-secondary); }
+.tr-leaf-tag {
+  font-size: 10px; font-weight: 800;
+  padding: 2px 7px; border-radius: 4px; color: #fff;
 }
-
-/* Course leaf in tree */
-.tree-course {
-  display:flex;
-  align-items:center;
-  padding:5px 16px;
-  cursor:pointer;
-  transition:background var(--transition);
-  gap:6px;
-  min-height:30px;
-}
-.tree-course:hover {
-  background:var(--bg-tree-hover);
-}
-.tree-course.active-course {
-  background:var(--bg-highlight);
-}
-.tree-course-code {
-  font-family:'JetBrains Mono',monospace;
-  font-size:0.76rem;
-  font-weight:600;
-  color:var(--cmu-red);
-  flex-shrink:0;
-  min-width:48px;
-}
-.tree-course-name {
-  font-size:0.76rem;
-  color:var(--text-secondary);
-  flex:1;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.tree-course-units {
-  font-size:0.68rem;
-  color:var(--text-tertiary);
-  flex-shrink:0;
-}
-/* "also counts" tags */
-.also-tags {
-  display:flex;
-  gap:3px;
-  flex-shrink:0;
-}
-.also-tag {
-  padding:1px 5px;
-  border-radius:3px;
-  font-size:0.58rem;
-  font-weight:700;
-  letter-spacing:0.03em;
-}
-.also-tag-cs { background:var(--major-cs-bg); color:var(--major-cs-text); }
-.also-tag-is { background:var(--major-is-bg); color:var(--major-is-text); }
-.also-tag-ba { background:var(--major-ba-bg); color:var(--major-ba-text); }
-.also-tag-bs { background:var(--major-bs-bg); color:var(--major-bs-text); }
+.tr-leaf-tag-cs { background: var(--major-cs); }
+.tr-leaf-tag-is { background: var(--major-is); }
+.tr-leaf-tag-ba { background: var(--major-ba); }
+.tr-leaf-tag-bs { background: var(--major-bs); }
+.tr-mp-chip { font-size: 10px; padding: 2px 7px; border-radius: 999px; background: var(--bg-secondary); color: var(--text-secondary); font-weight: 600; }
+.tr-also { display: inline-flex; gap: 4px; }
 
 /* ============================================================
    DELIVERY MODE BADGES
@@ -1644,7 +1556,7 @@ body {
 }
 
 /* ════════════════════════════════════════════════════════════
-   Tree v2 — bigger rows, denser, double-counter tags
+   Tree panel chrome
    ════════════════════════════════════════════════════════════ */
 
 .major-tabs .major-tab {
@@ -1653,72 +1565,7 @@ body {
   padding: 10px 16px;
 }
 
-.tree-node-row {
-  min-height: 36px;
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.tree-node-row .tree-arrow {
-  font-size: 12px;
-  width: 14px;
-  text-align: center;
-}
-
-.tree-node-row .tree-label {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.tree-node-row .tree-label-l1 { font-size: 14px; font-weight: 800; }
-
-.tree-node-row .rule-chip {
-  font-size: 11px;
-  font-weight: 700;
-  padding: 4px 10px;
-}
-
-.tree-node-row .course-count {
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-tertiary);
-}
-
-.tree-section-divider {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-  color: var(--text-secondary);
-  padding: 16px 16px 6px;
-  border-bottom: 1px solid var(--border-light);
-  margin-bottom: 6px;
-}
-
-.tree-course {
-  min-height: 36px;
-  align-items: center;
-}
-
-.tree-course .tree-course-code {
-  font-family: 'JetBrains Mono', monospace;
-  font-weight: 700;
-  font-size: 14px;
-}
-
-.tree-course .tree-course-name { font-size: 13px; }
-.tree-course .tree-course-units { font-size: 12px; font-weight: 600; }
-
-.tree-course.active-course {
-  background: var(--major-cs-bg);
-  border-left: 2px solid var(--major-cs);
-}
-
-.tree-course:hover {
-  background: var(--bg-secondary);
-}
-
-/* Double-counter tag at end of leaf row */
+/* Double-counter tag at end of leaf row (still used by course-card DC banner) */
 .dc-leaf-tag {
   margin-left: auto;
   font-size: 10px;
@@ -1733,17 +1580,6 @@ body {
 .dc-leaf-tag-is { background: var(--major-is); }
 .dc-leaf-tag-ba { background: var(--major-ba); }
 .dc-leaf-tag-bs { background: var(--major-bs); }
-
-/* Multi-program chip (cross-program view) */
-.mp-chip {
-  margin-left: auto;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 4px;
-  background: var(--bg-tertiary);
-  color: var(--text-secondary);
-}
 
 .tree-search input {
   font-size: 14px;
