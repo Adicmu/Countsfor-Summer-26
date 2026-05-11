@@ -313,6 +313,21 @@ const App = {
   // ── Shell Rendering ───────────────────────────────────────
   renderShell() {
     const isSplit = this.layoutMode === 'split';
+    const hasCourse = !!this.selectedCourse;
+
+    const headerHtml = hasCourse ? `
+      <div class="panel-header">
+        <div class="search-row">
+          <div class="search-wrapper">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="courseSearch" placeholder='Try "15-122" or "Probability"' autocomplete="off" />
+            <div class="typeahead" id="typeahead"></div>
+          </div>
+          <button class="explore-btn-inline" id="exploreInlineBtn" onclick="App.enterExplorer()" style="display:none;">🗂 Explore Map</button>
+        </div>
+      </div>
+    ` : '';
+
     document.getElementById('app').innerHTML = `
       <nav class="navbar">
         <div class="navbar-brand" onclick="App.reset()">CountsFor <span class="subtitle">CMU-Q</span></div>
@@ -333,24 +348,11 @@ const App = {
       </div>
 
       <div class="main-layout ${isSplit?'layout-split':'layout-focused'}" id="mainLayout">
-        <!-- LEFT: Course Lookup -->
         <div class="panel panel-left ${isSplit && this.mobileLens==='map'?'hidden-mobile':''}" id="panelLeft">
-          <div class="panel-header">
-            <div class="panel-tag">Course Lookup</div>
-            <div class="panel-title">What does this course count for?</div>
-            <div class="search-row">
-              <div class="search-wrapper">
-                <span class="search-icon">🔍</span>
-                <input type="text" class="search-input" id="courseSearch" placeholder="Search by code, name, requirement, or category…" autocomplete="off" />
-                <div class="typeahead" id="typeahead"></div>
-              </div>
-              <button class="explore-btn-inline" id="exploreInlineBtn" onclick="App.enterExplorer()" style="display:none;">🗂 Explore Map</button>
-            </div>
-          </div>
+          ${headerHtml}
           <div class="panel-body" id="leftBody"></div>
         </div>
 
-        <!-- RIGHT: Requirement Map (hidden in focused mode via CSS) -->
         <div class="panel panel-right ${isSplit && this.mobileLens==='lookup'?'hidden-mobile':''}" id="panelRight">
           <div class="major-tabs" id="majorTabs">
             ${this._visibleMajors().map(m => {
@@ -464,6 +466,7 @@ const App = {
     }
     const input = document.getElementById('courseSearch');
     if (input) input.value = '';
+    this.renderShell();        // re-render shell so the panel-header disappears
     this.renderLeftEmpty();
   },
 
@@ -622,11 +625,16 @@ const App = {
   selectSearchResult(idx) {
     const course = this._searchResults[idx];
     if (!course) return;
-    const ta = document.getElementById('typeahead');
-    if (ta) ta.classList.remove('visible');
+    const wasEmpty = !this.selectedCourse;
+    this.selectedCourse = course;
+    if (wasEmpty) {
+      this.renderShell();   // re-attach the search header (replaces DOM)
+    } else {
+      const ta = document.getElementById('typeahead');
+      if (ta) ta.classList.remove('visible');
+    }
     const input = document.getElementById('courseSearch');
     if (input) input.value = course.course_code;
-    this.selectedCourse = course;
     this.renderCourseCard(course);
   },
 
@@ -1242,7 +1250,9 @@ const App = {
   selectCourseFromTree(code) {
     const course = this.courseIndex[code];
     if (!course) return;
+    const wasEmpty = !this.selectedCourse;
     this.selectedCourse = course;
+    if (wasEmpty) this.renderShell();   // re-attach the search header
     const input = document.getElementById('courseSearch');
     if (input) input.value = code;
     this.renderCourseCard(course);
