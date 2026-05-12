@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University \u2014 Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-11T15:28:25.656836+00:00",
+    "last_scrape": "2026-05-12T14:40:08.030126+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -5900,7 +5900,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -17744,7 +17744,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -17753,7 +17753,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "07:20PM",
+              "end_time": "08:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -17888,7 +17888,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             }
@@ -34394,7 +34394,7 @@
               "mini": "",
               "days": "F",
               "begin_time": "01:00PM",
-              "end_time": "03:50PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             }
@@ -71017,7 +71017,7 @@
               "begin_time": "09:30AM",
               "end_time": "10:50AM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation"
+              "delivery_mode": "Remote only"
             }
           ]
         },
@@ -92753,7 +92753,7 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-11T15:28:25.656836+00:00",
+      "scraped_at": "2026-05-12T14:40:08.030126+00:00",
       "total_courses": 3205,
       "total_sections": 7060
     }
