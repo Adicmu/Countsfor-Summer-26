@@ -302,10 +302,15 @@ body {
   display:flex;
   flex-direction:column;
   align-items:center;
+  padding:0 20px 24px;
 }
-.layout-focused .course-card {
+.layout-focused .course-card,
+.layout-focused .cc-card,
+.layout-focused .home,
+.layout-focused .dc-list-view {
   max-width:1200px;
   width:100%;
+  flex-shrink:0;
 }
 .layout-focused .empty-state {
   max-width:500px;
@@ -385,9 +390,45 @@ body {
 /* ============================================================
    SEARCH
    ============================================================ */
+.search-row {
+  display:flex;
+  gap:8px;
+  align-items:stretch;
+  width:100%;
+  max-width:680px;
+  margin-top:12px;
+}
 .search-wrapper {
   position:relative;
-  margin-top:12px;
+  flex:1;
+  min-width:0;
+}
+.layout-focused .search-row { margin-left:auto; margin-right:auto; }
+.explore-btn-inline {
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  height:40px;
+  padding:0 14px;
+  border:1.5px solid var(--cmu-red);
+  border-radius:var(--radius-md);
+  background:var(--bg-card);
+  color:var(--cmu-red);
+  font-family:inherit;
+  font-size:0.8125rem;
+  font-weight:600;
+  cursor:pointer;
+  white-space:nowrap;
+  transition:background var(--transition), color var(--transition);
+  flex-shrink:0;
+}
+.explore-btn-inline:hover {
+  background:var(--cmu-red);
+  color:#fff;
+}
+@media (max-width:560px) {
+  .explore-btn-inline { padding:0 10px; font-size:0.75rem; }
+  .explore-btn-inline-label { display:none; }
 }
 .search-icon {
   position:absolute;

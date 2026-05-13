@@ -283,7 +283,7 @@ const App = {
       const cls = 'rb-' + primaryLower + '-' + secondaryLower;
       return `
         <button class="role-badge rb-${primaryLower} ${cls}" onclick="App.editRole()" title="Click to change role">
-          <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]}</span>
+          <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">major</span></span>
           <span class="rb-divider"></span>
           <span class="rb-segment rb-secondary">${PROGRAM_LABEL[p.secondary]} <span class="rb-suffix">minor</span></span>
           <span class="rb-edit-hint">Edit</span>
@@ -323,7 +323,7 @@ const App = {
             <input type="text" class="search-input" id="courseSearch" placeholder='Try "15-122" or "Probability"' autocomplete="off" />
             <div class="typeahead" id="typeahead"></div>
           </div>
-          <button class="explore-btn-inline" id="exploreInlineBtn" onclick="App.enterExplorer()" style="display:none;">🗂 Explore Map</button>
+          <button class="explore-btn-inline" id="exploreInlineBtn" onclick="App.enterExplorer()" style="display:none;" title="Open requirement map"><span aria-hidden="true">🗂</span> <span class="explore-btn-inline-label">Explore Map</span></button>
         </div>
       </div>
     ` : '';
