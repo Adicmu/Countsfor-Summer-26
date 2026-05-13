@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University \u2014 Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-12T14:40:08.030126+00:00",
+    "last_scrape": "2026-05-13T14:50:54.662810+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -5900,7 +5900,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -5918,7 +5918,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -45768,24 +45768,6 @@
           ]
         },
         {
-          "course_number": "94825",
-          "title": "AI Foundations",
-          "units": "3",
-          "department_code": "HC",
-          "department": "Heinz College Wide Courses",
-          "sections": [
-            {
-              "section": "A1",
-              "mini": "Y",
-              "days": "R",
-              "begin_time": "08:00PM",
-              "end_time": "09:30PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "Remote only"
-            }
-          ]
-        },
-        {
           "course_number": "94829",
           "title": "Advanced AI and Enterprise Strategy",
           "units": "6",
@@ -54667,6 +54649,15 @@
           "department": "Integrated Innovation Institute",
           "sections": [
             {
+              "section": "A1",
+              "mini": "Y",
+              "days": "T",
+              "begin_time": "05:30PM",
+              "end_time": "07:20PM",
+              "location": "San Jose, California",
+              "delivery_mode": "In-person Expectation"
+            },
+            {
               "section": "A2",
               "mini": "Y",
               "days": "T",
@@ -54674,6 +54665,15 @@
               "end_time": "07:20PM",
               "location": "San Jose, California",
               "delivery_mode": "In-person Expectation"
+            },
+            {
+              "section": "R1",
+              "mini": "Y",
+              "days": "T",
+              "begin_time": "05:30PM",
+              "end_time": "07:20PM",
+              "location": "San Jose, California",
+              "delivery_mode": "Remote only"
             },
             {
               "section": "R2",
@@ -57811,7 +57811,7 @@
         },
         {
           "course_number": "82134",
-          "title": "Elementary Chinese Online II",
+          "title": "Elementary Chinese Online II This Section Cancelled",
           "units": "12",
           "department_code": "LCL",
           "department": "Languages Cultures & Appl Linguistics",
@@ -71017,7 +71017,7 @@
               "begin_time": "09:30AM",
               "end_time": "10:50AM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "Remote only"
+              "delivery_mode": "In-person Expectation"
             }
           ]
         },
@@ -92563,8 +92563,8 @@
         {
           "code": "HC",
           "name": "Heinz College Wide Courses",
-          "courses": 55,
-          "sections": 147
+          "courses": 54,
+          "sections": 146
         },
         {
           "code": "HIS",
@@ -92612,7 +92612,7 @@
           "code": "III",
           "name": "Integrated Innovation Institute",
           "courses": 47,
-          "sections": 67
+          "sections": 69
         },
         {
           "code": "LTI",
@@ -92753,9 +92753,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-12T14:40:08.030126+00:00",
-      "total_courses": 3205,
-      "total_sections": 7060
+      "scraped_at": "2026-05-13T14:50:54.662810+00:00",
+      "total_courses": 3204,
+      "total_sections": 7061
     }
   }
 }
