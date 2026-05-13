@@ -23,20 +23,28 @@ import sys
 import os
 from datetime import datetime, timezone
 
-BASE = "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet"
-SEARCH = BASE + "/search"
+# BASE = "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet"
+# SEARCH = BASE + "/search"
 
-# Semesters to attempt each run. Add new codes as years roll over.
-# Order: most relevant first. Format = <F|S|M><2-digit year>.
+# # Semesters to attempt each run. Add new codes as years roll over.
+# # Order: most relevant first. Format = <F|S|M><2-digit year>.
+
 SEMESTERS_TO_TRY = ["F26", "S27", "M27", "F27", "S28"]
 
-# Safety threshold: if a semester returns fewer than this many courses,
-# we treat it as "not yet released" and don't overwrite existing data.
-MIN_COURSES_FOR_VALID_SCRAPE = 100
+# # Safety threshold: if a semester returns fewer than this many courses,
+# # we treat it as "not yet released" and don't overwrite existing data.
+# MIN_COURSES_FOR_VALID_SCRAPE = 100
 
-OUTPUT_PATH = "data/soc.json"
+# OUTPUT_PATH = "data/soc.json"
 
 
+
+
+# AFTER
+BASE = os.environ.get("SOC_BASE_URL", "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet")
+SEARCH = BASE + "/search"
+MIN_COURSES_FOR_VALID_SCRAPE = int(os.environ.get("MIN_COURSES_FOR_VALID_SCRAPE", "100"))
+OUTPUT_PATH = os.environ.get("SOC_OUTPUT_PATH", "data/soc.json")
 # ---------- HTTP helpers ----------
 
 def fetch_get(url):
