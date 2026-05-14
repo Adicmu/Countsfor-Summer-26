@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University \u2014 Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-13T14:50:54.662810+00:00",
+    "last_scrape": "2026-05-14T14:30:24.813975+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -17744,7 +17744,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "04:20PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -17753,7 +17753,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "08:50PM",
+              "end_time": "07:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -17888,7 +17888,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "04:50PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             }
@@ -26884,7 +26884,25 @@
               "delivery_mode": "In-person Expectation"
             },
             {
+              "section": "LL",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation"
+            },
+            {
               "section": "M",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation"
+            },
+            {
+              "section": "MM",
               "mini": "",
               "days": "TBA",
               "begin_time": "TBA",
@@ -48073,7 +48091,7 @@
         },
         {
           "course_number": "79505",
-          "title": "Internship: Social & Political History",
+          "title": "Undergraduate Internship:  History",
           "units": "3-12",
           "department_code": "HIS",
           "department": "History",
@@ -48091,7 +48109,7 @@
         },
         {
           "course_number": "79506",
-          "title": "Global Studies Internship",
+          "title": "Undergraduate Internship:  Anthropology",
           "units": "3,6,9",
           "department_code": "HIS",
           "department": "History",
@@ -52631,51 +52649,6 @@
               "end_time": "TBA",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "Remote only"
-            }
-          ]
-        },
-        {
-          "course_number": "95721",
-          "title": "Information Systems Research Practicum",
-          "units": "VAR",
-          "department_code": "ISM",
-          "department": "Information Systems:Sch of IS & Mgt",
-          "sections": [
-            {
-              "section": "A",
-              "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation"
-            },
-            {
-              "section": "B",
-              "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation"
-            },
-            {
-              "section": "C",
-              "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation"
-            },
-            {
-              "section": "D",
-              "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation"
             }
           ]
         },
@@ -92516,7 +92489,7 @@
           "code": "HSS",
           "name": "Dietrich College Interdisciplinary",
           "courses": 25,
-          "sections": 75
+          "sections": 77
         },
         {
           "code": "DRA",
@@ -92605,8 +92578,8 @@
         {
           "code": "ISM",
           "name": "Information Systems:Sch of IS & Mgt",
-          "courses": 60,
-          "sections": 123
+          "courses": 59,
+          "sections": 119
         },
         {
           "code": "III",
@@ -92753,9 +92726,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-13T14:50:54.662810+00:00",
-      "total_courses": 3204,
-      "total_sections": 7061
+      "scraped_at": "2026-05-14T14:30:24.813975+00:00",
+      "total_courses": 3203,
+      "total_sections": 7059
     }
   }
 }
