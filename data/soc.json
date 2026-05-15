@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University \u2014 Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-14T14:30:24.813975+00:00",
+    "last_scrape": "2026-05-15T14:24:07.185156+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -5918,7 +5918,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -17744,7 +17744,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -17753,7 +17753,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "07:20PM",
+              "end_time": "08:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -17888,7 +17888,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             }
@@ -45166,7 +45166,7 @@
         },
         {
           "course_number": "94489",
-          "title": "Machine Learning in Practice",
+          "title": "Machine Learning in Practice This Section Cancelled",
           "units": "12",
           "department_code": "HC",
           "department": "Heinz College Wide Courses",
@@ -90948,42 +90948,6 @@
           ]
         },
         {
-          "course_number": "36768",
-          "title": "Advanced Theory I",
-          "units": "6",
-          "department_code": "STA",
-          "department": "Statistics and Data Science",
-          "sections": [
-            {
-              "section": "A1",
-              "mini": "Y",
-              "days": "TR",
-              "begin_time": "09:30AM",
-              "end_time": "10:50AM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation"
-            }
-          ]
-        },
-        {
-          "course_number": "36769",
-          "title": "Advanced Theory I : Advanced Theory II",
-          "units": "6",
-          "department_code": "STA",
-          "department": "Statistics and Data Science",
-          "sections": [
-            {
-              "section": "A2",
-              "mini": "Y",
-              "days": "TR",
-              "begin_time": "09:30AM",
-              "end_time": "10:50AM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation"
-            }
-          ]
-        },
-        {
           "course_number": "36795",
           "title": "Interdisciplinary Applied Research",
           "units": "12",
@@ -92716,8 +92680,8 @@
         {
           "code": "STA",
           "name": "Statistics and Data Science",
-          "courses": 64,
-          "sections": 173
+          "courses": 62,
+          "sections": 171
         },
         {
           "code": "STU",
@@ -92726,9 +92690,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-14T14:30:24.813975+00:00",
-      "total_courses": 3203,
-      "total_sections": 7059
+      "scraped_at": "2026-05-15T14:24:07.185156+00:00",
+      "total_courses": 3201,
+      "total_sections": 7057
     }
   }
 }
