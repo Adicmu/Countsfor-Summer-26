@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University \u2014 Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-15T14:24:07.185156+00:00",
+    "last_scrape": "2026-05-16T13:47:17.049629+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -11632,8 +11632,8 @@
               "section": "B",
               "mini": "",
               "days": "F",
-              "begin_time": "11:00AM",
-              "end_time": "11:50AM",
+              "begin_time": "09:00AM",
+              "end_time": "09:50AM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation"
             },
@@ -11641,8 +11641,8 @@
               "section": "C",
               "mini": "",
               "days": "F",
-              "begin_time": "01:00PM",
-              "end_time": "01:50PM",
+              "begin_time": "09:00AM",
+              "end_time": "09:50AM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation"
             }
@@ -12017,6 +12017,15 @@
           "sections": [
             {
               "section": "A1",
+              "mini": "Y",
+              "days": "TR",
+              "begin_time": "03:30PM",
+              "end_time": "04:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation"
+            },
+            {
+              "section": "A2",
               "mini": "Y",
               "days": "TR",
               "begin_time": "03:30PM",
@@ -17744,7 +17753,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "04:20PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -22769,6 +22778,15 @@
               "end_time": "03:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation"
+            },
+            {
+              "section": "W",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Doha, Qatar",
+              "delivery_mode": "Remote only"
             }
           ]
         },
@@ -42763,7 +42781,7 @@
         },
         {
           "course_number": "76393",
-          "title": "Narrative & Argument",
+          "title": "Narrative & Argument This Section Cancelled",
           "units": "9",
           "department_code": "ENG",
           "department": "English",
@@ -43465,7 +43483,7 @@
         },
         {
           "course_number": "76793",
-          "title": "Narrative & Argument",
+          "title": "Narrative & Argument This Section Cancelled",
           "units": "9-12",
           "department_code": "ENG",
           "department": "English",
@@ -58144,7 +58162,7 @@
         },
         {
           "course_number": "82189",
-          "title": "Emerging Technologies for Global Cultures: AI, Agents, Workflows, and Vibe Dvlp",
+          "title": "AI Literacy for Global Cultures: Prompts, Agents, Workflow and Vibe Development",
           "units": "9",
           "department_code": "LCL",
           "department": "Languages Cultures & Appl Linguistics",
@@ -92375,7 +92393,7 @@
           "code": "BUS",
           "name": "Business Administration",
           "courses": 201,
-          "sections": 417
+          "sections": 418
         },
         {
           "code": "CFA",
@@ -92435,7 +92453,7 @@
           "code": "CS",
           "name": "Computer Science",
           "courses": 93,
-          "sections": 312
+          "sections": 313
         },
         {
           "code": "BCA",
@@ -92690,9 +92708,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-15T14:24:07.185156+00:00",
+      "scraped_at": "2026-05-16T13:47:17.049629+00:00",
       "total_courses": 3201,
-      "total_sections": 7057
+      "total_sections": 7059
     }
   }
 }
