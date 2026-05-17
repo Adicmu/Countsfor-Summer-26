@@ -386,6 +386,7 @@ const App = {
     this._globalEventsBound = true;
     document.addEventListener('input', (e) => {
       if (e.target.id === 'courseSearch') this.handleSearch(e.target.value);
+      if (e.target.id === 'categorySearch') this.handleCategorySearch(e.target.value);
       if (e.target.id === 'treeSearchInput') {
         this.treeSearchQuery = e.target.value.trim().toLowerCase();
         this.renderTree();
@@ -394,13 +395,17 @@ const App = {
 
     document.addEventListener('keydown', (e) => {
       if (e.target.id === 'courseSearch') this.handleSearchKeydown(e);
+      if (e.target.id === 'categorySearch') this.handleCategoryKeydown(e);
     });
 
     document.addEventListener('click', (e) => {
-      // Close typeahead if clicking outside
-      if (!e.target.closest('.search-wrapper')) {
+      // Close typeaheads if clicking outside any search bar
+      const insideSearch = e.target.closest('.search-wrapper, .home-search');
+      if (!insideSearch) {
         const ta = document.getElementById('typeahead');
         if (ta) ta.classList.remove('visible');
+        const cta = document.getElementById('categoryTypeahead');
+        if (cta) cta.classList.remove('visible');
       }
 
       // Handle cf-row clicks — enter explorer and navigate to the requirement
@@ -650,6 +655,113 @@ const App = {
     this._selectCourse(course);
   },
 
+  // ── Category search (home bar #2) ─────────────────────────
+  _categoryIndex: null,
+  _categoryResults: [],
+  _categoryIdx: -1,
+
+  _buildCategoryIndex() {
+    if (this._categoryIndex) return this._categoryIndex;
+    const seen = new Map();
+    for (const c of this.courses) {
+      if (!c.requirements) continue;
+      for (const major of MAJOR_ORDER) {
+        const reqs = c.requirements[major] || [];
+        for (const req of reqs) {
+          const path = req.requirement;
+          if (!path) continue;
+          const key = major + '|' + path;
+          if (!seen.has(key)) {
+            const parts = path.split('---');
+            seen.set(key, {
+              major,
+              path,
+              parts,
+              leaf: parts[parts.length - 1],
+              count: 0
+            });
+          }
+          seen.get(key).count++;
+        }
+      }
+    }
+    this._categoryIndex = Array.from(seen.values());
+    return this._categoryIndex;
+  },
+
+  handleCategorySearch: debounce(function(query) {
+    const ta = document.getElementById('categoryTypeahead');
+    if (!ta) return;
+    const q = query.trim().toLowerCase();
+    if (q.length < 2) { ta.classList.remove('visible'); return; }
+
+    const idx = App._buildCategoryIndex();
+    let results = idx.filter(entry => {
+      if (entry.leaf.toLowerCase().includes(q)) return true;
+      return entry.parts.some(p => p.toLowerCase().includes(q));
+    });
+
+    results.sort((a, b) => {
+      const aLeaf = a.leaf.toLowerCase().includes(q) ? 0 : 1;
+      const bLeaf = b.leaf.toLowerCase().includes(q) ? 0 : 1;
+      if (aLeaf !== bLeaf) return aLeaf - bLeaf;
+      return b.count - a.count;
+    });
+
+    results = results.slice(0, 8);
+    App._categoryResults = results;
+    App._categoryIdx = -1;
+
+    if (results.length === 0) {
+      ta.innerHTML = '<div class="typeahead-item" style="cursor:default;color:var(--text-tertiary);font-size:0.8rem;">No categories found</div>';
+    } else {
+      ta.innerHTML = results.map((r, i) => {
+        const breadcrumb = r.parts.length > 1 ? esc(r.parts.slice(0, -1).join(' › ')) : '';
+        return '<div class="typeahead-item" data-cat-idx="' + i + '" onclick="App.selectCategoryResult(' + i + ')">' +
+          '<span class="typeahead-cat-major typeahead-cat-major-' + r.major.toLowerCase() + '">' + r.major + '</span>' +
+          '<span class="typeahead-name"><strong>' + esc(r.leaf) + '</strong>' +
+            (breadcrumb ? '<span class="typeahead-cat-crumb"> · ' + breadcrumb + '</span>' : '') +
+          '</span>' +
+          '<span class="typeahead-units">' + r.count + ' ' + (r.count === 1 ? 'course' : 'courses') + '</span>' +
+        '</div>';
+      }).join('');
+    }
+    ta.classList.add('visible');
+  }, 180),
+
+  handleCategoryKeydown(e) {
+    const ta = document.getElementById('categoryTypeahead');
+    if (!ta || !ta.classList.contains('visible')) return;
+    const items = ta.querySelectorAll('.typeahead-item[data-cat-idx]');
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this._categoryIdx = Math.min(this._categoryIdx + 1, items.length - 1);
+      items.forEach((it, i) => it.classList.toggle('focused', i === this._categoryIdx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this._categoryIdx = Math.max(this._categoryIdx - 1, 0);
+      items.forEach((it, i) => it.classList.toggle('focused', i === this._categoryIdx));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (this._categoryIdx >= 0 && this._categoryIdx < this._categoryResults.length) {
+        this.selectCategoryResult(this._categoryIdx);
+      } else if (this._categoryResults.length > 0) {
+        this.selectCategoryResult(0);
+      }
+    } else if (e.key === 'Escape') {
+      ta.classList.remove('visible');
+    }
+  },
+
+  selectCategoryResult(idx) {
+    const r = this._categoryResults[idx];
+    if (!r) return;
+    const ta = document.getElementById('categoryTypeahead');
+    if (ta) ta.classList.remove('visible');
+    this.enterExplorer(r.major, r.path);
+  },
+
   renderLeftEmpty() {
     const el = document.getElementById('leftBody');
     if (!el) return;
@@ -722,20 +834,37 @@ const App = {
         <h1 class="home-hero">Find a course.</h1>
         <p class="home-lead">${lead}</p>
 
-        <div class="home-search">
-          <span class="home-search-icon">🔍</span>
-          <input type="text" class="home-search-input" id="courseSearch" placeholder='Try "15-122" or "Probability"' autocomplete="off" />
-          <div class="typeahead" id="typeahead"></div>
-        </div>
+        <div class="home-search-grid">
+          <div class="home-search-cell">
+            <label class="home-search-label" for="courseSearch">Search by course</label>
+            <div class="home-search">
+              <span class="home-search-icon">🔍</span>
+              <input type="text" class="home-search-input" id="courseSearch" placeholder='Try "15-122" or "Probability"' autocomplete="off" />
+              <div class="typeahead" id="typeahead"></div>
+            </div>
+          </div>
 
-        <button class="home-browse" onclick="App.enterExplorer('${browseMajor}')">
-          <span class="home-browse-icon">🗂</span>
-          <span class="home-browse-text">
-            <span class="home-browse-title">Browse requirements</span>
-            <span class="home-browse-sub">${browseSub}</span>
-          </span>
-          <span class="home-browse-arrow">→</span>
-        </button>
+          <div class="home-search-cell">
+            <label class="home-search-label" for="categorySearch">Search by category</label>
+            <div class="home-search">
+              <span class="home-search-icon">🔍</span>
+              <input type="text" class="home-search-input" id="categorySearch" placeholder='Try "Contextual Thinking" or "Arts"' autocomplete="off" />
+              <div class="typeahead" id="categoryTypeahead"></div>
+            </div>
+          </div>
+
+          <div class="home-search-cell">
+            <span class="home-search-label">Browse by major</span>
+            <button class="home-browse" onclick="App.enterExplorer('${browseMajor}')">
+              <span class="home-browse-icon">🗂</span>
+              <span class="home-browse-text">
+                <span class="home-browse-title">Browse requirements</span>
+                <span class="home-browse-sub">${browseSub}</span>
+              </span>
+              <span class="home-browse-arrow">→</span>
+            </button>
+          </div>
+        </div>
 
         ${dcBannerHtml}${mpBannerHtml}
       </div>
