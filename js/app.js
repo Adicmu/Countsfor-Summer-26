@@ -981,23 +981,34 @@ const App = {
       schedHtml = inline + more;
     }
 
-    // Counts For rows
-    let cfHtml = '';
+    // Counts For — horizontal columns per major, omitting majors with no mappings
+    const cfCols = [];
     for (const majorCode of MAJOR_ORDER) {
       const majorMappings = mappings[majorCode];
       if (!majorMappings || majorMappings.length === 0) continue;
-      for (const m of majorMappings) {
+      const lc = majorCode.toLowerCase();
+      const itemsHtml = majorMappings.map(m => {
         const typeLabel = m.isGenEd ? 'GenEd' : 'Required';
+        const typeCls = m.isGenEd ? 'gened' : 'req';
         const safePath = m.fullPath.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-        cfHtml += `
-          <div class="cc-cf-row" data-nav-major="${majorCode}" data-nav-path="${safePath}">
-            <span class="cc-cf-badge cc-cf-${majorCode.toLowerCase()}">${majorCode}</span>
-            <span class="cc-cf-text">${esc(m.shortLabel)} — ${typeLabel}</span>
-            <span class="cc-cf-arrow">→</span>
+        return `
+          <div class="cc-cf-item" data-nav-major="${majorCode}" data-nav-path="${safePath}">
+            <span class="cc-cf-item-label">${esc(m.shortLabel)}</span>
+            <span class="cc-cf-item-type cc-cf-item-type-${typeCls}">${typeLabel}</span>
           </div>`;
-      }
+      }).join('');
+      cfCols.push(`
+        <div class="cc-cf-col cc-cf-col-${lc}">
+          <div class="cc-cf-col-head">
+            <span class="cc-cf-badge cc-cf-${lc}">${majorCode}</span>
+            <span class="cc-cf-col-count">${majorMappings.length} ${majorMappings.length === 1 ? 'slot' : 'slots'}</span>
+          </div>
+          <div class="cc-cf-col-body">${itemsHtml}</div>
+        </div>`);
     }
-    if (!cfHtml) cfHtml = '<div class="cc-empty">This course does not count toward any tracked major requirements.</div>';
+    const cfHtml = cfCols.length
+      ? `<div class="cc-cf-grid">${cfCols.join('')}</div>`
+      : '<div class="cc-empty">This course does not count toward any tracked major requirements.</div>';
 
     el.innerHTML = `
       <div class="cc-card">
