@@ -113,7 +113,7 @@ const App = {
 
   _renderOnboardingScreen() {
     const s = this._onboardingState;
-    const PROGRAMS = ['CS', 'IS', 'BA', 'BS'];
+    const PROGRAMS = ['CS', 'IS', 'BA', 'BS', 'AI', 'GS'];
     const roleSel = (r) => s.role === r ? 'selected' : '';
     const majorSel = (m) => s.primary === m ? 'selected' : '';
     const minorSel = (m) => s.secondary === m ? 'selected' : '';
@@ -166,13 +166,13 @@ const App = {
 
           <div class="ob-section ob-stage-${majorStage}">
             <div class="ob-section-label">${s.role === 'professor' ? 'I TEACH IN' : 'MAJORING IN'}</div>
-            <div class="ob-row4">${majorBtns}</div>
+            <div class="ob-row-majors">${majorBtns}</div>
             ${profASBtn}
           </div>
 
           <div class="ob-section ob-stage-${minorStage}">
             <div class="ob-section-label">WITH A MINOR IN <span class="ob-optional">— optional</span></div>
-            <div class="ob-row5">
+            <div class="ob-row-minors">
               <button class="ob-pill ${s.secondary === null ? 'selected' : ''}" onclick="App._obPickMinor(null)">None</button>
               ${minorBtns}
             </div>
@@ -186,7 +186,14 @@ const App = {
   },
 
   _programFullName(p) {
-    return ({ CS: 'Computer Sci', IS: 'Info Systems', BA: 'Business', BS: 'Biology' })[p] || p;
+    return ({
+      CS: 'Computer Sci',
+      IS: 'Info Systems',
+      BA: 'Business',
+      BS: 'Biology',
+      AI: 'Artificial Intelligence',
+      GS: 'General Studies'
+    })[p] || p;
   },
 
   _obPickRole(role) {
@@ -257,7 +264,7 @@ const App = {
   _roleBadgeHtml() {
     const p = this.profile;
     if (!p) return '';
-    const PROGRAM_LABEL = { CS: 'CS', IS: 'IS', BA: 'BA', BS: 'BS', AS: 'A&S' };
+    const PROGRAM_LABEL = { CS: 'CS', IS: 'IS', BA: 'BA', BS: 'BS', AI: 'AI', GS: 'GS', AS: 'A&S' };
 
     if (p.role === 'area_head') {
       return `

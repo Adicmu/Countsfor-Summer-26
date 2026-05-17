@@ -5,8 +5,8 @@
 // ============================================================
 
 const VALID_ROLES = ['student', 'professor', 'area_head'];
-const VALID_PROGRAMS = ['CS', 'IS', 'BA', 'BS', 'AS'];
-const STUDENT_PROGRAMS = ['CS', 'IS', 'BA', 'BS'];  // students never pick AS
+const VALID_PROGRAMS = ['CS', 'IS', 'BA', 'BS', 'AI', 'GS', 'AS'];
+const STUDENT_PROGRAMS = ['CS', 'IS', 'BA', 'BS', 'AI', 'GS'];  // students never pick AS
 
 function computeViewMode(profile) {
   if (!profile || !profile.role) return null;
