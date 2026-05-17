@@ -362,11 +362,13 @@ const App = {
 
         <div class="panel panel-right ${isSplit && this.mobileLens==='lookup'?'hidden-mobile':''}" id="panelRight">
           <div class="major-tabs" id="majorTabs">
-            ${this._visibleMajors().map(m => {
-              const isMinor = this.profile && m === this.profile.secondary && m !== this.profile.primary;
-              const minorSuffix = isMinor ? '<span class="major-tab-suffix">minor</span>' : '';
-              return `<button class="major-tab ${m===this.activeMajor?'active':''}" data-major="${m}" onclick="App.switchMajor('${m}')">${m}${minorSuffix}</button>`;
-            }).join('')}
+            <div class="major-tabs-scroll">
+              ${this._visibleMajors().map(m => {
+                const isMinor = this.profile && m === this.profile.secondary && m !== this.profile.primary;
+                const minorSuffix = isMinor ? '<span class="major-tab-suffix">minor</span>' : '';
+                return `<button class="major-tab ${m===this.activeMajor?'active':''}" data-major="${m}" onclick="App.switchMajor('${m}')">${m}${minorSuffix}</button>`;
+              }).join('')}
+            </div>
             <button class="panel-close" onclick="App.exitExplorer()" title="Close">&times;</button>
           </div>
           <div class="tree-search">
@@ -1120,7 +1122,18 @@ const App = {
     const rightBody = document.getElementById('rightBody');
     if (!rightBody) return;
     const sections = this.treeSections[this.activeMajor];
-    if (!sections) { rightBody.innerHTML = '<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No data</div></div>'; return; }
+    if (!sections) {
+      const pending = (this.activeMajor === 'AI' || this.activeMajor === 'GS');
+      const full = this._programFullName(this.activeMajor);
+      const msg = pending
+        ? `${full} requirements coming soon`
+        : 'No data';
+      const hint = pending
+        ? '<div class="empty-hint">We\'re still loading the official requirement list for this program.</div>'
+        : '';
+      rightBody.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">${msg}</div>${hint}</div>`;
+      return;
+    }
     let html = '';
     // degree + gened both render as a flat list of cards — no separate section headers
     for (const node of [...sections.degree, ...sections.gened]) {
