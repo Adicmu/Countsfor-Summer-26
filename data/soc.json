@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University \u2014 Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-18T15:49:15.529139+00:00",
+    "last_scrape": "2026-05-19T15:40:25.807440+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -5918,7 +5918,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -12016,15 +12016,6 @@
           "department": "Business Administration",
           "sections": [
             {
-              "section": "A1",
-              "mini": "Y",
-              "days": "TR",
-              "begin_time": "03:30PM",
-              "end_time": "04:50PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation"
-            },
-            {
               "section": "A2",
               "mini": "Y",
               "days": "TR",
@@ -17897,7 +17888,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "04:50PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             }
@@ -45310,6 +45301,24 @@
               "section": "J2",
               "mini": "Y",
               "days": "TR",
+              "begin_time": "03:30PM",
+              "end_time": "04:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation"
+            }
+          ]
+        },
+        {
+          "course_number": "94701",
+          "title": "Communications for Professional Impact",
+          "units": "6",
+          "department_code": "HC",
+          "department": "Heinz College Wide Courses",
+          "sections": [
+            {
+              "section": "A2",
+              "mini": "Y",
+              "days": "MW",
               "begin_time": "03:30PM",
               "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
@@ -77934,6 +77943,24 @@
           ]
         },
         {
+          "course_number": "57854",
+          "title": "Advanced Acting for Singers",
+          "units": "6",
+          "department_code": "MUS",
+          "department": "Music",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "M",
+              "begin_time": "01:00PM",
+              "end_time": "03:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation"
+            }
+          ]
+        },
+        {
           "course_number": "57856",
           "title": "Elementary Guided Teaching",
           "units": "3",
@@ -92393,7 +92420,7 @@
           "code": "BUS",
           "name": "Business Administration",
           "courses": 201,
-          "sections": 418
+          "sections": 417
         },
         {
           "code": "CFA",
@@ -92518,8 +92545,8 @@
         {
           "code": "HC",
           "name": "Heinz College Wide Courses",
-          "courses": 54,
-          "sections": 146
+          "courses": 55,
+          "sections": 147
         },
         {
           "code": "HIS",
@@ -92620,8 +92647,8 @@
         {
           "code": "MUS",
           "name": "Music",
-          "courses": 312,
-          "sections": 1012
+          "courses": 313,
+          "sections": 1013
         },
         {
           "code": "NVS",
@@ -92708,9 +92735,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-18T15:49:15.529139+00:00",
-      "total_courses": 3201,
-      "total_sections": 7059
+      "scraped_at": "2026-05-19T15:40:25.807440+00:00",
+      "total_courses": 3203,
+      "total_sections": 7060
     }
   }
 }
