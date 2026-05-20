@@ -154,7 +154,7 @@ const App = {
           <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
 
           <div class="ob-heading">Tell us who you are.</div>
-          <div class="ob-sub">We'll tailor the curriculum view to your role. Takes 5 seconds.</div>
+          <div class="ob-sub">We'll tailor the curriculum view to your role.</div>
 
           <div class="ob-section">
             <div class="ob-section-label">I AM A</div>
