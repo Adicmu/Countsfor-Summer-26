@@ -1167,8 +1167,12 @@ body {
   position: fixed; inset: 0;
   background: linear-gradient(135deg, #C41230 0%, #7d0a1f 45%, #4a0612 100%);
   color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  padding: 24px; overflow-y: auto;
+  display: flex;
+  /* safe center prevents the top of taller-than-viewport content from being
+     clipped above the scroll origin (a known flex+overflow centering gotcha). */
+  align-items: safe center;
+  justify-content: center;
+  padding: 40px 24px; overflow-y: auto;
   z-index: 1000;
 }
 .onboarding-card {

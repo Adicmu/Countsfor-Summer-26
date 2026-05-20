@@ -193,10 +193,10 @@ const App = {
 
   _programFullName(p) {
     return ({
-      CS: 'Computer Sci',
-      IS: 'Info Systems',
-      BA: 'Business',
-      BS: 'Biology',
+      CS: 'Computer Science',
+      IS: 'Information Systems',
+      BA: 'Business Administration',
+      BS: 'Biological Sciences',
       AI: 'Artificial Intelligence',
       GS: 'General Studies'
     })[p] || p;
