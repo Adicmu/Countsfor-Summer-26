@@ -149,6 +149,7 @@ const App = {
     document.getElementById('app').innerHTML = `
       <div class="onboarding-splash">
         <div class="onboarding-card">
+          <img class="onboarding-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" />
           <div class="onboarding-brand">CountsFor</div>
           <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
 
@@ -179,6 +180,11 @@ const App = {
           </div>
 
           <button class="onboarding-continue" ${valid ? '' : 'disabled'} onclick="App._finishOnboarding()">Continue →</button>
+
+          <div class="onboarding-institutional">
+            <span class="onboarding-institutional-label">An initiative of</span>
+            <img class="onboarding-cmuq" src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University Qatar" />
+          </div>
         </div>
         ${cancelHtml}
       </div>
@@ -337,7 +343,7 @@ const App = {
 
     document.getElementById('app').innerHTML = `
       <nav class="navbar">
-        <div class="navbar-brand" onclick="App.reset()">CountsFor <span class="subtitle">CMU-Q</span></div>
+        <div class="navbar-brand" onclick="App.reset()"><img class="navbar-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" /><span class="navbar-wordmark">CountsFor</span> <span class="subtitle">CMU-Q</span></div>
         ${this._roleBadgeHtml()}
         <div class="navbar-right">
           <div class="navbar-location-toggle">
@@ -869,6 +875,13 @@ const App = {
         </div>
 
         ${dcBannerHtml}${mpBannerHtml}
+
+        <footer class="home-footer">
+          <a class="home-footer-cmuq" href="https://www.qatar.cmu.edu/" target="_blank" rel="noopener" aria-label="Carnegie Mellon University Qatar">
+            <img src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University Qatar" />
+          </a>
+          <span class="home-footer-note">A curriculum explorer for the CMU-Q community.</span>
+        </footer>
       </div>
     `;
   },
@@ -1131,7 +1144,7 @@ const App = {
       const hint = pending
         ? '<div class="empty-hint">We\'re still loading the official requirement list for this program.</div>'
         : '';
-      rightBody.innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">${msg}</div>${hint}</div>`;
+      rightBody.innerHTML = `<div class="empty-state"><img class="empty-illustration" src="assets/img/scotty-full.png" alt="" aria-hidden="true" /><div class="empty-text">${msg}</div>${hint}</div>`;
       return;
     }
     let html = '';
