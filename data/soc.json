@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University \u2014 Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-19T15:40:25.807440+00:00",
+    "last_scrape": "2026-05-20T15:41:37.982451+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -16626,9 +16626,9 @@
             {
               "section": "A",
               "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
+              "days": "MW",
+              "begin_time": "12:30PM",
+              "end_time": "01:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation"
             }
@@ -17744,7 +17744,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "04:20PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             },
@@ -17888,7 +17888,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only"
             }
@@ -68673,6 +68673,24 @@
           ]
         },
         {
+          "course_number": "57109",
+          "title": "Elective Studio (Beginning Guitar Class)",
+          "units": "3",
+          "department_code": "MUS",
+          "department": "Music",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "T",
+              "begin_time": "10:00AM",
+              "end_time": "10:50AM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation"
+            }
+          ]
+        },
+        {
           "course_number": "57111",
           "title": "Movement and Dance I",
           "units": "3",
@@ -92647,8 +92665,8 @@
         {
           "code": "MUS",
           "name": "Music",
-          "courses": 313,
-          "sections": 1013
+          "courses": 314,
+          "sections": 1014
         },
         {
           "code": "NVS",
@@ -92735,9 +92753,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-19T15:40:25.807440+00:00",
-      "total_courses": 3203,
-      "total_sections": 7060
+      "scraped_at": "2026-05-20T15:41:37.982451+00:00",
+      "total_courses": 3204,
+      "total_sections": 7061
     }
   }
 }
