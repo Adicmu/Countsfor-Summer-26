@@ -1,162 +1,168 @@
 # CountsFor — CMU-Q Curriculum Explorer
 
-A smart curriculum explorer for Carnegie Mellon University in Qatar. Students can instantly see **what each course counts for** across all four majors (CS, IS, BA, BS) — and optionally explore the full requirement tree on demand.
+A role-aware curriculum explorer for Carnegie Mellon University in Qatar. Tell the app who you are once, then see only what matters for *your* degree path — your major, your minor, and the courses that fill **both** at the same time.
 
 ![Status](https://img.shields.io/badge/Status-Active_Development-brightgreen) ![License](https://img.shields.io/badge/License-MIT-blue)
+
+**Live:** [adicmu.github.io/Countsfor-Summer-26](https://adicmu.github.io/Countsfor-Summer-26/) · **CMU-Q deployment:** [countsfor.qatar.cmu.edu](https://countsfor.qatar.cmu.edu) (CMU network only)
+
+---
+
+## What's new
+
+The app now opens with a one-time onboarding splash that asks **who you are**. The rest of the UI tailors to your answer:
+
+| Who you are | What you see |
+|-------------|--------------|
+| **Student** with major + minor | Two-program view (e.g. CS + BA) — double-counter courses get a banner and a `[BA]` tag in the tree |
+| **Student** with major only | Single-program view — clean, no clutter |
+| **Professor** in CS / IS / BA / BS | Single-program view focused on what you teach |
+| **Professor** in Arts & Sciences (cross-program) | All four programs — same as Area Heads |
+| **Area Head** | All four programs side-by-side |
+
+Click the role badge in the navbar anytime to change your answer.
 
 ---
 
 ## Features
 
-### 🔍 Search-First Experience (Progressive Disclosure)
-The app opens in a clean, focused single-panel view — just a search bar. No information overload.
+### Onboarding splash
+- Full-screen CMU red gradient on first visit
+- Step 1: pick **Student**, **Professor**, or **Area Head**
+- Step 2: pick your program (and minor, if you're a student)
+- Stored to localStorage — never asked again unless you click the role badge to edit
 
-1. **Search any course** by code (e.g. `15-122`) or name
-2. See the full **course card** — name, units, semesters, location, prerequisites, what it counts for, and course description — all full-width
-3. Click **"🗂 Explore Requirement Map →"** to optionally open the side-by-side requirement tree
-4. Close the tree panel with the **✕ button** in the CS/IS/BA/BS tab row to return to the clean view
+### Double-counter highlighting (focused-dual view)
+When a course satisfies a requirement in **both** your major and your minor, the app flags it everywhere:
+- A gradient banner on the course card: *"Counts for BOTH your CS major and BA minor"*
+- A small color tag (e.g. `[BA]`) at the end of every matching row in the requirement tree
+- The same tag in the search typeahead
+- A dedicated **"N courses count for BOTH"** list view, one click from the home screen
 
-### 📋 Course Card
-- Course code, name, units, semester offerings, campus location (Qatar / Pittsburgh / both)
-- Prerequisites listed clearly
-- **Counts For** — every requirement bucket it satisfies across all 4 majors, with CORE / GEN ED labels
-- **Course Description** — full text sourced and scraped from the CMU-Q catalog (1,725 / 1,727 courses populated)
+### Multi-program chip (cross-program view)
+Area heads and Arts & Sciences faculty see a `3 programs` / `4 programs` chip on courses that span many majors — useful for spotting cross-cutting GenEds.
 
-### 🗂 Requirement Map (On Demand)
-- Browse the full collapsible requirement tree for CS, IS, BA, or BS
-- Fulfillment rule chips on every node: `pick 1`, `take all`, `≥19 units`, `optional`, etc.
-- Course count per node
-- Click any **Counts For badge** in the course card → automatically opens the tree and jumps to that node
-- Click any course in the tree → loads its full card on the left
+### Search-first home
+- Hero header + bold search box (≥1,727 CMU-Q courses indexed)
+- Two role-colored cards showing your major and minor with course counts
+- "Try a course" chips populated from your double-counters (or top required courses for single-program users)
 
-### 🌍 Location Filter
-Filter all results by **Qatar 🇶🇦**, **Pittsburgh 🇺🇸**, or show **All**
+### Course card (rebuilt)
+- 32px course code, full course name, units pill, location & semester pills
+- Big color-bordered **"Counts For"** rows you can click to jump into the requirement tree
+- Prerequisites + Fall 2026 schedule side-by-side
+- Full course description
 
-### 🌙 Dark / Light Mode
-Persistent theme toggle. Defaults to dark mode.
+### Requirement tree (rebuilt)
+- 36px tap targets (no more squinting on mobile)
+- Tabs filter to only the programs you care about
+- Rule chips (`take all`, `≥19 units`, `pick 1`) and course counts per node
+- Click any course in the tree to load its card
 
-### 📱 Responsive
-- Desktop: progressive disclosure to split-panel
-- Mobile: tabbed lens toggle (Course Lookup / Requirement Map) — only visible in split mode
-
-### ⚡ Zero Dependencies
-Pure HTML + CSS + Vanilla JavaScript. No npm, no build step, no framework.
+### Other
+- 🌍 Location filter (Qatar / Pittsburgh / All)
+- 🌙 Dark / light theme with localStorage persistence
+- 📱 Mobile-responsive — onboarding stacks, role badge wraps, panels lens-toggle below 860px
+- ⚡ **Zero dependencies** — no npm, no build step, no framework
 
 ---
 
 ## Quick Start
 
-### Prerequisites
+You only need a way to serve static files. The simplest:
 
-You only need a way to serve static files. Any of these work:
-
-| Tool | Install | Command |
-|------|---------|---------|
-| **Python 3** ✅ recommended | Pre-installed on macOS/Linux | `python3 -m http.server 8080` |
-| Python (Windows) | Pre-installed on Windows | `py -m http.server 8080` |
-| **Node.js** | [nodejs.org](https://nodejs.org) | `npx serve -p 8080` |
-| **VS Code** | [Live Server extension](https://marketplace.visualstudio.com/items?itemName=ritwickdey.LiveServer) | Right-click `index.html` → "Open with Live Server" |
-
-### Setup (< 1 minute)
-
-**1. Clone the repo**
 ```bash
 git clone https://github.com/Adicmu/Countsfor-Summer-26.git
 cd Countsfor-Summer-26
-```
-
-**2. Start a local server**
-
-Mac / Linux:
-```bash
-python3 -m http.server 8080 --directory frontend
-```
-
-Windows:
-```bash
-py -m http.server 8080 --directory frontend
-```
-
-Or if you're already inside the `frontend/` folder:
-```bash
 python3 -m http.server 8080
 ```
 
-**3. Open in your browser**
-```
-http://localhost:8080
-```
+Open `http://localhost:8080` — the onboarding splash appears, you pick your role, you're in.
 
-That's it. The app loads all 1,700+ courses from the bundled `data/courses.json` automatically. When run on the CMU-Q network, it will use the live API instead.
+Windows: `py -m http.server 8080`. Or use VS Code Live Server, `npx serve -p 8080`, or any other static server.
 
 ---
 
-## How to Use
+## Tests
 
-1. **Type a course code or name** in the search box (e.g. `15-122`, `machine learning`, `calculus`)
-2. **Click a result** from the dropdown — the full course card appears
-3. **Read what it counts for** — color-coded badges for each major (CS = red, IS = amber, BA = blue, BS = green)
-4. **Click a badge** (e.g. "CS · Computer Science Core") to open the requirement tree and jump straight to that node
-5. **Or click "Explore Requirement Map →"** at the bottom of the card to browse the full tree
-6. **Click ✕** in the tab bar (next to CS IS BA BS) to close the tree and return to the focused view
-7. **Click the course code** in the navbar to reset back to the search
+The project ships with a tiny zero-dependency test runner:
+
+```bash
+python3 -m http.server 8080
+# open http://localhost:8080/tests/test.html
+```
+
+You'll see a list of all unit tests with pass/fail status. Currently **26 tests** covering profile state, view-mode computation, validation, localStorage round-tripping, and double-counter / multi-program annotations.
 
 ---
 
-## Project Structure
+## Project structure
 
 ```
-frontend/
-├── index.html              # Entry point (single HTML shell)
+.
+├── index.html                  # Single HTML shell
+├── .nojekyll                   # Tells GitHub Pages: skip Jekyll, serve as-is
 ├── css/
-│   └── styles.css          # Full design system — layout modes, themes, major colors, all components
+│   └── styles.css              # Full design system — onboarding, role badge, course card v2, tree v2
 ├── js/
-│   ├── utils.js            # Debounce, HTML escaping, localStorage, toast notifications
-│   ├── data.js             # Tree builder, requirement parser, fulfillment rule annotator
-│   ├── api.js              # 3-tier data fetcher: Live API → GitHub Raw → Local JSON
-│   └── app.js              # State machine, rendering, progressive disclosure logic, cross-linking
-└── data/
-    └── courses.json        # Bundled data: 1,727 courses with descriptions + requirement mappings
+│   ├── utils.js                # Debounce, HTML escaping, localStorage helpers, toast
+│   ├── data.js                 # Tree builder, requirement parser, annotateDoubleCounters, annotateMultiProgram
+│   ├── profile.js              # Profile state, localStorage, view-mode derivation, validation
+│   ├── api.js                  # 3-tier data fetcher (live API → GitHub raw → bundled JSON)
+│   └── app.js                  # App object — onboarding, shell, search, course card, tree
+├── data/
+│   ├── courses.json            # Bundled course data (1,727 courses)
+│   ├── scrape_soc.py           # Python scraper for the CMU Schedule of Classes
+│   └── soc_scraped_data.json   # Raw SOC scrape output
+├── tests/
+│   ├── test.html               # Test runner page
+│   ├── test-runner.js          # Browser-native assertion helpers
+│   ├── profile.test.js         # Tests for profile.js
+│   └── data.test.js            # Tests for annotateDoubleCounters / annotateMultiProgram
+└── docs/
+    ├── superpowers/specs/      # Design specs (e.g. role-aware-onboarding-design.md)
+    └── superpowers/plans/      # Implementation plans
+```
+
+Script load order in `index.html` matters:
+```
+utils.js → data.js → profile.js → api.js → app.js
 ```
 
 ---
 
 ## Architecture
 
-### Progressive Disclosure Layout
+### State
+All state lives on a single `App` object literal — no framework, no store, no modules. The new `App.profile` field holds `{ role, primary, secondary }` and persists to three localStorage keys (`cf_role`, `cf_primary`, `cf_secondary`). View mode (`focused-dual` / `focused-single` / `cross-program`) is **derived** from the profile, not stored.
 
-The app has two layout modes managed by a `layoutMode` state (`'focused'` | `'split'`):
+### View-mode dispatch
+- `App.init()` reads the profile from localStorage. No profile → render onboarding splash. Has profile → render main shell.
+- `App.renderShell()` filters the major tabs via `_visibleMajors()`.
+- `App.renderLeftEmpty()` dispatches to `_renderEmptyDual()` / `_renderEmptySingle()` / `_renderEmptyCross()` based on the view mode.
+- `App.renderCourseCard()` shows the double-counter banner when `course._doubleCounter === true` and the user has a minor.
+- `App.renderTreeNode()` appends a secondary-program tag on leaf rows in focused-dual mode, and a `N programs` chip in cross-program mode.
 
-| Mode | CSS class | What's visible |
-|------|-----------|----------------|
-| **Focused** (default) | `.layout-focused` | Single centered panel — search + full-width course card |
-| **Split** (on demand) | `.layout-split` | Left panel (course card) + Right panel (requirement tree) |
+### Annotations
+After course data loads, two passes over `App.courses`:
+- `annotateDoubleCounters(courses, profile)` — sets `_doubleCounter = true` on courses fulfilling both `profile.primary` and `profile.secondary`. Re-run on role edits.
+- `annotateMultiProgram(courses)` — sets `_programCount = N` (count of non-empty `requirements` keys among CS/IS/BA/BS). Profile-independent.
 
-Transitions between modes are animated via CSS Grid (`grid-template-columns`).
-
-### Data Sources (Priority Order)
-
-1. **Live API** — `https://countsfor.qatar.cmu.edu/api` (used when on CMU-Q network)
-2. **GitHub Raw** — `open-cmuq/CountsFor` raw JSON (fallback)
-3. **Local JSON** — `data/courses.json` bundled in this repo (always works offline)
-
-### Major Color System
-
-| Major | Full Name | Color |
-|-------|-----------|-------|
-| **CS** | Computer Science | 🔴 `#C41230` |
-| **IS** | Information Systems | 🟡 `#D97706` |
-| **BA** | Business Administration | 🔵 `#2563EB` |
-| **BS** | Biological Sciences | 🟢 `#059669` |
+### Data sources (priority order)
+1. **Live CMU-Q API** — `https://countsfor.qatar.cmu.edu/api` (used when on the CMU-Q network)
+2. **GitHub Raw JSON** — `open-cmuq/CountsFor` (fallback)
+3. **Bundled local JSON** — `data/courses.json` (always works offline)
 
 ---
 
-## Tech Stack
+## Major color system
 
-- **HTML5** — Semantic shell, dynamic content rendered by JS
-- **CSS3** — Custom properties, CSS Grid layout transitions, Flexbox, no preprocessor
-- **Vanilla JS (ES6+)** — No framework, no bundler, no dependencies
-- **Fonts** — [Inter](https://fonts.google.com/specimen/Inter) (UI) + [JetBrains Mono](https://fonts.google.com/specimen/JetBrains+Mono) (course numbers) via Google Fonts
+| Code | Major | Color |
+|------|-------|-------|
+| **CS** | Computer Science | 🔴 `#C41230` (CMU Red) |
+| **IS** | Information Systems | 🟡 `#D97706` (Amber) |
+| **BA** | Business Administration | 🔵 `#2563EB` (Blue) |
+| **BS** | Biological Sciences | 🟢 `#059669` (Green) |
 
 ---
 
@@ -164,9 +170,11 @@ Transitions between modes are animated via CSS Grid (`grid-template-columns`).
 
 1. Fork the repo
 2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Make your changes in `frontend/`
-4. Test locally: `python3 -m http.server 8080 --directory frontend`
+3. Make your changes — keep the zero-dependency constraint (no npm, no build step)
+4. Run the test suite at `/tests/test.html` and add new tests for any pure functions
 5. Push and open a Pull Request
+
+Design and implementation docs live in `docs/superpowers/specs/` and `docs/superpowers/plans/` — useful reading before a substantial change.
 
 ---
 
@@ -174,7 +182,7 @@ Transitions between modes are animated via CSS Grid (`grid-template-columns`).
 
 - Course and requirement data sourced from [open-cmuq/CountsFor](https://github.com/open-cmuq/CountsFor)
 - Course descriptions scraped from [countsfor.qatar.cmu.edu](https://countsfor.qatar.cmu.edu)
-- Built for CMU-Q students by Aditya Vivek
+- Built for CMU-Q students by [Aditya Vivek](https://github.com/Adicmu) and [Hind Jendara](https://github.com/HindJendara)
 
 ---
 

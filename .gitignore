@@ -1,0 +1,7 @@
+.DS_Store
+server.log
+node_modules/
+.vscode/
+.superpowers/
+.claude/
+CONTEXT.md

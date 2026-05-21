@@ -12,6 +12,34 @@ const MAJOR_META = {
 
 const MAJOR_ORDER = ['CS', 'IS', 'BA', 'BS'];
 
+// ── Accent-color helpers (spec § 4.5) ──────────────────────
+const MAJOR_BRAND = {
+  CS: '#C41230',
+  IS: '#D97706',
+  BA: '#2563EB',
+  BS: '#059669',
+};
+
+// First match in this ordered list wins. rule.color === null means "use major brand".
+const ACCENT_RULES = [
+  { match: /math|probabil/i,           color: '#6b21a8' },
+  { match: /elective|technical/i,      color: '#047857' },
+  { match: /humanit|arts|gened/i,      color: '#B45309' },
+  { match: /science|lab/i,             color: '#047857' },
+  { match: /core|required/i,           color: null /* major brand */ },
+];
+
+function pickAccentColor(label, activeMajor) {
+  const brand = MAJOR_BRAND[activeMajor] || '#C41230';
+  if (!label) return brand;
+  for (const rule of ACCENT_RULES) {
+    if (rule.match.test(label)) {
+      return rule.color || brand;
+    }
+  }
+  return brand;
+}
+
 // ── Label overrides for nicer display ──────────────────────
 const LABEL_OVERRIDES = {
   'BS in Computer Science': 'CS Degree Requirements',
@@ -384,4 +412,34 @@ const DEPT_NAMES = {
 function getDeptName(courseCode) {
   const prefix = courseCode.replace('-', '').substring(0, 2);
   return DEPT_NAMES[prefix] || `Dept ${prefix}`;
+}
+
+// ── Profile-aware annotations ────────────────────────────
+
+function annotateDoubleCounters(courses, profile) {
+  const viewMode = computeViewMode(profile);
+  if (viewMode !== 'focused-dual') {
+    for (const c of courses) c._doubleCounter = false;
+    return;
+  }
+  const p = profile.primary;
+  const s = profile.secondary;
+  for (const c of courses) {
+    const req = c.requirements || {};
+    const hasPrimary = Array.isArray(req[p]) && req[p].length > 0;
+    const hasSecondary = Array.isArray(req[s]) && req[s].length > 0;
+    c._doubleCounter = hasPrimary && hasSecondary;
+  }
+}
+
+function annotateMultiProgram(courses) {
+  const PROGRAMS = ['CS', 'IS', 'BA', 'BS'];
+  for (const c of courses) {
+    const req = c.requirements || {};
+    let n = 0;
+    for (const p of PROGRAMS) {
+      if (Array.isArray(req[p]) && req[p].length > 0) n++;
+    }
+    c._programCount = n;
+  }
 }

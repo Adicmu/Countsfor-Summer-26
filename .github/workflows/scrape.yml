@@ -24,7 +24,7 @@ jobs:
           python-version: '3.11'
 
       - name: Run scraper
-        run: python scraper/scrape_soc.py
+        run: python data/scrape_soc.py
 
       - name: Commit data if it changed
         run: |
