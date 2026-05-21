@@ -4,12 +4,32 @@ CMU Schedule of Classes (SOC) Scraper
 Runs daily via GitHub Actions. Tries upcoming semesters; writes data/soc.json
 only when a real, non-empty scrape succeeds.
 
+Scrapes each (semester, department) once per configured campus, then merges
+courses that appear at multiple campuses. Each section is tagged with its
+campus; each course's `campus` field lists every campus it runs at.
+
 Output structure:
 {
   "metadata": {...},
   "semesters": {
-    "F26": { "courses": [...], "department_summary": [...], "scraped_at": "..." },
-    "S27": { ... }
+    "F26": {
+      "courses": [
+        {
+          "course_number": "15122",
+          "title": "Principles of Imperative Computation",
+          "department_code": "CS",
+          "department": "Computer Science",
+          "units": "10",
+          "campus": ["Pittsburgh", "Qatar"],
+          "sections": [
+            {"section": "1", "days": "MWF", ..., "campus": "Pittsburgh"},
+            {"section": "A", "days": "MWF", ..., "campus": "Qatar"}
+          ]
+        }
+      ],
+      "department_summary": [...],
+      "scraped_at": "..."
+    }
   }
 }
 """
@@ -23,28 +43,26 @@ import sys
 import os
 from datetime import datetime, timezone
 
-# BASE = "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet"
-# SEARCH = BASE + "/search"
+# ---------- Configuration ----------
+# Overridable via env vars for local testing against the Flask test server.
 
-# # Semesters to attempt each run. Add new codes as years roll over.
-# # Order: most relevant first. Format = <F|S|M><2-digit year>.
-
-SEMESTERS_TO_TRY = ["F26", "S27", "M27", "F27", "S28"]
-
-# # Safety threshold: if a semester returns fewer than this many courses,
-# # we treat it as "not yet released" and don't overwrite existing data.
-# MIN_COURSES_FOR_VALID_SCRAPE = 100
-
-# OUTPUT_PATH = "data/soc.json"
-
-
-
-
-# AFTER
 BASE = os.environ.get("SOC_BASE_URL", "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet")
 SEARCH = BASE + "/search"
 MIN_COURSES_FOR_VALID_SCRAPE = int(os.environ.get("MIN_COURSES_FOR_VALID_SCRAPE", "100"))
 OUTPUT_PATH = os.environ.get("SOC_OUTPUT_PATH", "data/soc.json")
+
+# Semesters to attempt each run. Add new codes as years roll over.
+# Order: most relevant first. Format = <F|S|M><2-digit year>.
+SEMESTERS_TO_TRY = ["F26", "S27", "M27", "F27", "S28"]
+
+# Campuses to scrape. Only courses offered at these locations will appear in
+# soc.json. Codes come from the PRG_LOCATION dropdown on the SOC search form.
+LOCATIONS_TO_SCRAPE = [
+    ("PIT", "Pittsburgh"),
+    ("DOH", "Qatar"),
+]
+
+
 # ---------- HTTP helpers ----------
 
 def fetch_get(url):
@@ -110,7 +128,7 @@ def get_department_list():
     except Exception as e:
         print(f"  WARN: couldn't fetch dept list dynamically: {e}")
 
-    # Fallback list (from your original script)
+    # Fallback list
     return [
         ('ARC', 'Architecture'), ('ART', 'Art'), ('AEM', 'Arts & Entertainment Management'),
         ('BXA', 'BXA Intercollege Degree Programs'), ('BSC', 'Biological Sciences'),
@@ -140,35 +158,71 @@ def get_department_list():
 # ---------- Main scrape per semester ----------
 
 def scrape_semester(semester_code, dept_list):
-    """Return (courses, dept_summary) or (None, None) if nothing/too little."""
-    print(f"\n[{semester_code}] Scraping {len(dept_list)} departments...")
-    all_courses = []
+    """
+    For each (department, campus) pair, fetch the listing and parse it.
+    Courses that appear at multiple campuses are merged into a single entry
+    with `campus` as a list and sections tagged by campus.
+
+    Returns (courses, dept_summary) or (None, None) if below threshold.
+    """
+    print(f"\n[{semester_code}] Scraping {len(dept_list)} depts "
+          f"x {len(LOCATIONS_TO_SCRAPE)} campuses...")
+
+    # (dept_code, course_number) -> merged course dict
+    courses_by_key = {}
     dept_summary = []
 
     for i, (code, name) in enumerate(dept_list):
         sys.stdout.write(f"\r  [{i+1}/{len(dept_list)}] {code:<5} {name[:40]:<40}")
         sys.stdout.flush()
-        try:
-            html = fetch_post({
-                'SEMESTER': semester_code, 'MINI': 'NO', 'GRAD_UNDER': 'All',
-                'PRG_LOCATION': 'All', 'DEPT': code, 'COURSE': ''
-            })
-            courses = parse_courses(html, code, name)
-            sec_count = sum(len(c['sections']) for c in courses)
-            all_courses.extend(courses)
-            dept_summary.append({'code': code, 'name': name,
-                                 'courses': len(courses), 'sections': sec_count})
-        except Exception as e:
-            print(f"\n  ERROR [{code}]: {e}")
-            dept_summary.append({'code': code, 'name': name,
-                                 'courses': 0, 'sections': 0, 'error': str(e)})
-        time.sleep(0.15)
 
-    print(f"\n  → {len(all_courses)} courses, "
-          f"{sum(len(c['sections']) for c in all_courses)} sections")
+        dept_courses_seen = set()
+        dept_section_count = 0
+        dept_errors = []
+
+        for loc_code, loc_name in LOCATIONS_TO_SCRAPE:
+            try:
+                html = fetch_post({
+                    'SEMESTER': semester_code, 'MINI': 'NO', 'GRAD_UNDER': 'All',
+                    'PRG_LOCATION': loc_code, 'DEPT': code, 'COURSE': ''
+                })
+                for c in parse_courses(html, code, name):
+                    # Tag every section with its campus
+                    for s in c['sections']:
+                        s['campus'] = loc_name
+
+                    key = (c['department_code'], c['course_number'])
+                    if key in courses_by_key:
+                        existing = courses_by_key[key]
+                        if loc_name not in existing['campus']:
+                            existing['campus'].append(loc_name)
+                        existing['sections'].extend(c['sections'])
+                    else:
+                        c['campus'] = [loc_name]
+                        courses_by_key[key] = c
+
+                    dept_courses_seen.add(key)
+                    dept_section_count += len(c['sections'])
+            except Exception as e:
+                dept_errors.append(f"{loc_code}: {e}")
+                print(f"\n  ERROR [{code}/{loc_code}]: {e}")
+            time.sleep(0.15)
+
+        summary_entry = {
+            'code': code, 'name': name,
+            'courses': len(dept_courses_seen),
+            'sections': dept_section_count,
+        }
+        if dept_errors:
+            summary_entry['error'] = "; ".join(dept_errors)
+        dept_summary.append(summary_entry)
+
+    all_courses = list(courses_by_key.values())
+    total_sections = sum(len(c['sections']) for c in all_courses)
+    print(f"\n  -> {len(all_courses)} courses, {total_sections} sections")
 
     if len(all_courses) < MIN_COURSES_FOR_VALID_SCRAPE:
-        print(f"  Below threshold ({MIN_COURSES_FOR_VALID_SCRAPE}) — "
+        print(f"  Below threshold ({MIN_COURSES_FOR_VALID_SCRAPE}) -- "
               f"treating as not-yet-released.")
         return None, None
 
@@ -188,7 +242,10 @@ def load_existing():
 
 
 def main():
-    print("CMU SOC Scraper\n" + "=" * 60)
+    campus_names = ", ".join(name for _, name in LOCATIONS_TO_SCRAPE)
+    print(f"CMU SOC Scraper (campuses: {campus_names})")
+    print("=" * 60)
+
     dept_list = get_department_list()
     print(f"Departments: {len(dept_list)}")
 
@@ -211,27 +268,28 @@ def main():
         }
         if was_new:
             new_semesters_seen.append(sem)
-            print(f"  ★ NEW semester detected: {sem}")
+            print(f"  * NEW semester detected: {sem}")
 
     existing['metadata'] = {
-        'source': 'Carnegie Mellon University — Schedule of Classes',
+        'source': 'Carnegie Mellon University -- Schedule of Classes',
         'url': BASE,
         'last_scrape': timestamp,
         'semesters_available': sorted(existing.get('semesters', {}).keys()),
-        'note': 'Includes delivery mode — not in the PDF version',
+        'campuses': [name for _, name in LOCATIONS_TO_SCRAPE],
+        'note': 'Courses are tagged by campus; sections also carry a campus field.',
     }
 
     if not existing.get('semesters'):
         print("\nNo valid data scraped. Aborting write.")
         sys.exit(1)
 
-    os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
+    os.makedirs(os.path.dirname(OUTPUT_PATH) or ".", exist_ok=True)
     with open(OUTPUT_PATH, 'w') as f:
         json.dump(existing, f, indent=2)
 
     size_mb = os.path.getsize(OUTPUT_PATH) / (1024 * 1024)
     print(f"\n{'=' * 60}")
-    print(f"  Wrote {OUTPUT_PATH} ({size_mb:.1f} MB)")
+    print(f"  Wrote {OUTPUT_PATH} ({size_mb:.2f} MB)")
     print(f"  Semesters: {', '.join(sorted(existing['semesters'].keys()))}")
     if new_semesters_seen:
         print(f"  NEW THIS RUN: {', '.join(new_semesters_seen)}")
