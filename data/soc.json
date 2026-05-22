@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-21T15:43:22.415166+00:00",
+    "last_scrape": "2026-05-22T14:52:17.489670+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -956,6 +956,28 @@
               "section": "A",
               "mini": "",
               "days": "W",
+              "begin_time": "07:00PM",
+              "end_time": "08:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
+          "course_number": "48409",
+          "title": "History and Future of Interaction Design",
+          "units": "9",
+          "department_code": "ARC",
+          "department": "Architecture",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "MW",
               "begin_time": "07:00PM",
               "end_time": "08:20PM",
               "location": "Pittsburgh, Pennsylvania",
@@ -20425,7 +20447,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -57375,7 +57397,17 @@
               "begin_time": "02:00PM",
               "end_time": "03:20PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "Remote only",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            },
+            {
+              "section": "B",
+              "mini": "",
+              "days": "F",
+              "begin_time": "12:30PM",
+              "end_time": "01:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
             }
           ],
@@ -68038,6 +68070,28 @@
           ]
         },
         {
+          "course_number": "82062",
+          "title": "Audio Docs: Experimental Narrative Storytelling in Sound",
+          "units": "3",
+          "department_code": "LCL",
+          "department": "Languages Cultures & Appl Linguistics",
+          "sections": [
+            {
+              "section": "W1",
+              "mini": "Y",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Doha, Qatar",
+              "delivery_mode": "In-person + remote",
+              "campus": "Qatar"
+            }
+          ],
+          "campus": [
+            "Qatar"
+          ]
+        },
+        {
           "course_number": "82187",
           "title": "Documentary, Found Sound, and Hidden Frequencies in Language and Culture",
           "units": "3",
@@ -76057,7 +76111,7 @@
             {
               "section": "A",
               "mini": "",
-              "days": "MWF",
+              "days": "MW",
               "begin_time": "12:00PM",
               "end_time": "01:50PM",
               "location": "Pittsburgh, Pennsylvania",
@@ -105722,8 +105776,8 @@
         {
           "code": "ARC",
           "name": "Architecture",
-          "courses": 108,
-          "sections": 257
+          "courses": 109,
+          "sections": 258
         },
         {
           "code": "ART",
@@ -105915,7 +105969,7 @@
           "code": "INI",
           "name": "Information Networking Institute",
           "courses": 25,
-          "sections": 37
+          "sections": 38
         },
         {
           "code": "ISP",
@@ -105944,8 +105998,8 @@
         {
           "code": "LCL",
           "name": "Languages Cultures & Appl Linguistics",
-          "courses": 122,
-          "sections": 177
+          "courses": 123,
+          "sections": 178
         },
         {
           "code": "MCS",
@@ -106074,9 +106128,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-21T15:43:22.415166+00:00",
-      "total_courses": 3119,
-      "total_sections": 6817
+      "scraped_at": "2026-05-22T14:52:17.489670+00:00",
+      "total_courses": 3121,
+      "total_sections": 6820
     }
   }
 }
