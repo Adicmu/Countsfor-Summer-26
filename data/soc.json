@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-23T13:51:55.452056+00:00",
+    "last_scrape": "2026-05-24T13:49:39.093594+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -6635,7 +6635,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -20457,7 +20457,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "08:50PM",
+              "end_time": "07:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -106128,7 +106128,7 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-23T13:51:55.452056+00:00",
+      "scraped_at": "2026-05-24T13:49:39.093594+00:00",
       "total_courses": 3121,
       "total_sections": 6820
     }
