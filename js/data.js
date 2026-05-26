@@ -380,6 +380,49 @@ function getAlsoCountsFor(course, currentMajor) {
   return others;
 }
 
+// ── Offering likelihood (rule-based, no ML) ──────────────────
+// Uses the `offered` history on each course (codes like "S22", "F23", "M24",
+// "N25") to estimate whether a course is likely to run in a target season.
+// Spec § 12: prefer simple, honest signal over fabricated prediction.
+
+const SEASON_NAME = { S: 'Spring', M: 'Summer', N: 'Fall mini', F: 'Fall' };
+
+function _seasonName(code) {
+  return SEASON_NAME[code] || code;
+}
+
+function predictOffering(course, targetSeason /* 'S' | 'M' | 'N' | 'F' */) {
+  if (!course || !targetSeason || !SEASON_NAME[targetSeason]) {
+    return { state: 'unknown', reason: 'No prediction available.' };
+  }
+  const hist = Array.isArray(course.offered) ? course.offered : [];
+  // De-duplicate identical entries — some scraping passes wrote dupes.
+  const seen = new Set();
+  const codes = hist.filter(c => {
+    if (!c || seen.has(c)) return false;
+    seen.add(c);
+    return true;
+  });
+  if (codes.length < 3) {
+    return { state: 'unknown', reason: 'Limited offering history.' };
+  }
+  const counts = { S: 0, M: 0, N: 0, F: 0 };
+  for (const c of codes) if (counts[c[0]] !== undefined) counts[c[0]]++;
+  const total = codes.length;
+  const share = counts[targetSeason] / total;
+  const seasonLabel = _seasonName(targetSeason);
+  if (share >= 0.5) {
+    return { state: 'likely',   reason: `Typically offered in ${seasonLabel}.` };
+  }
+  if (counts[targetSeason] === 0) {
+    return { state: 'unlikely', reason: `Not offered in ${seasonLabel} in recent years.` };
+  }
+  if (share < 0.2) {
+    return { state: 'rare',     reason: `Rarely offered in ${seasonLabel}.` };
+  }
+  return { state: 'mixed', reason: `Sometimes offered in ${seasonLabel}.` };
+}
+
 // ── Sort semesters chronologically ────────────────────────────
 function sortSemesters(semesters) {
   if (!semesters || !Array.isArray(semesters)) return [];

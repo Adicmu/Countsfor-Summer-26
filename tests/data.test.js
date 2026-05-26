@@ -119,3 +119,43 @@ test('pickAccentColor: case-insensitive matching', () => {
   assertEqual(pickAccentColor('MATH & PROBABILITY', 'CS'), '#6b21a8');
   assertEqual(pickAccentColor('humanities & arts', 'CS'), '#B45309');
 });
+
+// ── predictOffering (rule-based, no ML) ────────────────────
+
+test('predictOffering: <3 historical entries → unknown', () => {
+  const c = { offered: ['F23'] };
+  assertEqual(predictOffering(c, 'F').state, 'unknown');
+});
+
+test('predictOffering: 50%+ in target season → likely', () => {
+  // 4 Springs, 1 Fall → 80% Spring share
+  const c = { offered: ['S22', 'S23', 'S24', 'S25', 'F22'] };
+  assertEqual(predictOffering(c, 'S').state, 'likely');
+});
+
+test('predictOffering: 0 in target season → unlikely', () => {
+  const c = { offered: ['S22', 'S23', 'S24'] };
+  assertEqual(predictOffering(c, 'F').state, 'unlikely');
+});
+
+test('predictOffering: <20% in target season → rare', () => {
+  // 1 Fall out of 9 = ~11% → rare
+  const c = { offered: ['S20', 'S21', 'S22', 'S23', 'S24', 'M21', 'M22', 'M23', 'F25'] };
+  assertEqual(predictOffering(c, 'F').state, 'rare');
+});
+
+test('predictOffering: 20-50% share → mixed', () => {
+  // 2 Falls out of 5 = 40%
+  const c = { offered: ['S22', 'S23', 'S24', 'F22', 'F23'] };
+  assertEqual(predictOffering(c, 'F').state, 'mixed');
+});
+
+test('predictOffering: missing offered field → unknown', () => {
+  assertEqual(predictOffering({}, 'F').state, 'unknown');
+});
+
+test('predictOffering: deduplicates identical entries before counting', () => {
+  // Without dedup: 6 Springs → likely. With dedup: 3 unique Springs → still likely (100%).
+  const c = { offered: ['S22', 'S22', 'S23', 'S23', 'S24', 'S24'] };
+  assertEqual(predictOffering(c, 'S').state, 'likely');
+});

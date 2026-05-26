@@ -60,11 +60,81 @@ test('computeViewMode: associate_area_head with IS → cross-program', () => {
   );
 });
 
-test('computeViewMode: advisor with BA → cross-program', () => {
+test('computeViewMode: advisor with major scope → cross-program', () => {
   assertEqual(
-    computeViewMode({ role: 'advisor', primary: 'BA', secondary: null }),
+    computeViewMode({ role: 'advisor', primary: 'BA', scope: 'major' }),
     'cross-program'
   );
+});
+
+test('computeViewMode: advisor with minor scope → cross-program', () => {
+  assertEqual(
+    computeViewMode({ role: 'advisor', primary: 'history', scope: 'minor' }),
+    'cross-program'
+  );
+});
+
+test('computeViewMode: advisor with all_programs scope → cross-program', () => {
+  assertEqual(
+    computeViewMode({ role: 'advisor', primary: null, scope: 'all_programs' }),
+    'cross-program'
+  );
+});
+
+// ── Role groups ──────────────────────────────────────────
+
+test('getRoleGroup: maps area_head + associate_area_head to the same group', () => {
+  assertEqual(getRoleGroup('area_head'),           'area_lead');
+  assertEqual(getRoleGroup('associate_area_head'), 'area_lead');
+});
+
+test('getRoleGroup: maps student/professor/advisor to their own groups', () => {
+  assertEqual(getRoleGroup('student'),   'student');
+  assertEqual(getRoleGroup('professor'), 'professor');
+  assertEqual(getRoleGroup('advisor'),   'advisor');
+});
+
+test('ROLE_GROUPS.area_lead contains both Area Head sub-roles', () => {
+  assertTrue(ROLE_GROUPS.area_lead.roles.includes('area_head'));
+  assertTrue(ROLE_GROUPS.area_lead.roles.includes('associate_area_head'));
+});
+
+// ── Advisor scope validation ─────────────────────────────
+
+test('validateProfile: advisor with major scope + valid major', () => {
+  assertTrue(validateProfile({ role: 'advisor', scope: 'major', primary: 'CS' }));
+});
+
+test('validateProfile: advisor with major scope + bogus major → invalid', () => {
+  assertFalse(validateProfile({ role: 'advisor', scope: 'major', primary: 'ZZ' }));
+});
+
+test('validateProfile: advisor with minor scope + valid minor code', () => {
+  assertTrue(validateProfile({ role: 'advisor', scope: 'minor', primary: 'history' }));
+});
+
+test('validateProfile: advisor with minor scope + bogus minor → invalid', () => {
+  assertFalse(validateProfile({ role: 'advisor', scope: 'minor', primary: 'not_a_minor' }));
+});
+
+test('validateProfile: advisor with arts_sciences scope', () => {
+  assertTrue(validateProfile({ role: 'advisor', scope: 'arts_sciences', primary: null }));
+});
+
+test('validateProfile: advisor with all_programs scope (no target needed)', () => {
+  assertTrue(validateProfile({ role: 'advisor', scope: 'all_programs', primary: null }));
+});
+
+test('validateProfile: advisor with no scope → invalid', () => {
+  assertFalse(validateProfile({ role: 'advisor', scope: null, primary: 'CS' }));
+});
+
+// ── PROGRAM_GROUPS ───────────────────────────────────────
+
+test('isProgramDataPending: true for AI and GS, false for CS', () => {
+  assertTrue(isProgramDataPending('AI'));
+  assertTrue(isProgramDataPending('GS'));
+  assertFalse(isProgramDataPending('CS'));
 });
 
 // ── validateProfile ──────────────────────────────────────
@@ -111,9 +181,9 @@ test('validateProfile: associate_area_head must have a major', () => {
   assertTrue(validateProfile({ role: 'associate_area_head', primary: 'IS', secondary: null }));
 });
 
-test('validateProfile: advisor must have a major', () => {
-  assertFalse(validateProfile({ role: 'advisor', primary: null, secondary: null }));
-  assertTrue(validateProfile({ role: 'advisor', primary: 'BS', secondary: null }));
+test('validateProfile: advisor must have a scope (replaced by scope-aware tests below)', () => {
+  // No scope at all → invalid; full coverage in the "Advisor scope validation" section.
+  assertFalse(validateProfile({ role: 'advisor', primary: 'BS', secondary: null }));
 });
 
 test('validateProfile: null profile → invalid', () => {
@@ -165,11 +235,27 @@ test('saveProfile then loadProfile for area_head (null primary/secondary)', () =
   assertEqual(loaded.secondary, null);
 });
 
-test('saveProfile then loadProfile for advisor with major', () => {
-  saveProfile({ role: 'advisor', primary: 'IS', secondary: null });
+test('saveProfile then loadProfile for advisor with major scope', () => {
+  saveProfile({ role: 'advisor', primary: 'IS', secondary: null, scope: 'major' });
   const loaded = loadProfile();
   assertEqual(loaded.role, 'advisor');
   assertEqual(loaded.primary, 'IS');
+  assertEqual(loaded.scope, 'major');
+});
+
+test('saveProfile then loadProfile for advisor with minor scope', () => {
+  saveProfile({ role: 'advisor', primary: 'history', secondary: null, scope: 'minor' });
+  const loaded = loadProfile();
+  assertEqual(loaded.role, 'advisor');
+  assertEqual(loaded.primary, 'history');
+  assertEqual(loaded.scope, 'minor');
+});
+
+test('saveProfile then loadProfile for associate_area_head with CS', () => {
+  saveProfile({ role: 'associate_area_head', primary: 'CS', secondary: null });
+  const loaded = loadProfile();
+  assertEqual(loaded.role, 'associate_area_head');
+  assertEqual(loaded.primary, 'CS');
 });
 
 test('loadProfile migrates legacy student minor stored as major code', () => {

@@ -95,20 +95,26 @@ const App = {
   // ══════════════════════════════════════════════════════════
 
   _onboardingState: {
-    role: null,
-    roleGroup: null,   // 'student' | 'faculty' | null — drives the two-tier role picker
+    role: null,         // precise role (area_head vs associate_area_head distinct)
+    roleGroup: null,    // 'student' | 'faculty' — top-level toggle
+    facultyGroup: null, // 'professor' | 'area_lead' | 'advisor' — under faculty
+    scope: null,        // advisor scope: 'major'|'minor'|'arts_sciences'|'all_programs'
     primary: null,
     secondary: null,
     isEdit: false,
   },
 
   renderOnboarding(isEdit) {
-    const existingRole = this.profile ? this.profile.role : null;
+    const p = this.profile;
+    const existingRole = p ? p.role : null;
+    const grp = existingRole ? getRoleGroup(existingRole) : null;
     this._onboardingState = {
-      role: existingRole,
-      roleGroup: existingRole ? (existingRole === 'student' ? 'student' : 'faculty') : null,
-      primary: this.profile ? this.profile.primary : null,
-      secondary: this.profile ? this.profile.secondary : null,
+      role:         existingRole,
+      roleGroup:    existingRole ? (existingRole === 'student' ? 'student' : 'faculty') : null,
+      facultyGroup: (grp && grp !== 'student') ? grp : null,
+      scope:        (p && p.scope) || null,
+      primary:      p ? p.primary : null,
+      secondary:    p ? p.secondary : null,
       isEdit: !!isEdit,
     };
     this._renderOnboardingScreen();
@@ -116,53 +122,104 @@ const App = {
 
   _renderOnboardingScreen() {
     const s = this._onboardingState;
-    const meta = s.role ? ROLE_META[s.role] : null;
 
-    const roleSel  = (r) => s.role === r ? 'selected' : '';
-    const groupSel = (g) => s.roleGroup === g ? 'selected' : '';
-    const majorSel = (m) => s.primary === m ? 'selected' : '';
+    const groupSel       = (g) => s.roleGroup === g ? 'selected' : '';
+    const facultyGrpSel  = (g) => s.facultyGroup === g ? 'selected' : '';
+    const subroleSel     = (r) => s.role === r ? 'selected' : '';
+    const scopeSel       = (sc) => s.scope === sc ? 'selected' : '';
+    const majorSel       = (m) => s.primary === m ? 'selected' : '';
 
-    const showFacultySubtypes = s.roleGroup === 'faculty';
-    const showMajor = !!meta && meta.needsMajor;
-    const showAllProgramsOpt = !!meta && meta.allowsAllPrograms;
-    const showMinor = !!meta && meta.allowsMinor && !!s.primary;
+    const showFacultySubgroups = s.roleGroup === 'faculty';
+    const showAreaSubrole      = s.facultyGroup === 'area_lead';
+    const showAdvisorScope     = s.facultyGroup === 'advisor';
+    const showProfessorPicker  = s.facultyGroup === 'professor';
+    const showAreaPicker       = s.facultyGroup === 'area_lead' && !!s.role;  // wait for subrole
 
-    const valid = !!s.role && validateProfile({
+    // Major picker visible for: student, professor, area_lead (after subrole), advisor major scope
+    const showMajorPicker =
+      s.roleGroup === 'student' ||
+      showProfessorPicker ||
+      showAreaPicker ||
+      (showAdvisorScope && s.scope === 'major');
+
+    const showASOption = showProfessorPicker || showAreaPicker; // AS only for prof and area_lead
+
+    const showMinorSelect =
+      (s.roleGroup === 'student' && !!s.primary) ||
+      (showAdvisorScope && s.scope === 'minor');
+
+    // Validation — drives Continue button enablement.
+    const candidate = {
       role: s.role,
       primary: s.primary,
-      secondary: s.secondary,
-    });
+      secondary: s.roleGroup === 'student' ? s.secondary : null,
+      scope: s.scope,
+    };
+    const valid = !!s.role && validateProfile(candidate);
 
     const cancelHtml = s.isEdit
       ? '<button class="onboarding-cancel" onclick="App._cancelOnboarding()">Cancel</button>'
       : '';
 
-    const majorStage = showMajor ? 'on' : 'off';
-    const minorStage = showMinor ? 'on' : 'off';
+    const majorBtns = MAJOR_LIST.map(p => {
+      const pending = isProgramDataPending(p) ? '<span class="ob-pill-pending">data soon</span>' : '';
+      return `<button class="ob-pill ${majorSel(p)}" onclick="App._obPickMajor('${p}')">${p}${pending}<span class="ob-pill-sub">${this._programFullName(p)}</span></button>`;
+    }).join('');
 
-    const majorBtns = MAJOR_LIST.map(p => `
-      <button class="ob-pill ${majorSel(p)}" onclick="App._obPickMajor('${p}')">${p}<span class="ob-pill-sub">${this._programFullName(p)}</span></button>
-    `).join('');
-
-    // "All programs" option, shown for professors (Arts & Sciences) and Area Heads
-    let allProgramsBtn = '';
-    if (showAllProgramsOpt) {
-      const isAllSelected = (s.role === 'area_head' && !s.primary) || s.primary === 'AS';
-      const value = (s.role === 'area_head') ? 'ALL' : 'AS';
-      const subtitle = s.role === 'professor' ? 'Cross-program teaching' : 'Oversees all programs';
-      allProgramsBtn = `<button class="ob-pill ob-pill-wide ${isAllSelected ? 'selected' : ''}" onclick="App._obPickMajor('${value}')">All programs<span class="ob-pill-sub">${subtitle}</span></button>`;
+    let asOptionHtml = '';
+    if (showASOption) {
+      const isASSelected = s.primary === 'AS';
+      asOptionHtml = `<button class="ob-pill ob-pill-wide ${isASSelected ? 'selected' : ''}" onclick="App._obPickMajor('AS')">Arts &amp; Sciences<span class="ob-pill-sub">Cross-program grouping</span></button>`;
     }
 
-    // Minor selector — 15 entries → use a clean styled select rather than a pill grid.
+    // Minor picker — same select used by student and advisor-minor scope
     const minorOptions = MINOR_LIST.map(m => {
-      const disabled = (MAJOR_TO_MINOR_CODE[s.primary] === m.code) ? 'disabled' : '';
-      const sel = s.secondary === m.code ? 'selected' : '';
+      // Only disable matching minor for students (collision rule).
+      const disabled = (s.roleGroup === 'student' && MAJOR_TO_MINOR_CODE[s.primary] === m.code) ? 'disabled' : '';
+      const value = s.roleGroup === 'student' ? s.secondary : s.primary;
+      const sel = value === m.code ? 'selected' : '';
       return `<option value="${m.code}" ${disabled} ${sel}>${esc(m.label)}</option>`;
     }).join('');
 
-    const facultyChips = FACULTY_ROLES.map(r => `
-      <button class="ob-chip ${roleSel(r)}" onclick="App._obPickRole('${r}')">${ROLE_META[r].label}</button>
-    `).join('');
+    const minorOnChange = (s.roleGroup === 'student') ? 'App._obPickMinor(this.value)' : 'App._obPickMinor(this.value)';
+
+    // Faculty group chips — top row of faculty branch
+    const facultyGroupChips = `
+      <button class="ob-chip ${facultyGrpSel('professor')}" onclick="App._obPickFacultyGroup('professor')">Professor</button>
+      <button class="ob-chip ${facultyGrpSel('area_lead')}" onclick="App._obPickFacultyGroup('area_lead')">Area / Associate Area Head</button>
+      <button class="ob-chip ${facultyGrpSel('advisor')}" onclick="App._obPickFacultyGroup('advisor')">Advisor</button>
+    `;
+
+    // Area-lead subrole radio (Area Head vs Associate Area Head)
+    const areaSubroleHtml = showAreaSubrole ? `
+      <div class="ob-section-label ob-section-label-inline">Which role exactly?</div>
+      <div class="ob-radio-row">
+        <label class="ob-radio ${subroleSel('area_head')}">
+          <input type="radio" name="ob-subrole" value="area_head" ${s.role === 'area_head' ? 'checked' : ''} onchange="App._obPickSubrole('area_head')">
+          <span>Area Head</span>
+        </label>
+        <label class="ob-radio ${subroleSel('associate_area_head')}">
+          <input type="radio" name="ob-subrole" value="associate_area_head" ${s.role === 'associate_area_head' ? 'checked' : ''} onchange="App._obPickSubrole('associate_area_head')">
+          <span>Associate Area Head</span>
+        </label>
+      </div>` : '';
+
+    // Advisor scope segmented control
+    const scopeHtml = showAdvisorScope ? `
+      <div class="ob-section-label ob-section-label-inline">I advise within</div>
+      <div class="ob-seg">
+        <button class="ob-seg-btn ${scopeSel('major')}"         onclick="App._obPickScope('major')">A major</button>
+        <button class="ob-seg-btn ${scopeSel('minor')}"         onclick="App._obPickScope('minor')">A minor</button>
+        <button class="ob-seg-btn ${scopeSel('arts_sciences')}" onclick="App._obPickScope('arts_sciences')">Arts &amp; Sciences</button>
+        <button class="ob-seg-btn ${scopeSel('all_programs')}"  onclick="App._obPickScope('all_programs')">All programs</button>
+      </div>` : '';
+
+    // Section label for the major picker depends on context
+    let majorLabel = '';
+    if (s.roleGroup === 'student')             majorLabel = 'MAJORING IN';
+    else if (showProfessorPicker)              majorLabel = 'I TEACH IN';
+    else if (showAreaPicker)                   majorLabel = 'AREA / PROGRAM';
+    else if (showAdvisorScope && s.scope === 'major') majorLabel = 'WHICH MAJOR';
 
     document.getElementById('app').innerHTML = `
       <div class="onboarding-splash">
@@ -180,26 +237,32 @@ const App = {
               <button class="ob-pill ${groupSel('student')}" onclick="App._obPickRoleGroup('student')">Student</button>
               <button class="ob-pill ${groupSel('faculty')}" onclick="App._obPickRoleGroup('faculty')">Faculty &amp; Staff</button>
             </div>
-            ${showFacultySubtypes ? `
-              <div class="ob-chip-row">${facultyChips}</div>
+            ${showFacultySubgroups ? `
+              <div class="ob-chip-row">${facultyGroupChips}</div>
+              ${areaSubroleHtml}
+              ${scopeHtml}
             ` : ''}
           </div>
 
-          <div class="ob-section ob-stage-${majorStage}">
-            <div class="ob-section-label">${this._majorSectionLabel(s.role)}</div>
-            <div class="ob-row-majors">${majorBtns}</div>
-            ${allProgramsBtn}
-          </div>
-
-          <div class="ob-section ob-stage-${minorStage}">
-            <div class="ob-section-label">WITH A MINOR IN <span class="ob-optional">— optional</span></div>
-            <div class="ob-select-wrap">
-              <select class="ob-select" onchange="App._obPickMinor(this.value)">
-                <option value="" ${s.secondary === null ? 'selected' : ''}>— No minor —</option>
-                ${minorOptions}
-              </select>
+          ${showMajorPicker ? `
+            <div class="ob-section">
+              <div class="ob-section-label">${majorLabel}</div>
+              <div class="ob-row-majors">${majorBtns}</div>
+              ${asOptionHtml}
             </div>
-          </div>
+          ` : ''}
+
+          ${showMinorSelect ? `
+            <div class="ob-section">
+              <div class="ob-section-label">${s.roleGroup === 'student' ? 'WITH A MINOR IN <span class="ob-optional">— optional</span>' : 'WHICH MINOR'}</div>
+              <div class="ob-select-wrap">
+                <select class="ob-select" onchange="${minorOnChange}">
+                  <option value="" ${(s.roleGroup === 'student' ? !s.secondary : !s.primary) ? 'selected' : ''}>— ${s.roleGroup === 'student' ? 'No minor' : 'Choose a minor'} —</option>
+                  ${minorOptions}
+                </select>
+              </div>
+            </div>
+          ` : ''}
 
           <button class="onboarding-continue" ${valid ? '' : 'disabled'} onclick="App._finishOnboarding()">Continue →</button>
 
@@ -226,58 +289,86 @@ const App = {
   },
 
   _obPickRoleGroup(group) {
-    const prev = this._onboardingState.roleGroup;
-    this._onboardingState.roleGroup = group;
+    const s = this._onboardingState;
+    const prev = s.roleGroup;
+    s.roleGroup = group;
     if (group === 'student') {
-      this._onboardingState.role = 'student';
+      s.role = 'student';
+      s.facultyGroup = null;
+      s.scope = null;
     } else if (group !== prev) {
-      // Clear faculty sub-role when entering the faculty group so the user picks
-      // one explicitly; preserve existing pick if they're already inside it.
-      if (prev !== 'faculty') this._onboardingState.role = null;
+      // Entering faculty: clear sub-state so user picks intentionally.
+      s.facultyGroup = null;
+      s.role = null;
+      s.scope = null;
     }
     if (group !== prev) {
-      this._onboardingState.primary = null;
-      this._onboardingState.secondary = null;
+      s.primary = null;
+      s.secondary = null;
     }
     this._renderOnboardingScreen();
   },
 
-  _obPickRole(role) {
-    const prev = this._onboardingState.role;
-    this._onboardingState.role = role;
-    this._onboardingState.roleGroup = (role === 'student') ? 'student' : 'faculty';
-    if (role !== prev) {
-      this._onboardingState.primary = null;
-      this._onboardingState.secondary = null;
+  _obPickFacultyGroup(group) {
+    const s = this._onboardingState;
+    const prev = s.facultyGroup;
+    s.facultyGroup = group;
+    if (group !== prev) {
+      s.primary = null;
+      s.secondary = null;
+      s.scope = null;
+      // Set the precise role for groups that don't need a sub-pick.
+      if (group === 'professor')      s.role = 'professor';
+      else if (group === 'advisor')   s.role = 'advisor';
+      else if (group === 'area_lead') s.role = 'area_head';   // default subrole
+      else                            s.role = null;
     }
+    this._renderOnboardingScreen();
+  },
+
+  _obPickSubrole(role) {
+    this._onboardingState.role = role;
+    this._renderOnboardingScreen();
+  },
+
+  _obPickScope(scope) {
+    const s = this._onboardingState;
+    s.scope = scope;
+    // Reset target since the picker shape changed.
+    s.primary = null;
+    s.secondary = null;
     this._renderOnboardingScreen();
   },
 
   _obPickMajor(program) {
-    // 'ALL' is a sentinel for area_head's "no specific major" option.
-    if (program === 'ALL') {
-      this._onboardingState.primary = null;
-    } else {
-      this._onboardingState.primary = program;
-    }
-    // Drop minor if it now collides with the chosen major.
-    if (this._onboardingState.secondary && MAJOR_TO_MINOR_CODE[this._onboardingState.primary] === this._onboardingState.secondary) {
-      this._onboardingState.secondary = null;
+    const s = this._onboardingState;
+    s.primary = program;
+    // Drop colliding minor for students.
+    if (s.roleGroup === 'student' && s.secondary && MAJOR_TO_MINOR_CODE[s.primary] === s.secondary) {
+      s.secondary = null;
     }
     this._renderOnboardingScreen();
   },
 
   _obPickMinor(value) {
-    this._onboardingState.secondary = value || null;
+    const s = this._onboardingState;
+    const v = value || null;
+    if (s.roleGroup === 'student') {
+      s.secondary = v;
+    } else if (s.facultyGroup === 'advisor' && s.scope === 'minor') {
+      // For advisor-minor scope, the minor code lives in `primary` (schema reuse).
+      s.primary = v;
+    }
     this._renderOnboardingScreen();
   },
 
   _finishOnboarding() {
     const s = this._onboardingState;
     const profile = {
-      role: s.role,
-      primary: s.primary,
-      secondary: s.secondary,
+      role:      s.role,
+      primary:   s.primary,
+      secondary: s.roleGroup === 'student' ? s.secondary : null,
+      scope:     s.role === 'advisor' ? s.scope : null,
     };
     if (!validateProfile(profile)) {
       console.error('invalid profile, refusing to save', profile);
@@ -286,16 +377,15 @@ const App = {
     saveProfile(profile);
     const wasEdit = s.isEdit;
     this.profile = profile;
-    if (this.profile.primary && this.profile.primary !== 'AS') {
+    // Active major: for students/profs/area_lead → primary if it's a real major.
+    if (this.profile.primary && this.profile.primary !== 'AS' && MAJOR_LIST.includes(this.profile.primary)) {
       this.activeMajor = this.profile.primary;
     }
 
-    // Render the main app
     this.renderShell();
     this.bindGlobalEvents();
 
     if (wasEdit) {
-      // Re-annotate using the new profile, then re-render whatever's visible
       annotateDoubleCounters(this.courses, this.profile);
       this.renderLeftEmpty();
       this.renderTree();
@@ -353,7 +443,28 @@ const App = {
         </button>`;
     }
 
-    // Faculty-with-assigned-major (professor/area_head/associate_area_head/advisor)
+    // Advisor — scope-aware badge
+    if (p.role === 'advisor') {
+      const scopeLabel = getAdvisorScopeLabel(p.scope);
+      let targetLabel;
+      if (p.scope === 'major' && p.primary) {
+        targetLabel = `${PROGRAM_LABEL[p.primary]} Advisor`;
+      } else if (p.scope === 'minor' && p.primary) {
+        targetLabel = `${esc(getMinorLabel(p.primary))} minor — Advisor`;
+      } else if (p.scope === 'arts_sciences') {
+        targetLabel = 'Arts &amp; Sciences Advisor';
+      } else {
+        targetLabel = 'Advisor <span class="rb-suffix">· All programs</span>';
+      }
+      const cls = (p.scope === 'major' && p.primary) ? 'rb-' + p.primary.toLowerCase() : 'rb-ah';
+      return `
+        <button class="role-badge ${cls}" onclick="App.editRole()" title="Click to change role">
+          <span class="rb-segment rb-primary">${targetLabel}</span>
+          <span class="rb-edit-hint">Edit</span>
+        </button>`;
+    }
+
+    // Faculty-with-assigned-major (professor/area_head/associate_area_head)
     if (isFaculty(p) && p.primary) {
       return `
         <button class="role-badge rb-${primaryLower}" onclick="App.editRole()" title="Click to change role">
@@ -377,12 +488,15 @@ const App = {
   _visibleMajors() {
     const vm = computeViewMode(this.profile);
     if (vm === 'cross-program') {
-      // Surface the faculty member's assigned major first so it's the obvious
-      // entry point; rest follow in canonical order.
-      const p = this.profile && this.profile.primary;
-      if (p && p !== 'AS' && MAJOR_ORDER.includes(p)) {
-        return [p, ...MAJOR_ORDER.filter(m => m !== p)];
+      const p = this.profile;
+      // Advisor with minor scope: highlight the analogous major (if any).
+      let leadMajor = null;
+      if (p && p.role === 'advisor' && p.scope === 'minor') {
+        leadMajor = MINOR_CODE_TO_MAJOR[p.primary] || null;
+      } else if (p && p.primary && p.primary !== 'AS' && MAJOR_ORDER.includes(p.primary)) {
+        leadMajor = p.primary;
       }
+      if (leadMajor) return [leadMajor, ...MAJOR_ORDER.filter(m => m !== leadMajor)];
       return MAJOR_ORDER.slice();
     }
     if (vm === 'focused-dual') {
@@ -415,6 +529,7 @@ const App = {
       <nav class="navbar">
         <div class="navbar-brand" onclick="App.reset()"><img class="navbar-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" /><span class="navbar-wordmark">CountsFor</span> <span class="subtitle">CMU-Q</span></div>
         ${this._roleBadgeHtml()}
+        ${this._navbarWishlistHtml()}
         <div class="navbar-right">
           <div class="navbar-location-toggle">
             <button class="loc-btn ${this.locationFilter==='all'?'active':''}" onclick="App.setLocation('all')">All</button>
@@ -975,6 +1090,36 @@ const App = {
     `;
   },
 
+  _navbarWishlistHtml() {
+    if (!isStudent(this.profile)) return '';
+    const count = this._getWishlist().length;
+    const countChip = count > 0 ? `<span class="nav-wish-count">${count}</span>` : '';
+    const label = count > 0 ? 'Saved' : 'Save courses';
+    return `
+      <button class="nav-wish" onclick="App.showWishlistView()" title="View your saved courses" aria-label="View saved courses">
+        ${this._iconBookmarkFilled()}
+        <span class="nav-wish-label">${label}</span>
+        ${countChip}
+      </button>`;
+  },
+
+  // Refresh just the navbar count without re-rendering the whole shell.
+  _refreshNavWishCount() {
+    const btn = document.querySelector('.nav-wish');
+    if (!btn) return;
+    const count = this._getWishlist().length;
+    const existing = btn.querySelector('.nav-wish-count');
+    const label = btn.querySelector('.nav-wish-label');
+    if (count > 0) {
+      if (label) label.textContent = 'Saved';
+      if (existing) existing.textContent = String(count);
+      else btn.insertAdjacentHTML('beforeend', `<span class="nav-wish-count">${count}</span>`);
+    } else {
+      if (label) label.textContent = 'Save courses';
+      if (existing) existing.remove();
+    }
+  },
+
   _renderWishlistEntry() {
     if (!isStudent(this.profile)) return '';
     const count = this._getWishlist().length;
@@ -1154,6 +1299,7 @@ const App = {
           </div>
           <div class="cc-section">
             <div class="cc-h4">FALL 2026</div>
+            ${this._renderOfferingPredictionHtml(course, 'F')}
             ${schedHtml}
           </div>
         </div>
@@ -1217,26 +1363,37 @@ const App = {
 
   _renderMajorTabs() {
     const visible = this._visibleMajors();
-    const minorMajor = getMinorAsMajorCode(this.profile);
-    const facultyMajor = (isFaculty(this.profile) && this.profile.primary && this.profile.primary !== 'AS') ? this.profile.primary : null;
+    const p = this.profile;
+    const minorMajor = getMinorAsMajorCode(p);
+    const facultyMajor = (isFaculty(p) && p.primary && p.primary !== 'AS' && MAJOR_LIST.includes(p.primary))
+      ? p.primary : null;
+
+    // Advisor-with-minor: the minor maps to a major (if we have the data).
+    const advisorMinorMajor = (p && p.role === 'advisor' && p.scope === 'minor')
+      ? (MINOR_CODE_TO_MAJOR[p.primary] || null)
+      : null;
 
     return visible.map(m => {
       const isActive = m === this.activeMajor;
-      const isMinor = minorMajor === m && this.profile.primary !== m;
-      const isYourMajor = this.profile && this.profile.role === 'student' && this.profile.primary === m;
+      const isMinor = minorMajor === m && p.primary !== m;
+      const isYourMajor = p && p.role === 'student' && p.primary === m;
       const isFacultyOwn = facultyMajor === m;
+      const isAdvisorMinor = advisorMinorMajor === m;
 
       let suffix = '';
       let suffixCls = '';
-      if (isYourMajor)       { suffix = 'Your major'; suffixCls = 'major-tab-suffix-major'; }
-      else if (isMinor)      { suffix = 'Your minor'; suffixCls = 'major-tab-suffix-minor'; }
-      else if (isFacultyOwn) { suffix = (getRoleLabel(this.profile) || 'Assigned'); suffixCls = 'major-tab-suffix-faculty'; }
+      if (isYourMajor)        { suffix = 'Your major';      suffixCls = 'major-tab-suffix-major'; }
+      else if (isMinor)       { suffix = 'Your minor';      suffixCls = 'major-tab-suffix-minor'; }
+      else if (isAdvisorMinor){ suffix = 'You advise';      suffixCls = 'major-tab-suffix-faculty'; }
+      else if (isFacultyOwn)  { suffix = getRoleLabel(p) || 'Assigned'; suffixCls = 'major-tab-suffix-faculty'; }
 
       const name = this._programFullName(m);
+      const pending = isProgramDataPending(m) ? '<span class="major-tab-pending">soon</span>' : '';
+
       return `
         <button class="major-tab ${isActive ? 'active' : ''}" data-major="${m}" onclick="App.switchMajor('${m}')">
           <span class="major-tab-row">
-            <span class="major-tab-code">${m}</span>
+            <span class="major-tab-code">${m}</span>${pending}
             ${suffix ? `<span class="major-tab-suffix ${suffixCls}">${esc(suffix)}</span>` : ''}
           </span>
           <span class="major-tab-name">${esc(name)}</span>
@@ -1279,15 +1436,25 @@ const App = {
     if (!rightBody) return;
     const sections = this.treeSections[this.activeMajor];
     if (!sections) {
-      const pending = (this.activeMajor === 'AI' || this.activeMajor === 'GS');
+      const pending = isProgramDataPending(this.activeMajor);
       const full = this._programFullName(this.activeMajor);
-      const msg = pending
-        ? `${full} requirements coming soon`
-        : 'No data';
-      const hint = pending
-        ? '<div class="empty-hint">We\'re still loading the official requirement list for this program.</div>'
-        : '';
-      rightBody.innerHTML = `<div class="empty-state"><img class="empty-illustration" src="assets/img/scotty-full.png" alt="" aria-hidden="true" /><div class="empty-text">${msg}</div>${hint}</div>`;
+      if (pending) {
+        rightBody.innerHTML = `
+          <div class="empty-state-pending">
+            <img class="empty-state-pending-illustration" src="assets/img/scotty-full.png" alt="" aria-hidden="true" />
+            <span class="empty-state-pending-tag">Coming soon</span>
+            <div class="empty-state-pending-title" style="margin-top:14px">${esc(full)} requirements</div>
+            <div class="empty-state-pending-body">
+              The official requirement list for ${esc(full)} is still being collected.
+              Once it lands, courses will automatically count toward this program.
+            </div>
+            <a class="empty-state-pending-help" href="mailto:cmuq-curriculum@andrew.cmu.edu?subject=${encodeURIComponent('CountsFor — ' + full + ' requirement data')}">
+              Have official data? Email us
+            </a>
+          </div>`;
+      } else {
+        rightBody.innerHTML = `<div class="empty-state"><img class="empty-illustration" src="assets/img/scotty-full.png" alt="" aria-hidden="true" /><div class="empty-text">No data</div></div>`;
+      }
       return;
     }
     let html = '';
@@ -1413,21 +1580,34 @@ const App = {
 
   // Course-card (detail view) actions — wishlist save toggle + flag link.
   // Labeled buttons here (vs icon-only on row) since the card has space.
+  // Subtle offering-likelihood pill — appears under a semester header.
+  // Silent for 'mixed' and 'unknown' to avoid noise.
+  _renderOfferingPredictionHtml(course, season) {
+    if (typeof predictOffering !== 'function') return '';
+    const pred = predictOffering(course, season);
+    if (!pred || pred.state === 'mixed' || pred.state === 'unknown') return '';
+    return `
+      <div class="cc-offer-pred cc-offer-pred-${pred.state}" title="${esc(pred.reason)}">
+        <span class="cc-offer-pred-dot"></span>
+        <span>${esc(pred.reason)}</span>
+      </div>`;
+  },
+
   _renderCardActions(course) {
     const parts = [];
     if (isStudent(this.profile)) {
       const saved = this._isInWishlist(course.course_code);
       parts.push(`
-        <button class="cc-action cc-action-wishlist ${saved ? 'is-saved' : ''}" data-action="wishlist" data-course-code="${esc(course.course_code)}">
+        <button class="cc-action cc-action-wishlist ${saved ? 'is-saved' : ''}" data-action="wishlist" data-course-code="${esc(course.course_code)}" aria-label="${saved ? 'Remove from saved courses' : 'Save this course for later'}">
           ${saved ? this._iconBookmarkFilled() : this._iconBookmarkOutline()}
-          <span>${saved ? 'Saved' : 'Save for later'}</span>
+          <span>${saved ? 'Saved ✓' : 'Save course'}</span>
         </button>`);
     }
     if (isFaculty(this.profile)) {
       parts.push(`
-        <button class="cc-action cc-action-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Flag a course data issue">
+        <button class="cc-action cc-action-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Report a data issue with this course" aria-label="Flag course issue">
           ${this._iconFlag()}
-          <span>Flag</span>
+          <span>Flag course issue</span>
         </button>`);
     }
     if (!parts.length) return '';
@@ -1539,8 +1719,11 @@ const App = {
     }
     // Quick re-render of leaf rows (affects bookmark fill state)
     this.renderTree();
-    // Re-render home if it's the wishlist view
+    // Update the navbar count chip in place
+    this._refreshNavWishCount();
+    // Re-render home if it's the wishlist view or shows the entry tile
     if (this._homeView === 'wishlist') this.showWishlistView();
+    else if (this._homeView === 'home') this.renderLeftEmpty();
   },
 
   showWishlistView() {

@@ -4,23 +4,32 @@
 // program selections. Loaded after data.js, before api.js.
 // ============================================================
 
-// ── Centralized program lists ──────────────────────────────
-// Majors a student or faculty member can be associated with.
-// 'AS' is a pseudo-major reserved for professors who teach across
-// programs and is not a selectable major for any other role.
-const VALID_PROGRAMS = ['CS', 'IS', 'BA', 'BS', 'AI', 'GS', 'AS'];
-const MAJOR_LIST     = ['CS', 'IS', 'BA', 'BS', 'AI', 'GS'];
-const STUDENT_PROGRAMS = MAJOR_LIST.slice();  // students never pick AS
+// ── Centralized program metadata ───────────────────────────
+// Single source of truth for major/grouping labels. Per a future plan to
+// split "Arts & Sciences" into Humanities & Social Sciences + Math Sciences,
+// rename here in one place rather than across components.
+const PROGRAM_GROUPS = [
+  { id: 'CS', label: 'Computer Science',        kind: 'major',    dataPending: false },
+  { id: 'IS', label: 'Information Systems',     kind: 'major',    dataPending: false },
+  { id: 'BA', label: 'Business Administration', kind: 'major',    dataPending: false },
+  { id: 'BS', label: 'Biological Sciences',     kind: 'major',    dataPending: false },
+  { id: 'AI', label: 'Artificial Intelligence', kind: 'major',    dataPending: true  },
+  { id: 'GS', label: 'General Studies',         kind: 'major',    dataPending: true  },
+  // 'AS' is a grouping (not a major identity). Tentative rename to follow
+  // Prof. Silvia's suggested split (H&SS / Math Sciences) once finalized.
+  { id: 'AS', label: 'Arts & Sciences',         kind: 'grouping', dataPending: false },
+];
 
-const PROGRAM_FULL_NAME = {
-  CS: 'Computer Science',
-  IS: 'Information Systems',
-  BA: 'Business Administration',
-  BS: 'Biological Sciences',
-  AI: 'Artificial Intelligence',
-  GS: 'General Studies',
-  AS: 'Arts & Sciences',
-};
+const VALID_PROGRAMS    = PROGRAM_GROUPS.map(p => p.id);
+const MAJOR_LIST        = PROGRAM_GROUPS.filter(p => p.kind === 'major').map(p => p.id);
+const STUDENT_PROGRAMS  = MAJOR_LIST.slice();  // students never pick AS
+
+const PROGRAM_FULL_NAME = PROGRAM_GROUPS.reduce((acc, p) => { acc[p.id] = p.label; return acc; }, {});
+
+function isProgramDataPending(programId) {
+  const meta = PROGRAM_GROUPS.find(p => p.id === programId);
+  return !!(meta && meta.dataPending);
+}
 
 // ── Centralized minor list (alphabetical) ──────────────────
 const MINOR_LIST = [
@@ -41,13 +50,11 @@ const MINOR_LIST = [
   { code: 'tech_entre',    label: 'Tech Entrepreneurship' },
 ];
 
-// Map major codes (CS, IS, BA, BS) to the analogous minor entry so a student
-// picking a same-major minor is silently disallowed.
+// Major code ↔ analogous minor code, so a student picking a same-field
+// major+minor combo is silently disallowed.
 const MAJOR_TO_MINOR_CODE = { CS: 'cs', BS: 'biology', BA: 'business' };
 
-// Inverse — for minors whose requirements we already track as a major, surface
-// the matching major-tab so the student gets requirement coverage. Other minors
-// don't have requirement-tree data yet and only appear on the role badge.
+// Inverse — minors whose requirements we already track as a major.
 const MINOR_CODE_TO_MAJOR = { cs: 'CS', biology: 'BS', business: 'BA' };
 
 function getMinorLabel(code) {
@@ -62,17 +69,39 @@ function getMinorAsMajorCode(profile) {
 }
 
 // ── Roles ──────────────────────────────────────────────────
+// Internal roles store the precise identity (Area Head vs Associate Area
+// Head stay distinct for the database). The UI collapses both under one
+// "Area / Associate Area Head" group to avoid button-heavy onboarding.
 const VALID_ROLES = ['student', 'professor', 'area_head', 'associate_area_head', 'advisor'];
 
 const ROLE_META = {
-  student:             { label: 'Student',              faculty: false, needsMajor: true,  allowsMinor: true,  allowsAllPrograms: false },
-  professor:           { label: 'Professor',            faculty: true,  needsMajor: true,  allowsMinor: false, allowsAllPrograms: true  },
-  area_head:           { label: 'Area Head',            faculty: true,  needsMajor: true,  allowsMinor: false, allowsAllPrograms: true  },
-  associate_area_head: { label: 'Associate Area Head',  faculty: true,  needsMajor: true,  allowsMinor: false, allowsAllPrograms: false },
-  advisor:             { label: 'Advisor',              faculty: true,  needsMajor: true,  allowsMinor: false, allowsAllPrograms: false },
+  student:             { label: 'Student',                    faculty: false, needsMajor: true,  allowsMinor: true,  allowsAllPrograms: false, group: 'student'   },
+  professor:           { label: 'Professor',                  faculty: true,  needsMajor: true,  allowsMinor: false, allowsAllPrograms: true,  group: 'professor' },
+  area_head:           { label: 'Area Head',                  faculty: true,  needsMajor: true,  allowsMinor: false, allowsAllPrograms: false, group: 'area_lead' },
+  associate_area_head: { label: 'Associate Area Head',        faculty: true,  needsMajor: true,  allowsMinor: false, allowsAllPrograms: false, group: 'area_lead' },
+  advisor:             { label: 'Advisor',                    faculty: true,  needsMajor: false, allowsMinor: false, allowsAllPrograms: true,  group: 'advisor'   },
 };
 
-const FACULTY_ROLES = Object.keys(ROLE_META).filter(r => ROLE_META[r].faculty);
+// Display groups for the onboarding UI. Single source of truth — adding a
+// new sub-role only needs an entry in ROLE_META + this map.
+const ROLE_GROUPS = {
+  student:   { label: 'Student',                       roles: ['student'] },
+  professor: { label: 'Professor',                     roles: ['professor'] },
+  area_lead: { label: 'Area / Associate Area Head',    roles: ['area_head', 'associate_area_head'] },
+  advisor:   { label: 'Advisor',                       roles: ['advisor'] },
+};
+
+const FACULTY_GROUPS = ['professor', 'area_lead', 'advisor'];
+
+function getRoleGroup(role) {
+  if (!role) return null;
+  return (ROLE_META[role] && ROLE_META[role].group) || null;
+}
+
+function getRoleLabel(profile) {
+  if (!profile) return '';
+  return (ROLE_META[profile.role] && ROLE_META[profile.role].label) || profile.role;
+}
 
 function isFaculty(profile) {
   return !!(profile && ROLE_META[profile.role] && ROLE_META[profile.role].faculty);
@@ -82,30 +111,44 @@ function isStudent(profile) {
   return !!(profile && profile.role === 'student');
 }
 
-function getRoleLabel(profile) {
-  if (!profile) return '';
-  return (ROLE_META[profile.role] && ROLE_META[profile.role].label) || profile.role;
+// ── Advisor scope ──────────────────────────────────────────
+// Advisors may advise across majors, minors, the Arts & Sciences grouping,
+// or all programs. The scope flag tells us how to interpret `primary`.
+const ADVISOR_SCOPES = ['major', 'minor', 'arts_sciences', 'all_programs'];
+
+function getAdvisorScopeLabel(scope) {
+  return ({
+    major:         'Major',
+    minor:         'Minor',
+    arts_sciences: 'Arts & Sciences',
+    all_programs:  'All programs',
+  })[scope] || scope;
 }
 
 // ── View mode ──────────────────────────────────────────────
 function computeViewMode(profile) {
   if (!profile || !profile.role) return null;
+
+  // Advisor view mode follows scope.
+  if (profile.role === 'advisor') {
+    if (profile.scope === 'all_programs' || profile.scope === 'arts_sciences') return 'cross-program';
+    // Minor or major scope → highlight one program but allow browsing all.
+    return 'cross-program';
+  }
+
   // Area Head with no specific major → cross-program (legacy "all programs" path).
   if (profile.role === 'area_head' && (!profile.primary || profile.primary === 'AS')) {
     return 'cross-program';
   }
-  // Professors teaching A&S broadly → cross-program.
   if (profile.role === 'professor' && profile.primary === 'AS') return 'cross-program';
 
-  // Faculty with an assigned major still browse all programs (an Area Head may
-  // need to cross-reference CS/IS/BA/BS courses), but their primary is highlighted.
+  // Faculty with an assigned major browse all programs with their primary highlighted.
   if (isFaculty(profile) && profile.primary && profile.primary !== 'AS') {
     return 'cross-program';
   }
 
-  // Student-with-minor only goes "dual" when the minor maps to a major we
-  // have requirement-tree data for (CS / BA / BS). Other minors are shown on
-  // the role badge only.
+  // Student-with-minor goes "dual" only if the minor maps to a major we have
+  // requirement-tree data for (CS / BA / BS). Other minors are role-badge only.
   if (profile.role === 'student' && getMinorAsMajorCode(profile)) return 'focused-dual';
   return 'focused-single';
 }
@@ -114,35 +157,48 @@ function validateProfile(profile) {
   if (!profile || typeof profile !== 'object') return false;
   if (!VALID_ROLES.includes(profile.role)) return false;
 
-  const meta = ROLE_META[profile.role];
-
   if (profile.role === 'student') {
     if (!STUDENT_PROGRAMS.includes(profile.primary)) return false;
     if (profile.secondary) {
       if (!MINOR_LIST.some(m => m.code === profile.secondary)) return false;
-      // Reject minor that matches the chosen major (same field of study).
       if (MAJOR_TO_MINOR_CODE[profile.primary] === profile.secondary) return false;
     }
     return true;
   }
 
   if (profile.role === 'professor') {
-    // 'AS' (cross-program) is allowed; otherwise must be a real major.
     if (profile.primary === 'AS') return true;
     if (!MAJOR_LIST.includes(profile.primary)) return false;
     return true;
   }
 
-  // area_head / associate_area_head / advisor
-  if (meta && meta.faculty) {
-    if (meta.allowsAllPrograms && !profile.primary) return true;  // area_head only
-    if (meta.allowsAllPrograms && profile.primary === 'AS')  return true;
+  if (profile.role === 'advisor') {
+    if (!ADVISOR_SCOPES.includes(profile.scope)) return false;
+    if (profile.scope === 'all_programs')  return true;
+    if (profile.scope === 'arts_sciences') return true;
+    if (profile.scope === 'major')         return MAJOR_LIST.includes(profile.primary);
+    if (profile.scope === 'minor')         return MINOR_LIST.some(m => m.code === profile.primary);
+    return false;
+  }
+
+  // area_head / associate_area_head — must have a specific program (major or AS)
+  if (profile.role === 'area_head' || profile.role === 'associate_area_head') {
+    // Legacy area_head with no primary remains valid for back-compat.
+    if (profile.role === 'area_head' && !profile.primary) return true;
+    if (profile.primary === 'AS') return true;
     if (!MAJOR_LIST.includes(profile.primary)) return false;
     return true;
   }
 
   return false;
 }
+
+// ── Persistence ────────────────────────────────────────────
+// Storage keys:
+//   cf_role       — role identity (precise — area_head, associate_area_head…)
+//   cf_primary    — major code, minor code, 'AS', or empty (for area_head all-programs)
+//   cf_secondary  — student minor code only
+//   cf_scope      — advisor scope ('major' | 'minor' | 'arts_sciences' | 'all_programs')
 
 function saveProfile(profile) {
   if (!validateProfile(profile)) {
@@ -151,6 +207,7 @@ function saveProfile(profile) {
   localStorage.setItem('cf_role', profile.role);
   localStorage.setItem('cf_primary', profile.primary || '');
   localStorage.setItem('cf_secondary', profile.secondary || '');
+  localStorage.setItem('cf_scope', profile.scope || '');
 }
 
 function loadProfile() {
@@ -158,22 +215,26 @@ function loadProfile() {
   if (!role) return null;
   const primary = localStorage.getItem('cf_primary') || null;
   let secondary = localStorage.getItem('cf_secondary') || null;
+  const scope   = localStorage.getItem('cf_scope') || null;
 
   // Migration: pre-2026-05-26 builds stored minor as a major code (CS/BA/BS).
-  // Translate to the new minor-code form so the profile still validates.
   if (secondary && role === 'student') {
     const LEGACY_MAJOR_MINOR = { CS: 'cs', BA: 'business', BS: 'biology' };
     if (LEGACY_MAJOR_MINOR[secondary]) {
       secondary = LEGACY_MAJOR_MINOR[secondary];
       try { localStorage.setItem('cf_secondary', secondary); } catch {}
     } else if (!MINOR_LIST.some(m => m.code === secondary)) {
-      // Unknown legacy value — drop it rather than fail validation.
       secondary = null;
       try { localStorage.setItem('cf_secondary', ''); } catch {}
     }
   }
 
-  const profile = { role, primary: primary || null, secondary: secondary || null };
+  const profile = {
+    role,
+    primary:   primary || null,
+    secondary: secondary || null,
+    scope:     scope || null,
+  };
   if (!validateProfile(profile)) return null;
   return profile;
 }
@@ -182,4 +243,5 @@ function clearProfile() {
   localStorage.removeItem('cf_role');
   localStorage.removeItem('cf_primary');
   localStorage.removeItem('cf_secondary');
+  localStorage.removeItem('cf_scope');
 }
