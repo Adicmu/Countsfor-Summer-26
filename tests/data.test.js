@@ -14,7 +14,8 @@ test('annotateDoubleCounters: focused-dual marks courses fulfilling both program
     makeCourse('21-127', { CS: ['CS---Math'] }),                       // CS only
     makeCourse('70-311', { BA: ['BA---Core'] }),                       // BA only
   ];
-  const profile = { role: 'student', primary: 'CS', secondary: 'BA' };
+  // 'business' minor maps to BA — student CS major + Business minor.
+  const profile = { role: 'student', primary: 'CS', secondary: 'business' };
 
   annotateDoubleCounters(courses, profile);
 

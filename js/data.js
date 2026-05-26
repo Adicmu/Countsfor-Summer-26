@@ -423,7 +423,12 @@ function annotateDoubleCounters(courses, profile) {
     return;
   }
   const p = profile.primary;
-  const s = profile.secondary;
+  // Minors are stored as minor-codes; resolve to a major code we have data for.
+  const s = (typeof getMinorAsMajorCode === 'function') ? getMinorAsMajorCode(profile) : profile.secondary;
+  if (!s) {
+    for (const c of courses) c._doubleCounter = false;
+    return;
+  }
   for (const c of courses) {
     const req = c.requirements || {};
     const hasPrimary = Array.isArray(req[p]) && req[p].length > 0;

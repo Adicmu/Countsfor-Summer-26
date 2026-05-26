@@ -96,14 +96,17 @@ const App = {
 
   _onboardingState: {
     role: null,
+    roleGroup: null,   // 'student' | 'faculty' | null — drives the two-tier role picker
     primary: null,
     secondary: null,
     isEdit: false,
   },
 
   renderOnboarding(isEdit) {
+    const existingRole = this.profile ? this.profile.role : null;
     this._onboardingState = {
-      role: this.profile ? this.profile.role : null,
+      role: existingRole,
+      roleGroup: existingRole ? (existingRole === 'student' ? 'student' : 'faculty') : null,
       primary: this.profile ? this.profile.primary : null,
       secondary: this.profile ? this.profile.secondary : null,
       isEdit: !!isEdit,
@@ -113,18 +116,22 @@ const App = {
 
   _renderOnboardingScreen() {
     const s = this._onboardingState;
-    const PROGRAMS = ['CS', 'IS', 'BA', 'BS', 'AI', 'GS'];
-    const roleSel = (r) => s.role === r ? 'selected' : '';
-    const majorSel = (m) => s.primary === m ? 'selected' : '';
-    const minorSel = (m) => s.secondary === m ? 'selected' : '';
-    const showMajor = s.role === 'student' || s.role === 'professor';
-    const showMinor = s.role === 'student' && !!s.primary;
-    const showProfAS = s.role === 'professor';
+    const meta = s.role ? ROLE_META[s.role] : null;
 
-    const valid =
-      (s.role === 'area_head') ||
-      (s.role === 'professor' && (s.primary === 'AS' || PROGRAMS.includes(s.primary))) ||
-      (s.role === 'student' && PROGRAMS.includes(s.primary));
+    const roleSel  = (r) => s.role === r ? 'selected' : '';
+    const groupSel = (g) => s.roleGroup === g ? 'selected' : '';
+    const majorSel = (m) => s.primary === m ? 'selected' : '';
+
+    const showFacultySubtypes = s.roleGroup === 'faculty';
+    const showMajor = !!meta && meta.needsMajor;
+    const showAllProgramsOpt = !!meta && meta.allowsAllPrograms;
+    const showMinor = !!meta && meta.allowsMinor && !!s.primary;
+
+    const valid = !!s.role && validateProfile({
+      role: s.role,
+      primary: s.primary,
+      secondary: s.secondary,
+    });
 
     const cancelHtml = s.isEdit
       ? '<button class="onboarding-cancel" onclick="App._cancelOnboarding()">Cancel</button>'
@@ -133,18 +140,29 @@ const App = {
     const majorStage = showMajor ? 'on' : 'off';
     const minorStage = showMinor ? 'on' : 'off';
 
-    const majorBtns = PROGRAMS.map(p => `
+    const majorBtns = MAJOR_LIST.map(p => `
       <button class="ob-pill ${majorSel(p)}" onclick="App._obPickMajor('${p}')">${p}<span class="ob-pill-sub">${this._programFullName(p)}</span></button>
     `).join('');
 
-    const profASBtn = showProfAS
-      ? `<button class="ob-pill ob-pill-wide ${s.primary === 'AS' ? 'selected' : ''}" onclick="App._obPickMajor('AS')">Arts &amp; Sciences<span class="ob-pill-sub">Cross-program teaching</span></button>`
-      : '';
+    // "All programs" option, shown for professors (Arts & Sciences) and Area Heads
+    let allProgramsBtn = '';
+    if (showAllProgramsOpt) {
+      const isAllSelected = (s.role === 'area_head' && !s.primary) || s.primary === 'AS';
+      const value = (s.role === 'area_head') ? 'ALL' : 'AS';
+      const subtitle = s.role === 'professor' ? 'Cross-program teaching' : 'Oversees all programs';
+      allProgramsBtn = `<button class="ob-pill ob-pill-wide ${isAllSelected ? 'selected' : ''}" onclick="App._obPickMajor('${value}')">All programs<span class="ob-pill-sub">${subtitle}</span></button>`;
+    }
 
-    const minorBtns = PROGRAMS.map(p => {
-      const disabled = (s.primary === p) ? 'disabled aria-disabled="true"' : '';
-      return `<button class="ob-pill ${minorSel(p)}" ${disabled} onclick="App._obPickMinor('${p}')">${p}</button>`;
+    // Minor selector — 15 entries → use a clean styled select rather than a pill grid.
+    const minorOptions = MINOR_LIST.map(m => {
+      const disabled = (MAJOR_TO_MINOR_CODE[s.primary] === m.code) ? 'disabled' : '';
+      const sel = s.secondary === m.code ? 'selected' : '';
+      return `<option value="${m.code}" ${disabled} ${sel}>${esc(m.label)}</option>`;
     }).join('');
+
+    const facultyChips = FACULTY_ROLES.map(r => `
+      <button class="ob-chip ${roleSel(r)}" onclick="App._obPickRole('${r}')">${ROLE_META[r].label}</button>
+    `).join('');
 
     document.getElementById('app').innerHTML = `
       <div class="onboarding-splash">
@@ -158,24 +176,28 @@ const App = {
 
           <div class="ob-section">
             <div class="ob-section-label">I AM A</div>
-            <div class="ob-row3">
-              <button class="ob-pill ${roleSel('student')}" onclick="App._obPickRole('student')">Student</button>
-              <button class="ob-pill ${roleSel('professor')}" onclick="App._obPickRole('professor')">Professor</button>
-              <button class="ob-pill ${roleSel('area_head')}" onclick="App._obPickRole('area_head')">Area Head</button>
+            <div class="ob-row2">
+              <button class="ob-pill ${groupSel('student')}" onclick="App._obPickRoleGroup('student')">Student</button>
+              <button class="ob-pill ${groupSel('faculty')}" onclick="App._obPickRoleGroup('faculty')">Faculty &amp; Staff</button>
             </div>
+            ${showFacultySubtypes ? `
+              <div class="ob-chip-row">${facultyChips}</div>
+            ` : ''}
           </div>
 
           <div class="ob-section ob-stage-${majorStage}">
-            <div class="ob-section-label">${s.role === 'professor' ? 'I TEACH IN' : 'MAJORING IN'}</div>
+            <div class="ob-section-label">${this._majorSectionLabel(s.role)}</div>
             <div class="ob-row-majors">${majorBtns}</div>
-            ${profASBtn}
+            ${allProgramsBtn}
           </div>
 
           <div class="ob-section ob-stage-${minorStage}">
             <div class="ob-section-label">WITH A MINOR IN <span class="ob-optional">— optional</span></div>
-            <div class="ob-row-minors">
-              <button class="ob-pill ${s.secondary === null ? 'selected' : ''}" onclick="App._obPickMinor(null)">None</button>
-              ${minorBtns}
+            <div class="ob-select-wrap">
+              <select class="ob-select" onchange="App._obPickMinor(this.value)">
+                <option value="" ${s.secondary === null ? 'selected' : ''}>— No minor —</option>
+                ${minorOptions}
+              </select>
             </div>
           </div>
 
@@ -192,21 +214,38 @@ const App = {
   },
 
   _programFullName(p) {
-    return ({
-      CS: 'Computer Science',
-      IS: 'Information Systems',
-      BA: 'Business Administration',
-      BS: 'Biological Sciences',
-      AI: 'Artificial Intelligence',
-      GS: 'General Studies'
-    })[p] || p;
+    return PROGRAM_FULL_NAME[p] || p;
+  },
+
+  _majorSectionLabel(role) {
+    if (role === 'professor') return 'I TEACH IN';
+    if (role === 'student')   return 'MAJORING IN';
+    if (role === 'advisor')   return 'I ADVISE STUDENTS IN';
+    if (role === 'area_head' || role === 'associate_area_head') return 'I OVERSEE';
+    return 'PROGRAM';
+  },
+
+  _obPickRoleGroup(group) {
+    const prev = this._onboardingState.roleGroup;
+    this._onboardingState.roleGroup = group;
+    if (group === 'student') {
+      this._onboardingState.role = 'student';
+    } else if (group !== prev) {
+      // Clear faculty sub-role when entering the faculty group so the user picks
+      // one explicitly; preserve existing pick if they're already inside it.
+      if (prev !== 'faculty') this._onboardingState.role = null;
+    }
+    if (group !== prev) {
+      this._onboardingState.primary = null;
+      this._onboardingState.secondary = null;
+    }
+    this._renderOnboardingScreen();
   },
 
   _obPickRole(role) {
     const prev = this._onboardingState.role;
     this._onboardingState.role = role;
-    // Clear program selections whenever the role changes — a major picked as
-    // a professor (or AS) doesn't apply to a student profile, and vice versa.
+    this._onboardingState.roleGroup = (role === 'student') ? 'student' : 'faculty';
     if (role !== prev) {
       this._onboardingState.primary = null;
       this._onboardingState.secondary = null;
@@ -215,15 +254,21 @@ const App = {
   },
 
   _obPickMajor(program) {
-    this._onboardingState.primary = program;
-    if (this._onboardingState.secondary === program) {
+    // 'ALL' is a sentinel for area_head's "no specific major" option.
+    if (program === 'ALL') {
+      this._onboardingState.primary = null;
+    } else {
+      this._onboardingState.primary = program;
+    }
+    // Drop minor if it now collides with the chosen major.
+    if (this._onboardingState.secondary && MAJOR_TO_MINOR_CODE[this._onboardingState.primary] === this._onboardingState.secondary) {
       this._onboardingState.secondary = null;
     }
     this._renderOnboardingScreen();
   },
 
-  _obPickMinor(program) {
-    this._onboardingState.secondary = program;
+  _obPickMinor(value) {
+    this._onboardingState.secondary = value || null;
     this._renderOnboardingScreen();
   },
 
@@ -271,15 +316,19 @@ const App = {
     const p = this.profile;
     if (!p) return '';
     const PROGRAM_LABEL = { CS: 'CS', IS: 'IS', BA: 'BA', BS: 'BS', AI: 'AI', GS: 'GS', AS: 'A&S' };
+    const meta = ROLE_META[p.role];
+    const roleLabel = meta ? meta.label : p.role;
 
-    if (p.role === 'area_head') {
+    // Area Head with no specific major (legacy "all programs" path)
+    if (p.role === 'area_head' && (!p.primary || p.primary === 'AS')) {
       return `
         <button class="role-badge rb-ah" onclick="App.editRole()" title="Click to change role">
-          <span class="rb-segment rb-primary">Area Head <span class="rb-suffix">· All programs</span></span>
+          <span class="rb-segment rb-primary">${esc(roleLabel)} <span class="rb-suffix">· All programs</span></span>
           <span class="rb-edit-hint">Edit</span>
         </button>`;
     }
 
+    // Professor teaching A&S (cross-program faculty)
     if (p.role === 'professor' && p.primary === 'AS') {
       return `
         <button class="role-badge rb-as" onclick="App.editRole()" title="Click to change role">
@@ -290,23 +339,33 @@ const App = {
 
     const primaryLower = (p.primary || '').toLowerCase();
     const secondaryLower = (p.secondary || '').toLowerCase();
-    const facultySuffix = p.role === 'professor' ? '<span class="rb-suffix">· Faculty</span>' : '';
 
-    if (this.profile && this.profile.role === 'student' && p.secondary && p.secondary !== p.primary) {
+    // Student with minor: two-segment badge (major + minor)
+    if (p.role === 'student' && p.secondary) {
       const cls = 'rb-' + primaryLower + '-' + secondaryLower;
+      const minorLabel = getMinorLabel(p.secondary);
       return `
         <button class="role-badge rb-${primaryLower} ${cls}" onclick="App.editRole()" title="Click to change role">
           <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">major</span></span>
           <span class="rb-divider"></span>
-          <span class="rb-segment rb-secondary">${PROGRAM_LABEL[p.secondary]} <span class="rb-suffix">minor</span></span>
+          <span class="rb-segment rb-secondary">${esc(minorLabel)} <span class="rb-suffix">minor</span></span>
           <span class="rb-edit-hint">Edit</span>
         </button>`;
     }
 
-    const suffix = p.role === 'student' ? '<span class="rb-suffix">major</span>' : facultySuffix;
+    // Faculty-with-assigned-major (professor/area_head/associate_area_head/advisor)
+    if (isFaculty(p) && p.primary) {
+      return `
+        <button class="role-badge rb-${primaryLower}" onclick="App.editRole()" title="Click to change role">
+          <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">${esc(roleLabel)}</span></span>
+          <span class="rb-edit-hint">Edit</span>
+        </button>`;
+    }
+
+    // Plain student (no minor) — fallback
     return `
       <button class="role-badge rb-${primaryLower}" onclick="App.editRole()" title="Click to change role">
-        <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} ${suffix}</span>
+        <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">major</span></span>
         <span class="rb-edit-hint">Edit</span>
       </button>`;
   },
@@ -317,8 +376,19 @@ const App = {
 
   _visibleMajors() {
     const vm = computeViewMode(this.profile);
-    if (vm === 'cross-program') return MAJOR_ORDER.slice();
-    if (vm === 'focused-dual') return [this.profile.primary, this.profile.secondary];
+    if (vm === 'cross-program') {
+      // Surface the faculty member's assigned major first so it's the obvious
+      // entry point; rest follow in canonical order.
+      const p = this.profile && this.profile.primary;
+      if (p && p !== 'AS' && MAJOR_ORDER.includes(p)) {
+        return [p, ...MAJOR_ORDER.filter(m => m !== p)];
+      }
+      return MAJOR_ORDER.slice();
+    }
+    if (vm === 'focused-dual') {
+      const minorMajor = getMinorAsMajorCode(this.profile);
+      return minorMajor ? [this.profile.primary, minorMajor] : [this.profile.primary];
+    }
     if (vm === 'focused-single') return [this.profile.primary];
     return MAJOR_ORDER.slice();
   },
@@ -369,11 +439,7 @@ const App = {
         <div class="panel panel-right ${isSplit && this.mobileLens==='lookup'?'hidden-mobile':''}" id="panelRight">
           <div class="major-tabs" id="majorTabs">
             <div class="major-tabs-scroll">
-              ${this._visibleMajors().map(m => {
-                const isMinor = this.profile && m === this.profile.secondary && m !== this.profile.primary;
-                const minorSuffix = isMinor ? '<span class="major-tab-suffix">minor</span>' : '';
-                return `<button class="major-tab ${m===this.activeMajor?'active':''}" data-major="${m}" onclick="App.switchMajor('${m}')">${m}${minorSuffix}</button>`;
-              }).join('')}
+              ${this._renderMajorTabs()}
             </div>
             <button class="panel-close" onclick="App.exitExplorer()" title="Close">&times;</button>
           </div>
@@ -416,6 +482,18 @@ const App = {
         if (cta) cta.classList.remove('visible');
       }
 
+      // Per-row action buttons (wishlist / flag) — intercept BEFORE course-row click
+      // so toggling the bookmark or opening the flag modal doesn't also navigate.
+      const actionBtn = e.target.closest('[data-action]');
+      if (actionBtn) {
+        e.stopPropagation();
+        const action = actionBtn.dataset.action;
+        const code = actionBtn.dataset.courseCode;
+        if (action === 'wishlist') this.toggleWishlist(code);
+        if (action === 'flag')     this.openFlagModal(code);
+        return;
+      }
+
       // Handle cf-row clicks — enter explorer and navigate to the requirement
       const cfRow = e.target.closest('[data-nav-major]');
       if (cfRow) {
@@ -434,9 +512,14 @@ const App = {
 
       // Handle tree course click
       const treeCourse = e.target.closest('[data-course-code]');
-      if (treeCourse) {
+      if (treeCourse && !e.target.closest('[data-action]')) {
         this.selectCourseFromTree(treeCourse.dataset.courseCode);
       }
+    });
+
+    // ESC closes the flag modal
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') this.closeFlagModal();
     });
   },
 
@@ -602,8 +685,9 @@ const App = {
         }
         const vm = computeViewMode(App.profile);
         let dcTag = '';
-        if (vm === 'focused-dual' && c._doubleCounter && App.profile.secondary) {
-          dcTag = '<span class="tr-leaf-tag tr-leaf-tag-' + App.profile.secondary.toLowerCase() + '" style="margin-left:6px">' + App.profile.secondary + '</span>';
+        if (vm === 'focused-dual' && c._doubleCounter) {
+          const mm = getMinorAsMajorCode(App.profile);
+          if (mm) dcTag = '<span class="tr-leaf-tag tr-leaf-tag-' + mm.toLowerCase() + '" style="margin-left:6px">' + mm + '</span>';
         }
         return '<div class="typeahead-item" data-idx="' + i + '" onclick="App.selectSearchResult(' + i + ')">' +
           '<span class="typeahead-code">' + esc(c.course_code) + '</span>' +
@@ -775,20 +859,24 @@ const App = {
     if (!el) return;
     const explBtn = document.getElementById('exploreInlineBtn');
     if (explBtn) explBtn.style.display = 'none';
+    this._homeView = 'home';
     el.innerHTML = this._renderHome();
   },
 
   _renderHome() {
     const vm = computeViewMode(this.profile);
     const p = this.profile && this.profile.primary;
-    const s = this.profile && this.profile.secondary;
+    const minorMajor = getMinorAsMajorCode(this.profile);
+    const minorLabel = (this.profile && this.profile.secondary) ? getMinorLabel(this.profile.secondary) : null;
 
     // Lead sentence per spec § 4.3
     let lead;
     if (vm === 'focused-dual') {
-      lead = `See what it counts for in your ${p} major and ${s} minor.`;
+      lead = `See what it counts for in your ${p} major and ${esc(minorLabel)} minor.`;
     } else if (vm === 'focused-single' && this.profile.role === 'professor') {
       lead = `See what it counts for in the program you teach.`;
+    } else if (vm === 'focused-single' && isFaculty(this.profile) && p) {
+      lead = `See what it counts for across programs, with ${p} highlighted.`;
     } else if (vm === 'focused-single') {
       lead = `See what it counts for in your ${p} program.`;
     } else {
@@ -797,7 +885,7 @@ const App = {
 
     // Browse-button subtitle
     let browseSub;
-    if (vm === 'focused-dual') browseSub = `${p} + ${s} requirement tree — find courses by slot`;
+    if (vm === 'focused-dual') browseSub = `${p} + ${minorMajor} requirement tree — find courses by slot`;
     else if (vm === 'focused-single') browseSub = `${p} requirement tree`;
     else browseSub = `CS · IS · BA · BS requirement tree`;
 
@@ -812,7 +900,7 @@ const App = {
         <div class="home-insight" onclick="App.showDoubleCounterList()">
           <div class="home-insight-num">${dcCount}</div>
           <div class="home-insight-col">
-            <div class="home-insight-label">${p} MAJOR + ${s} MINOR</div>
+            <div class="home-insight-label">${p} MAJOR + ${minorMajor} MINOR</div>
             <div class="home-insight-text">courses count for both — pick these first</div>
           </div>
           <span class="home-insight-cta">See all →</span>
@@ -874,6 +962,7 @@ const App = {
           </div>
         </div>
 
+        ${this._renderWishlistEntry()}
         ${dcBannerHtml}${mpBannerHtml}
 
         <footer class="home-footer">
@@ -886,13 +975,31 @@ const App = {
     `;
   },
 
+  _renderWishlistEntry() {
+    if (!isStudent(this.profile)) return '';
+    const count = this._getWishlist().length;
+    const subtext = count === 0
+      ? 'Tap the bookmark on any course to add it here.'
+      : `${count} course${count === 1 ? '' : 's'} saved for planning later.`;
+    return `
+      <div class="home-wishlist-card" onclick="App.showWishlistView()" role="button" tabindex="0">
+        <span class="home-wishlist-icon">${this._iconBookmarkFilled()}</span>
+        <span class="home-wishlist-text">
+          <span class="home-wishlist-title">Your saved courses</span>
+          <span class="home-wishlist-sub">${subtext}</span>
+        </span>
+        <span class="home-wishlist-arrow">→</span>
+      </div>`;
+  },
+
   showDoubleCounterList() {
     if (computeViewMode(this.profile) !== 'focused-dual') return;
     const el = document.getElementById('leftBody');
     if (!el) return;
 
     const p = this.profile.primary;
-    const s = this.profile.secondary;
+    const s = getMinorAsMajorCode(this.profile);
+    if (!s) return;
     const pLower = p.toLowerCase();
     const sLower = s.toLowerCase();
 
@@ -948,7 +1055,8 @@ const App = {
     const isDoubleCounter = !!course._doubleCounter;
     const profile = this.profile;
     const pLower = profile && profile.primary ? profile.primary.toLowerCase() : 'cs';
-    const sLower = profile && profile.secondary ? profile.secondary.toLowerCase() : 'cs';
+    const minorMajor = getMinorAsMajorCode(profile);
+    const sLower = minorMajor ? minorMajor.toLowerCase() : 'cs';
 
     // Where string
     const whereParts = [];
@@ -958,11 +1066,11 @@ const App = {
 
     // Slim DC banner (spec § 4.4)
     let dcBannerHtml = '';
-    if (isDoubleCounter && profile && profile.secondary) {
+    if (isDoubleCounter && profile && minorMajor) {
       dcBannerHtml = `
         <div class="cc-dc-strip">
           <span class="cc-dc-badge cc-dc-${pLower}">${profile.primary}</span>
-          <span class="cc-dc-badge cc-dc-${sLower}">${profile.secondary}</span>
+          <span class="cc-dc-badge cc-dc-${sLower}">${minorMajor}</span>
           <span class="cc-dc-text">Double-counter</span>
         </div>`;
     }
@@ -1025,12 +1133,18 @@ const App = {
       ? `<div class="cc-cf-grid">${cfCols.join('')}</div>`
       : '<div class="cc-empty">This course does not count toward any tracked major requirements.</div>';
 
+    // Top-right card actions (role-gated)
+    const cardActions = this._renderCardActions(course);
+
     el.innerHTML = `
       <div class="cc-card">
         ${dcBannerHtml}
         <div class="cc-head">
-          <div class="cc-code">${esc(course.course_code)}</div>
-          <div class="cc-name">${esc(course.course_name)} · ${course.units || '?'} units</div>
+          <div class="cc-head-main">
+            <div class="cc-code">${esc(course.course_code)}</div>
+            <div class="cc-name">${esc(course.course_name)} · ${course.units || '?'} units</div>
+          </div>
+          ${cardActions}
         </div>
 
         <div class="cc-cols">
@@ -1100,6 +1214,35 @@ const App = {
   // ══════════════════════════════════════════════════════════
   // RIGHT PANEL — REQUIREMENT MAP
   // ══════════════════════════════════════════════════════════
+
+  _renderMajorTabs() {
+    const visible = this._visibleMajors();
+    const minorMajor = getMinorAsMajorCode(this.profile);
+    const facultyMajor = (isFaculty(this.profile) && this.profile.primary && this.profile.primary !== 'AS') ? this.profile.primary : null;
+
+    return visible.map(m => {
+      const isActive = m === this.activeMajor;
+      const isMinor = minorMajor === m && this.profile.primary !== m;
+      const isYourMajor = this.profile && this.profile.role === 'student' && this.profile.primary === m;
+      const isFacultyOwn = facultyMajor === m;
+
+      let suffix = '';
+      let suffixCls = '';
+      if (isYourMajor)       { suffix = 'Your major'; suffixCls = 'major-tab-suffix-major'; }
+      else if (isMinor)      { suffix = 'Your minor'; suffixCls = 'major-tab-suffix-minor'; }
+      else if (isFacultyOwn) { suffix = (getRoleLabel(this.profile) || 'Assigned'); suffixCls = 'major-tab-suffix-faculty'; }
+
+      const name = this._programFullName(m);
+      return `
+        <button class="major-tab ${isActive ? 'active' : ''}" data-major="${m}" onclick="App.switchMajor('${m}')">
+          <span class="major-tab-row">
+            <span class="major-tab-code">${m}</span>
+            ${suffix ? `<span class="major-tab-suffix ${suffixCls}">${esc(suffix)}</span>` : ''}
+          </span>
+          <span class="major-tab-name">${esc(name)}</span>
+        </button>`;
+    }).join('');
+  },
 
   switchMajor(major) {
     this.activeMajor = major;
@@ -1226,10 +1369,11 @@ const App = {
     const fullCourse = this.courseIndex[c.code] || c;
     const isActive = this.selectedCourse && this.selectedCourse.course_code === c.code;
     const vm = computeViewMode(this.profile);
+    const minorMajor = getMinorAsMajorCode(this.profile);
 
     let dcTag = '';
-    if (vm === 'focused-dual' && fullCourse._doubleCounter) {
-      const other = (this.profile.secondary === major) ? this.profile.primary : this.profile.secondary;
+    if (vm === 'focused-dual' && fullCourse._doubleCounter && minorMajor) {
+      const other = (minorMajor === major) ? this.profile.primary : minorMajor;
       if (other) dcTag = `<span class="tr-leaf-tag tr-leaf-tag-${other.toLowerCase()}">${other}</span>`;
     }
     let mpChip = '';
@@ -1247,7 +1391,57 @@ const App = {
         <span class="tr-leaf-name">${esc(c.name)}</span>
         ${c.units ? `<span class="tr-leaf-units">${c.units}u</span>` : ''}
         ${alsoHtml}${dcTag}${mpChip}
+        ${this._renderRowActions(fullCourse)}
       </div>`;
+  },
+
+  // ── Per-row inline actions (wishlist + flag) ───────────────
+  // Compact, hover-revealed buttons so the row stays clean for everyone but
+  // stays one click away for the relevant audience.
+  _renderRowActions(course) {
+    const acts = [];
+    if (isStudent(this.profile)) {
+      const saved = this._isInWishlist(course.course_code);
+      acts.push(`<button class="tr-leaf-action tr-leaf-wishlist ${saved ? 'is-saved' : ''}" data-action="wishlist" data-course-code="${esc(course.course_code)}" title="${saved ? 'Remove from wishlist' : 'Save for later'}" aria-label="${saved ? 'Remove from wishlist' : 'Save for later'}">${saved ? this._iconBookmarkFilled() : this._iconBookmarkOutline()}</button>`);
+    }
+    if (isFaculty(this.profile)) {
+      acts.push(`<button class="tr-leaf-action tr-leaf-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Flag course data issue" aria-label="Flag course data issue">${this._iconFlag()}</button>`);
+    }
+    if (!acts.length) return '';
+    return `<span class="tr-leaf-actions">${acts.join('')}</span>`;
+  },
+
+  // Course-card (detail view) actions — wishlist save toggle + flag link.
+  // Labeled buttons here (vs icon-only on row) since the card has space.
+  _renderCardActions(course) {
+    const parts = [];
+    if (isStudent(this.profile)) {
+      const saved = this._isInWishlist(course.course_code);
+      parts.push(`
+        <button class="cc-action cc-action-wishlist ${saved ? 'is-saved' : ''}" data-action="wishlist" data-course-code="${esc(course.course_code)}">
+          ${saved ? this._iconBookmarkFilled() : this._iconBookmarkOutline()}
+          <span>${saved ? 'Saved' : 'Save for later'}</span>
+        </button>`);
+    }
+    if (isFaculty(this.profile)) {
+      parts.push(`
+        <button class="cc-action cc-action-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Flag a course data issue">
+          ${this._iconFlag()}
+          <span>Flag</span>
+        </button>`);
+    }
+    if (!parts.length) return '';
+    return `<div class="cc-head-actions">${parts.join('')}</div>`;
+  },
+
+  _iconBookmarkOutline() {
+    return '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 2.5h9v11l-4.5-3-4.5 3z" stroke-linejoin="round"/></svg>';
+  },
+  _iconBookmarkFilled() {
+    return '<svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M3.5 2.5h9v11l-4.5-3-4.5 3z"/></svg>';
+  },
+  _iconFlag() {
+    return '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 2v12"/><path d="M3 2.5h8.5L9.7 5.2 11.5 8H3"/></svg>';
   },
 
   countFilteredCourses(node) {
@@ -1300,6 +1494,251 @@ const App = {
     // Scroll left panel to top
     const leftBody = document.getElementById('leftBody');
     if (leftBody) leftBody.scrollTop = 0;
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // WISHLIST (students only)
+  // ══════════════════════════════════════════════════════════
+  // Storage: localStorage['cf_wishlist'] = [course_code, ...]
+  // No backend yet — clean local persistence with clear integration points.
+
+  _getWishlist() {
+    return loadStore('cf_wishlist', []);
+  },
+
+  _saveWishlist(list) {
+    saveStore('cf_wishlist', list);
+  },
+
+  _isInWishlist(code) {
+    return this._getWishlist().indexOf(code) !== -1;
+  },
+
+  toggleWishlist(code) {
+    if (!isStudent(this.profile)) {
+      showToast('Wishlist is available to students only.');
+      return;
+    }
+    if (!code) return;
+    const list = this._getWishlist();
+    const idx = list.indexOf(code);
+    if (idx === -1) {
+      list.push(code);
+      this._saveWishlist(list);
+      // TODO(backend): POST /api/wishlist {course_code: code}
+      showToast('Saved for later');
+    } else {
+      list.splice(idx, 1);
+      this._saveWishlist(list);
+      // TODO(backend): DELETE /api/wishlist/{code}
+      showToast('Removed from wishlist');
+    }
+    // Re-render any visible surfaces that show wishlist state
+    if (this.selectedCourse && this.selectedCourse.course_code === code) {
+      this.renderCourseCard(this.selectedCourse);
+    }
+    // Quick re-render of leaf rows (affects bookmark fill state)
+    this.renderTree();
+    // Re-render home if it's the wishlist view
+    if (this._homeView === 'wishlist') this.showWishlistView();
+  },
+
+  showWishlistView() {
+    if (!isStudent(this.profile)) return;
+    this._homeView = 'wishlist';
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+
+    const list = this._getWishlist();
+    const courses = list
+      .map(code => this.courseIndex[code])
+      .filter(Boolean);
+
+    let rowsHtml;
+    if (courses.length === 0) {
+      rowsHtml = `
+        <div class="wl-empty">
+          <div class="wl-empty-icon">${this._iconBookmarkOutline()}</div>
+          <div class="wl-empty-title">No saved courses yet</div>
+          <div class="wl-empty-hint">Tap the bookmark on any course to save it here for planning later.</div>
+        </div>`;
+    } else {
+      rowsHtml = courses.map(c => {
+        // Surface a warning if any faculty member flagged this course as no-longer-offered
+        const flagWarn = this._hasUnavailabilityFlag(c.course_code)
+          ? `<span class="wl-warn" title="Flagged by a faculty member as possibly no longer offered">${this._iconWarn()} Possibly unavailable</span>`
+          : '';
+        const where = [];
+        if (c.offered_qatar) where.push('Qatar');
+        if (c.offered_pitts) where.push('Pittsburgh');
+        return `
+          <div class="wl-row" data-course-code="${esc(c.course_code)}">
+            <span class="wl-code">${esc(c.course_code)}</span>
+            <span class="wl-main">
+              <span class="wl-name">${esc(c.course_name)}</span>
+              <span class="wl-meta">${c.units || '?'} units${where.length ? ' · ' + where.join(' & ') : ''}${flagWarn ? ' · ' + flagWarn : ''}</span>
+            </span>
+            <button class="wl-remove" data-action="wishlist" data-course-code="${esc(c.course_code)}" title="Remove from wishlist" aria-label="Remove from wishlist">Remove</button>
+          </div>`;
+      }).join('');
+    }
+
+    el.innerHTML = `
+      <div class="wl-view">
+        <div class="wl-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <div class="wl-title">Saved courses${courses.length ? ` <span class="wl-count">· ${courses.length}</span>` : ''}</div>
+        </div>
+        <div class="wl-list">${rowsHtml}</div>
+      </div>
+    `;
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // COURSE FLAGGING (faculty only)
+  // ══════════════════════════════════════════════════════════
+  // Reasons are codified so admin review tooling can group/filter later.
+
+  FLAG_REASONS: [
+    { code: 'not_offered',         label: 'Course is no longer offered' },
+    { code: 'campus_wrong',        label: 'Course campus availability is incorrect',         hint: 'Listed for the wrong campus (Doha / Pittsburgh).' },
+    { code: 'metadata_outdated',   label: 'Course title, number, or units are outdated' },
+    { code: 'prereq_wrong',        label: 'Prerequisites or corequisites are incorrect/missing' },
+    { code: 'requirement_mismatch',label: 'Course is mapped to the wrong requirement/category', hint: 'Counting under the wrong major/minor requirement.' },
+    { code: 'should_be_equivalent',label: 'Course should be added as an equivalent/substitute option' },
+    { code: 'wrong_semester',      label: 'Course is listed as available in the wrong semester/year' },
+    { code: 'restrictions_missing',label: 'Course restrictions are missing or incorrect',     hint: 'Permission required, major-only, class-year restriction, etc.' },
+    { code: 'duplicate',           label: 'Duplicate or conflicting course entry' },
+    { code: 'other',               label: 'Other issue' },
+  ],
+
+  _getFlags() {
+    return loadStore('cf_flags', []);
+  },
+  _saveFlags(list) {
+    saveStore('cf_flags', list);
+  },
+  _hasUnavailabilityFlag(code) {
+    return this._getFlags().some(f =>
+      f.course_code === code &&
+      (f.reason_code === 'not_offered' || f.reason_code === 'campus_wrong') &&
+      f.status !== 'dismissed'
+    );
+  },
+
+  openFlagModal(courseCode) {
+    if (!isFaculty(this.profile)) {
+      showToast('Course flagging is available to faculty only.');
+      return;
+    }
+    const course = this.courseIndex[courseCode];
+    if (!course) return;
+    this._flagModalState = { courseCode, reason: null, notes: '' };
+
+    const reasonItems = this.FLAG_REASONS.map(r => `
+      <label class="cf-flag-reason">
+        <input type="radio" name="cfReason" value="${r.code}">
+        <span class="cf-flag-reason-text">
+          <span class="cf-flag-reason-label">${esc(r.label)}</span>
+          ${r.hint ? `<span class="cf-flag-reason-hint">${esc(r.hint)}</span>` : ''}
+        </span>
+      </label>
+    `).join('');
+
+    const modal = document.createElement('div');
+    modal.className = 'cf-modal-backdrop';
+    modal.id = 'cfFlagModalRoot';
+    modal.innerHTML = `
+      <div class="cf-modal" role="dialog" aria-modal="true" aria-labelledby="cfFlagTitle">
+        <header class="cf-modal-head">
+          <div>
+            <h3 id="cfFlagTitle" class="cf-modal-title">Flag a course</h3>
+            <div class="cf-modal-sub">Help us keep course data accurate. Admins review flags before changes.</div>
+          </div>
+          <button class="cf-modal-x" aria-label="Close" onclick="App.closeFlagModal()">×</button>
+        </header>
+        <div class="cf-modal-body">
+          <div class="cf-modal-course">
+            <span class="cf-modal-course-code">${esc(course.course_code)}</span>
+            <span class="cf-modal-course-name">${esc(course.course_name)}</span>
+          </div>
+          <fieldset class="cf-flag-fieldset">
+            <legend class="cf-flag-legend">What's the issue?</legend>
+            <div class="cf-flag-reasons">${reasonItems}</div>
+          </fieldset>
+          <label class="cf-flag-notes-wrap">
+            <span class="cf-flag-notes-label">Additional context <span class="cf-flag-notes-opt">— optional</span></span>
+            <textarea class="cf-flag-notes" id="cfFlagNotes" placeholder="Anything else admins should know — e.g., 'Last offered Spring 2024 in Doha.'"></textarea>
+          </label>
+          <div class="cf-flag-attribution">
+            <strong>Filed as:</strong> ${esc(getRoleLabel(this.profile))}${this.profile.primary ? ' · ' + esc(this.profile.primary) : ''}
+          </div>
+        </div>
+        <footer class="cf-modal-foot">
+          <button class="cf-btn cf-btn-secondary" onclick="App.closeFlagModal()">Cancel</button>
+          <button class="cf-btn cf-btn-primary" id="cfFlagSubmit" disabled onclick="App.submitFlag()">Submit flag</button>
+        </footer>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    // Wire up reason selection → enables submit
+    modal.addEventListener('change', (e) => {
+      if (e.target.name === 'cfReason') {
+        this._flagModalState.reason = e.target.value;
+        const btn = document.getElementById('cfFlagSubmit');
+        if (btn) btn.disabled = false;
+      }
+    });
+    modal.addEventListener('input', (e) => {
+      if (e.target.id === 'cfFlagNotes') this._flagModalState.notes = e.target.value;
+    });
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) this.closeFlagModal();
+    });
+  },
+
+  closeFlagModal() {
+    const root = document.getElementById('cfFlagModalRoot');
+    if (root) root.remove();
+    this._flagModalState = null;
+  },
+
+  submitFlag() {
+    const s = this._flagModalState;
+    if (!s || !s.reason) return;
+    const course = this.courseIndex[s.courseCode];
+    if (!course) return;
+
+    const reasonMeta = this.FLAG_REASONS.find(r => r.code === s.reason);
+    const flag = {
+      id: 'flg-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+      course_code: course.course_code,
+      course_name: course.course_name,
+      reason_code: s.reason,
+      reason_label: reasonMeta ? reasonMeta.label : s.reason,
+      notes: (s.notes || '').trim(),
+      role: this.profile.role,
+      role_label: getRoleLabel(this.profile),
+      primary: this.profile.primary || null,
+      secondary: this.profile.secondary || null,
+      timestamp: Date.now(),
+      status: 'pending',  // pending | reviewed | resolved | dismissed
+    };
+
+    const flags = this._getFlags();
+    flags.push(flag);
+    this._saveFlags(flags);
+
+    // TODO(backend): POST /api/flags with body = flag, server assigns canonical id + status.
+
+    this.closeFlagModal();
+    showToast('Flag submitted — admins will review');
+    this.renderTree();  // refresh in case a leaf badge needs to appear later
+  },
+
+  _iconWarn() {
+    return '<svg viewBox="0 0 16 16" width="13" height="13" fill="currentColor"><path d="M8 1.5l7 13H1l7-13zM8 6v4M8 11.5v.5" stroke="currentColor" stroke-width="1.2" fill="none"/></svg>';
   },
 
   navigateToReqNode(major, fullPath) {

@@ -1830,3 +1830,615 @@ body {
   .home-footer-cmuq img { height: 32px; }
   .empty-illustration { width: 110px; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   ONBOARDING — Two-tier role picker + minor select
+   ════════════════════════════════════════════════════════════ */
+
+.ob-row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* Faculty sub-role chips — smaller than primary role pills */
+.ob-chip-row {
+  display: flex; flex-wrap: wrap; gap: 8px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.14);
+  border-radius: 10px;
+}
+.ob-chip {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,255,255,0.22);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 120ms, border-color 120ms;
+}
+.ob-chip:hover { background: rgba(255,255,255,0.16); }
+.ob-chip.selected {
+  background: #fff;
+  color: #C41230;
+  border-color: #fff;
+}
+
+/* Minor selector — dropdown is the right control for a 15-item list */
+.ob-select-wrap { position: relative; }
+.ob-select-wrap::after {
+  content: '▾';
+  position: absolute;
+  right: 14px; top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  color: rgba(255,255,255,0.7);
+  font-size: 14px;
+}
+.ob-select {
+  width: 100%;
+  padding: 14px 36px 14px 14px;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  border: 1.5px solid rgba(255,255,255,0.22);
+  color: #fff;
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms;
+}
+.ob-select:hover { background: rgba(255,255,255,0.16); border-color: rgba(255,255,255,0.35); }
+.ob-select:focus { outline: 2px solid #fff; outline-offset: 2px; }
+.ob-select option {
+  background: #6e0a1a; color: #fff;  /* readable in native dropdown */
+}
+.ob-select option:disabled { color: rgba(255,255,255,0.4); }
+
+@media (max-width: 600px) {
+  .ob-row2 { grid-template-columns: 1fr; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   MAJOR TABS — Enhanced visibility (Task 6)
+   Bigger code, full-name caption, dividers, tinted active state
+   ════════════════════════════════════════════════════════════ */
+
+.major-tabs .major-tab {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 12px 16px;
+  text-align: left;
+  border-right: 1px solid var(--border-light);
+  border-radius: 0;
+  min-height: 56px;
+  min-width: 0;
+}
+.major-tabs .major-tab:last-of-type { border-right: none; }
+
+.major-tab-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+.major-tab-code {
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: 0;
+  color: inherit;
+  line-height: 1.1;
+}
+.major-tab-name {
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.major-tab.active .major-tab-name {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+/* Suffix pill — tells you "Your major" / "Your minor" / role assignment */
+.major-tab-suffix {
+  display: inline-flex;
+  align-items: center;
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 999px;
+  margin-left: auto;
+  color: var(--text-secondary);
+  background: var(--bg-tertiary);
+  white-space: nowrap;
+}
+.major-tab-suffix-major   { background: var(--cmu-red); color: #fff; }
+.major-tab-suffix-minor   { background: var(--bg-secondary); color: var(--text-secondary); border: 1px solid var(--border-medium); }
+.major-tab-suffix-faculty { background: #1f2937; color: #fff; }
+
+/* Active state: tinted background per major + underline */
+.major-tab.active[data-major="CS"] { background: var(--major-cs-bg); }
+.major-tab.active[data-major="IS"] { background: var(--major-is-bg); }
+.major-tab.active[data-major="BA"] { background: var(--major-ba-bg); }
+.major-tab.active[data-major="BS"] { background: var(--major-bs-bg); }
+.major-tab.active[data-major="AI"] { background: var(--major-ai-bg); }
+.major-tab.active[data-major="GS"] { background: var(--major-gs-bg); }
+
+.major-tab.active::after {
+  height: 3px;
+  left: 12px;
+  right: 12px;
+  border-radius: 3px 3px 0 0;
+}
+
+@media (max-width: 640px) {
+  .major-tabs .major-tab { padding: 10px 12px; min-height: 50px; }
+  .major-tab-name { font-size: 10.5px; }
+}
+@media (max-width: 480px) {
+  /* Hide the full-name caption on tiny screens — code + suffix is enough */
+  .major-tab-name { display: none; }
+  .major-tabs .major-tab { min-height: 42px; gap: 0; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   ROW ACTIONS — Wishlist + Flag (tree leaves)
+   Subtle by default; revealed on row hover or when "saved" state is set.
+   ════════════════════════════════════════════════════════════ */
+
+.tr-leaf { position: relative; }
+.tr-leaf-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.tr-leaf:hover .tr-leaf-actions,
+.tr-leaf:focus-within .tr-leaf-actions {
+  opacity: 1;
+}
+/* Saved bookmark stays visible — it's a state marker, not an affordance */
+.tr-leaf-actions:has(.tr-leaf-wishlist.is-saved) { opacity: 1; }
+
+.tr-leaf-action {
+  width: 26px;
+  height: 26px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background 120ms, color 120ms, border-color 120ms;
+  padding: 0;
+}
+.tr-leaf-action:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-light);
+}
+.tr-leaf-wishlist.is-saved {
+  color: var(--cmu-red);
+  background: var(--major-cs-bg);
+}
+.tr-leaf-wishlist.is-saved:hover {
+  color: var(--cmu-red);
+  background: var(--major-cs-bg-hover);
+}
+.tr-leaf-flag:hover {
+  color: var(--major-is-text);
+  background: var(--major-is-bg);
+  border-color: var(--major-is-border);
+}
+
+/* Touch devices — always show row actions since there's no hover */
+@media (hover: none) {
+  .tr-leaf-actions { opacity: 1; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   COURSE CARD — Header actions row
+   ════════════════════════════════════════════════════════════ */
+
+.cc-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+.cc-head-main { min-width: 0; flex: 1; }
+.cc-head-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cc-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms, color 120ms, border-color 120ms;
+}
+.cc-action:hover {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+.cc-action svg { flex-shrink: 0; }
+
+.cc-action-wishlist.is-saved {
+  background: var(--major-cs-bg);
+  border-color: var(--major-cs-border);
+  color: var(--major-cs-text);
+}
+.cc-action-wishlist.is-saved:hover {
+  background: var(--major-cs-bg-hover);
+}
+
+.cc-action-flag {
+  color: var(--major-is-text);
+}
+.cc-action-flag:hover {
+  background: var(--major-is-bg);
+  border-color: var(--major-is-border);
+}
+
+@media (max-width: 560px) {
+  .cc-head { flex-direction: column; align-items: stretch; }
+  .cc-head-actions { width: 100%; }
+  .cc-action { flex: 1; justify-content: center; }
+}
+
+/* ════════════════════════════════════════════════════════════
+   WISHLIST VIEW (students)
+   ════════════════════════════════════════════════════════════ */
+
+.home-wishlist-card {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-light);
+  border-left: 4px solid var(--cmu-red);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-top: 18px;
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+.home-wishlist-card:hover {
+  border-color: var(--cmu-red);
+  transform: translateY(-1px);
+}
+.home-wishlist-icon {
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--major-cs-bg);
+  color: var(--cmu-red);
+  flex-shrink: 0;
+}
+.home-wishlist-text { flex: 1; display: flex; flex-direction: column; gap: 2px; }
+.home-wishlist-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.home-wishlist-sub   { font-size: 12px; color: var(--text-secondary); }
+.home-wishlist-arrow { font-size: 18px; color: var(--text-tertiary); }
+
+.wl-view { padding: 18px 24px 40px; }
+.wl-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }
+.wl-title  { font-size: 16px; font-weight: 800; color: var(--text-primary); }
+.wl-count  { font-weight: 500; color: var(--text-tertiary); }
+.wl-list   { display: flex; flex-direction: column; gap: 8px; }
+.wl-row {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  border: 1.5px solid var(--border-light);
+  border-radius: 10px;
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.wl-row:hover { border-color: var(--text-secondary); background: var(--bg-secondary); }
+.wl-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--cmu-red);
+}
+.wl-main { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.wl-name { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+.wl-meta { font-size: 11.5px; color: var(--text-tertiary); }
+.wl-warn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(217,119,6,0.10);
+  color: var(--major-is-text);
+  font-weight: 700;
+  font-size: 11px;
+}
+.wl-remove {
+  border: 1px solid var(--border-light);
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 120ms;
+}
+.wl-remove:hover {
+  border-color: var(--cmu-red);
+  color: var(--cmu-red);
+  background: var(--bg-card);
+}
+.wl-empty {
+  text-align: center;
+  padding: 56px 24px;
+  border: 1.5px dashed var(--border-light);
+  border-radius: 14px;
+  color: var(--text-tertiary);
+}
+.wl-empty-icon {
+  display: inline-flex;
+  width: 44px; height: 44px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--bg-secondary);
+  color: var(--text-tertiary);
+  margin-bottom: 12px;
+}
+.wl-empty-title { font-size: 14px; font-weight: 700; color: var(--text-primary); margin-bottom: 4px; }
+.wl-empty-hint  { font-size: 12px; color: var(--text-secondary); max-width: 320px; margin: 0 auto; line-height: 1.5; }
+
+/* ════════════════════════════════════════════════════════════
+   FLAG COURSE MODAL (faculty only)
+   ════════════════════════════════════════════════════════════ */
+
+.cf-modal-backdrop {
+  position: fixed; inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  z-index: 500;
+  animation: fadeUp 0.15s ease;
+}
+.cf-modal {
+  background: var(--bg-card);
+  border-radius: 14px;
+  width: 100%;
+  max-width: 520px;
+  max-height: calc(100vh - 48px);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 24px 60px rgba(0,0,0,0.25);
+}
+.cf-modal-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid var(--border-light);
+}
+.cf-modal-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+.cf-modal-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+  line-height: 1.5;
+}
+.cf-modal-x {
+  width: 30px; height: 30px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  font-family: inherit;
+}
+.cf-modal-x:hover { background: var(--bg-secondary); color: var(--text-primary); }
+
+.cf-modal-body {
+  padding: 18px 20px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+}
+
+.cf-modal-course {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  margin-bottom: 16px;
+}
+.cf-modal-course-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--cmu-red);
+}
+.cf-modal-course-name {
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.cf-flag-fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0 0 16px;
+}
+.cf-flag-legend {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  padding: 0;
+  margin-bottom: 10px;
+}
+.cf-flag-reasons {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cf-flag-reason {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.cf-flag-reason:hover { background: var(--bg-secondary); border-color: var(--border-medium); }
+.cf-flag-reason input[type=radio] {
+  margin-top: 2px;
+  accent-color: var(--cmu-red);
+  flex-shrink: 0;
+}
+.cf-flag-reason:has(input:checked) {
+  border-color: var(--cmu-red);
+  background: var(--major-cs-bg);
+}
+.cf-flag-reason-text { display: flex; flex-direction: column; gap: 2px; }
+.cf-flag-reason-label { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.cf-flag-reason-hint  { font-size: 11.5px; color: var(--text-secondary); }
+
+.cf-flag-notes-wrap { display: flex; flex-direction: column; gap: 6px; margin-top: 14px; }
+.cf-flag-notes-label {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.cf-flag-notes-opt {
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--text-tertiary);
+}
+.cf-flag-notes {
+  width: 100%;
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: 13px;
+  resize: vertical;
+  outline: none;
+  transition: border-color 120ms, box-shadow 120ms;
+}
+.cf-flag-notes:focus {
+  border-color: var(--cmu-red);
+  box-shadow: var(--shadow-focus);
+}
+
+.cf-flag-attribution {
+  margin-top: 14px;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.cf-modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+}
+.cf-btn {
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 120ms, border-color 120ms;
+}
+.cf-btn-secondary {
+  background: var(--bg-card);
+  border-color: var(--border-light);
+  color: var(--text-secondary);
+}
+.cf-btn-secondary:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-medium);
+}
+.cf-btn-primary {
+  background: var(--cmu-red);
+  color: #fff;
+}
+.cf-btn-primary:hover:not(:disabled) {
+  background: #a30f25;
+}
+.cf-btn-primary:disabled {
+  background: var(--bg-tertiary);
+  color: var(--text-tertiary);
+  cursor: not-allowed;
+}
+
+@media (max-width: 540px) {
+  .cf-modal { max-width: 100%; max-height: calc(100vh - 16px); }
+  .cf-modal-backdrop { padding: 8px; }
+}
