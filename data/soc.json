@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-28T16:16:08.703776+00:00",
+    "last_scrape": "2026-05-29T15:58:46.698884+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -6615,7 +6615,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -20615,7 +20615,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "04:50PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -28516,6 +28516,16 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "B",
+              "mini": "",
+              "days": "MW",
+              "begin_time": "07:00PM",
+              "end_time": "08:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
             }
           ],
           "campus": [
@@ -30013,6 +30023,28 @@
               "days": "TR",
               "begin_time": "02:00PM",
               "end_time": "03:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
+          "course_number": "51761",
+          "title": "Communication Design Fundamentals",
+          "units": "12",
+          "department_code": "DES",
+          "department": "Design",
+          "sections": [
+            {
+              "section": "B",
+              "mini": "",
+              "days": "MW",
+              "begin_time": "07:00PM",
+              "end_time": "08:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -32980,7 +33012,7 @@
               "begin_time": "01:00PM",
               "end_time": "03:50PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             }
           ],
@@ -33156,7 +33188,7 @@
               "begin_time": "02:00PM",
               "end_time": "03:50PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             }
           ],
@@ -33880,7 +33912,7 @@
               "begin_time": "10:30AM",
               "end_time": "11:50AM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             }
           ],
@@ -35410,7 +35442,7 @@
               "begin_time": "05:00PM",
               "end_time": "10:30PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             }
           ],
@@ -36116,7 +36148,7 @@
               "begin_time": "05:00PM",
               "end_time": "10:30PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation Rotation",
+              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             },
             {
@@ -37222,7 +37254,7 @@
               "begin_time": "01:00PM",
               "end_time": "03:50PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             }
           ],
@@ -38528,7 +38560,7 @@
               "begin_time": "05:00PM",
               "end_time": "10:30PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             }
           ],
@@ -40758,7 +40790,7 @@
               "begin_time": "TBA",
               "end_time": "TBA",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "Remote only",
+              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             }
           ],
@@ -41272,7 +41304,7 @@
               "begin_time": "02:00PM",
               "end_time": "03:50PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             }
           ],
@@ -76675,7 +76707,7 @@
         },
         {
           "course_number": "24675",
-          "title": "Humanoid Robotics and Cognition",
+          "title": "Humanoid Robotics and Cognition This Section Cancelled",
           "units": "12",
           "department_code": "MEG",
           "department": "Mechanical Engineering",
@@ -105882,8 +105914,8 @@
         {
           "code": "DES",
           "name": "Design",
-          "courses": 98,
-          "sections": 124
+          "courses": 99,
+          "sections": 126
         },
         {
           "code": "HSS",
@@ -106126,9 +106158,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-28T16:16:08.703776+00:00",
-      "total_courses": 3120,
-      "total_sections": 6821
+      "scraped_at": "2026-05-29T15:58:46.698884+00:00",
+      "total_courses": 3121,
+      "total_sections": 6823
     }
   }
 }
