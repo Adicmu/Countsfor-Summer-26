@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-29T15:58:46.698884+00:00",
+    "last_scrape": "2026-05-30T13:55:04.488214+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -1743,6 +1743,28 @@
               "mini": "",
               "days": "WF",
               "begin_time": "11:00AM",
+              "end_time": "12:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
+          "course_number": "48623",
+          "title": "Archives and the City",
+          "units": "9",
+          "department_code": "ARC",
+          "department": "Architecture",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "W",
+              "begin_time": "09:30AM",
               "end_time": "12:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
@@ -20457,7 +20479,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "08:50PM",
+              "end_time": "07:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -20615,7 +20637,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -25822,8 +25844,8 @@
               "section": "Lec 1",
               "mini": "",
               "days": "TR",
-              "begin_time": "10:00AM",
-              "end_time": "10:50AM",
+              "begin_time": "01:00PM",
+              "end_time": "01:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -104006,7 +104028,7 @@
         },
         {
           "course_number": "36740",
-          "title": "Advanced Methods I : Advanced Methods I",
+          "title": "Advanced Methods I- Data over Space and Time : Advanced Methods I",
           "units": "6",
           "department_code": "STA",
           "department": "Statistics and Data Science",
@@ -104028,7 +104050,7 @@
         },
         {
           "course_number": "36741",
-          "title": "Advanced Methods II : Advanced Methods II",
+          "title": "Advanced Methods II- Simulation-Based Inference : Advanced Methods II",
           "units": "6",
           "department_code": "STA",
           "department": "Statistics and Data Science",
@@ -105806,8 +105828,8 @@
         {
           "code": "ARC",
           "name": "Architecture",
-          "courses": 109,
-          "sections": 258
+          "courses": 110,
+          "sections": 259
         },
         {
           "code": "ART",
@@ -106158,9 +106180,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-29T15:58:46.698884+00:00",
-      "total_courses": 3121,
-      "total_sections": 6823
+      "scraped_at": "2026-05-30T13:55:04.488214+00:00",
+      "total_courses": 3122,
+      "total_sections": 6824
     }
   }
 }
