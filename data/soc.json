@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-05-31T14:01:00.338690+00:00",
+    "last_scrape": "2026-06-01T17:55:25.414735+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -6637,7 +6637,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -20637,7 +20637,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "04:50PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -30578,7 +30578,7 @@
         },
         {
           "course_number": "51455",
-          "title": "Introduction to Values-Centered Design",
+          "title": "Values-Based Design",
           "units": "9",
           "department_code": "DES",
           "department": "Design",
@@ -68189,7 +68189,7 @@
         },
         {
           "course_number": "82313",
-          "title": "Topics in Modern Arabic Language, Literature & Culture : Contemporary Arab Cinema",
+          "title": "Topics in Modern Arabic: Contemporary Arab Cinema : Contemporary Arab Cinema",
           "units": "9",
           "department_code": "LCL",
           "department": "Languages Cultures & Appl Linguistics",
@@ -106180,7 +106180,7 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-05-31T14:01:00.338690+00:00",
+      "scraped_at": "2026-06-01T17:55:25.414735+00:00",
       "total_courses": 3122,
       "total_sections": 6824
     }
