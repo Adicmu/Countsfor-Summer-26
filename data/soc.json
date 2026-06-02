@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-01T17:55:25.414735+00:00",
+    "last_scrape": "2026-06-02T16:46:59.868491+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -6637,7 +6637,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -6657,7 +6657,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -8024,6 +8024,28 @@
               "end_time": "03:45PM",
               "location": "Doha, Qatar",
               "delivery_mode": "In-person only",
+              "campus": "Qatar"
+            }
+          ],
+          "campus": [
+            "Qatar"
+          ]
+        },
+        {
+          "course_number": "03412",
+          "title": "Topics in Research",
+          "units": "1-2",
+          "department_code": "BSC",
+          "department": "Biological Sciences",
+          "sections": [
+            {
+              "section": "W",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Doha, Qatar",
+              "delivery_mode": "In-person Expectation",
               "campus": "Qatar"
             }
           ],
@@ -10144,8 +10166,8 @@
               "section": "A2",
               "mini": "Y",
               "days": "TR",
-              "begin_time": "10:00AM",
-              "end_time": "11:45AM",
+              "begin_time": "12:00PM",
+              "end_time": "01:45PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -20637,7 +20659,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -30579,7 +30601,7 @@
         {
           "course_number": "51455",
           "title": "Values-Based Design",
-          "units": "9",
+          "units": "3",
           "department_code": "DES",
           "department": "Design",
           "sections": [
@@ -56265,10 +56287,21 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "W",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Doha, Qatar",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Qatar"
             }
           ],
           "campus": [
-            "Pittsburgh"
+            "Pittsburgh",
+            "Qatar"
           ]
         },
         {
@@ -105852,8 +105885,8 @@
         {
           "code": "BSC",
           "name": "Biological Sciences",
-          "courses": 58,
-          "sections": 127
+          "courses": 59,
+          "sections": 128
         },
         {
           "code": "BMD",
@@ -106003,7 +106036,7 @@
           "code": "HCI",
           "name": "Human-Computer Interaction",
           "courses": 45,
-          "sections": 67
+          "sections": 68
         },
         {
           "code": "BHA",
@@ -106180,9 +106213,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-01T17:55:25.414735+00:00",
-      "total_courses": 3122,
-      "total_sections": 6824
+      "scraped_at": "2026-06-02T16:46:59.868491+00:00",
+      "total_courses": 3123,
+      "total_sections": 6826
     }
   }
 }
