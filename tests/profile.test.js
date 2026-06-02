@@ -157,7 +157,7 @@ test('validateProfile: student with unknown minor code → invalid', () => {
 });
 
 test('validateProfile: invalid role → invalid', () => {
-  assertFalse(validateProfile({ role: 'admin', primary: 'CS', secondary: null }));
+  assertFalse(validateProfile({ role: 'wizard', primary: 'CS', secondary: null }));
 });
 
 test('validateProfile: invalid primary program → invalid', () => {
@@ -275,7 +275,7 @@ test('loadProfile returns null when no role stored', () => {
 });
 
 test('loadProfile returns null when stored profile is invalid', () => {
-  localStorage.setItem('cf_role', 'admin');  // not a valid role
+  localStorage.setItem('cf_role', 'wizard');  // not a valid role
   localStorage.setItem('cf_primary', 'CS');
   localStorage.setItem('cf_secondary', '');
   assertEqual(loadProfile(), null);

@@ -22,19 +22,127 @@ const App = {
   profile: null,
 
   // ── Init ──────────────────────────────────────────────────
+  // Auth-aware boot:
+  //   1. GET /api/me — if 200 with a complete profile, route to main app.
+  //   2. If 200 but profile is incomplete (missing role/program), show the
+  //      existing onboarding flow but PATCH /api/me on completion.
+  //   3. If 401, render the login screen.
+  //   4. If the backend is unreachable, fall back to localStorage demo mode
+  //      so the GH-Pages-only deploy keeps working.
+  authedUser: null,             // server-confirmed user, or null in demo mode
+  authMode: 'demo',             // 'authed' | 'demo' | 'login'
   async init() {
     this.applyTheme();
-    this.profile = loadProfile();
-    if (!this.profile) {
-      this.renderOnboarding(false);
+
+    const me = await apiGetMe();
+    if (me.ok) {
+      this.authedUser = me.data;
+      this.authMode = 'authed';
+      this._hydrateProfileFromServer(me.data);
+      if (!this._serverProfileIsComplete(me.data)) {
+        this.renderOnboarding(false);  // _finishOnboarding now PATCHes /api/me
+        return;
+      }
+      this._afterAuthed();
       return;
     }
-    if (this.profile.primary && this.profile.primary !== 'AS') {
+
+    if (me.status === 0) {
+      // Network failure — backend unreachable. Demo mode preserves the
+      // public GH-Pages experience for unauthenticated visitors.
+      this.authMode = 'demo';
+      this.profile = loadProfile();
+      if (!this.profile) {
+        this.renderOnboarding(false);
+        return;
+      }
+      this._afterAuthed();
+      return;
+    }
+
+    // 401 / 403 / etc. — show login screen.
+    this.authMode = 'login';
+    this.renderLogin();
+  },
+
+  _afterAuthed() {
+    if (this.profile && this.profile.primary && this.profile.primary !== 'AS') {
       this.activeMajor = this.profile.primary;
     }
     this.renderShell();
     this.bindGlobalEvents();
-    await this.loadData();
+    // Best-effort one-time migration of localStorage data (idempotent on the
+    // server — duplicate IDs / course codes return existing rows).
+    this._syncLocalToServer();
+    this.loadData();
+  },
+
+  // Push any local-only flags / wishlist entries to the backend after sign-in.
+  // The server endpoints are idempotent so re-running this is safe.
+  async _syncLocalToServer() {
+    if (this.authMode !== 'authed' || !this.authedUser) return;
+    const role = this.authedUser.role;
+    const synced = loadStore('cf_synced', false);
+
+    // Flags — faculty / admin only
+    if ((role !== 'student') && !synced) {
+      const flags = this._getFlags();
+      for (const f of flags) {
+        const r = await apiCreateFlag(f);
+        if (!r.ok && r.status !== 200 && r.status !== 201) {
+          // Keep the local copy and bail — don't mark synced.
+          return;
+        }
+      }
+    }
+
+    // Wishlist — student only
+    if (role === 'student' && !synced) {
+      const list = this._getWishlist();
+      for (const code of list) {
+        await apiAddWishlist(code);  // idempotent
+      }
+      // Pull the canonical server list back so future renders reflect any
+      // additions from another device.
+      const r = await apiGetWishlist();
+      if (r.ok && Array.isArray(r.data.items)) {
+        this._saveWishlist(r.data.items.map(i => i.course_code));
+      }
+    }
+
+    saveStore('cf_synced', true);
+  },
+
+  _serverProfileIsComplete(u) {
+    if (!u || !u.role) return false;
+    // Admins never need to pick a program — they review flags.
+    if (u.role === 'admin') return true;
+    if (u.role === 'student')              return !!u.primary_program;
+    if (u.role === 'professor')            return !!u.primary_program;
+    if (u.role === 'area_head' ||
+        u.role === 'associate_area_head')  return !!u.primary_program;
+    if (u.role === 'advisor')              return !!u.advisor_scope;
+    return false;
+  },
+
+  _hydrateProfileFromServer(u) {
+    // Mirror the server user into the legacy `this.profile` shape so the
+    // rest of the app keeps working unchanged.
+    if (!u) { this.profile = null; return; }
+    const scope = u.advisor_scope || null;
+    let primary = u.primary_program || null;
+    let secondary = u.minor_code || null;
+    // Advisor-minor scope stores the minor code in `primary` (per profile.js).
+    if (u.role === 'advisor' && scope === 'minor' && u.minor_code) {
+      primary = u.minor_code;
+      secondary = null;
+    }
+    this.profile = {
+      role: u.role,
+      primary,
+      secondary,
+      scope,
+    };
   },
 
   // ── Theme ─────────────────────────────────────────────────
@@ -362,7 +470,7 @@ const App = {
     this._renderOnboardingScreen();
   },
 
-  _finishOnboarding() {
+  async _finishOnboarding() {
     const s = this._onboardingState;
     const profile = {
       role:      s.role,
@@ -375,9 +483,39 @@ const App = {
       return;
     }
     saveProfile(profile);
+
+    // If signed in, persist to the backend too (source of truth in authed mode).
+    if (this.authMode === 'authed') {
+      // Map onboarding state → server schema. Advisor-minor stores minor in
+      // `primary` locally; on the server we keep them in separate columns.
+      const serverPatch = { role: profile.role };
+      if (profile.role === 'advisor' && profile.scope === 'minor') {
+        serverPatch.advisor_scope = 'minor';
+        serverPatch.minor_code = profile.primary;
+        serverPatch.primary_program = null;
+      } else if (profile.role === 'advisor') {
+        serverPatch.advisor_scope = profile.scope;
+        serverPatch.primary_program = profile.primary;
+        serverPatch.minor_code = null;
+      } else if (profile.role === 'student') {
+        serverPatch.primary_program = profile.primary;
+        serverPatch.minor_code = profile.secondary;
+        serverPatch.advisor_scope = null;
+      } else {
+        serverPatch.primary_program = profile.primary;
+        serverPatch.minor_code = null;
+        serverPatch.advisor_scope = null;
+      }
+      const r = await apiPatchMe(serverPatch);
+      if (!r.ok) {
+        showToast('Could not save profile to the server — using local copy.');
+      } else {
+        this.authedUser = r.data;
+      }
+    }
+
     const wasEdit = s.isEdit;
     this.profile = profile;
-    // Active major: for students/profs/area_lead → primary if it's a real major.
     if (this.profile.primary && this.profile.primary !== 'AS' && MAJOR_LIST.includes(this.profile.primary)) {
       this.activeMajor = this.profile.primary;
     }
@@ -394,6 +532,107 @@ const App = {
     }
   },
 
+  // ══════════════════════════════════════════════════════════
+  // LOGIN SCREEN (Google SSO)
+  // ══════════════════════════════════════════════════════════
+
+  renderLogin() {
+    const clientId = getGoogleClientId();
+    const missingClient = !clientId
+      ? `<div class="auth-warning">⚠ Google sign-in is not configured yet. Set the <code>cf-google-client-id</code> meta tag in <code>index.html</code> and the <code>GOOGLE_CLIENT_ID</code> env var on the backend.</div>`
+      : '';
+    document.getElementById('app').innerHTML = `
+      <div class="onboarding-splash">
+        <div class="onboarding-card auth-card">
+          <img class="onboarding-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" />
+          <div class="onboarding-brand">CountsFor</div>
+          <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
+
+          <div class="ob-heading">Sign in to continue.</div>
+          <div class="ob-sub">Sign in with your CMU Google account. Your role and major sync across devices, and faculty-only tools stay properly gated.</div>
+
+          ${missingClient}
+          <div id="cfGoogleBtn" class="auth-google-mount"></div>
+
+          <div class="auth-note">Only verified Google accounts are accepted. We never see your password.</div>
+
+          <div class="onboarding-institutional">
+            <span class="onboarding-institutional-label">An initiative of</span>
+            <img class="onboarding-cmuq" src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University Qatar" />
+          </div>
+        </div>
+      </div>
+    `;
+    this._mountGoogleButton();
+  },
+
+  _mountGoogleButton() {
+    const clientId = getGoogleClientId();
+    if (!clientId) return;
+    const mount = () => {
+      if (!(window.google && window.google.accounts && window.google.accounts.id)) {
+        // Library still loading — retry shortly.
+        return setTimeout(mount, 150);
+      }
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: (response) => App._onGoogleCredential(response),
+        ux_mode: 'popup',
+        auto_select: false,
+      });
+      const slot = document.getElementById('cfGoogleBtn');
+      if (slot) {
+        slot.innerHTML = '';
+        window.google.accounts.id.renderButton(slot, {
+          theme: 'filled_blue',
+          size: 'large',
+          text: 'continue_with',
+          shape: 'pill',
+          width: 320,
+        });
+      }
+    };
+    mount();
+  },
+
+  async _onGoogleCredential(response) {
+    if (!response || !response.credential) {
+      showToast('Google sign-in was cancelled.');
+      return;
+    }
+    const r = await apiSignInWithGoogle(response.credential);
+    if (!r.ok) {
+      const msg = (r.data && r.data.message) || 'Sign-in failed.';
+      showToast(msg);
+      return;
+    }
+    this.authedUser = r.data;
+    this.authMode = 'authed';
+    this._hydrateProfileFromServer(r.data);
+    if (!this._serverProfileIsComplete(r.data)) {
+      this.renderOnboarding(false);
+    } else {
+      this._afterAuthed();
+    }
+  },
+
+  async signOut() {
+    await apiLogout();
+    clearProfile();
+    // Clear per-user local caches so a different account on the same browser
+    // doesn't inherit them. The cf_synced flag must reset for next sign-in.
+    try {
+      localStorage.removeItem('cf_synced');
+      localStorage.removeItem('cf_flags');
+      localStorage.removeItem('cf_wishlist');
+    } catch {}
+    this.authedUser = null;
+    this.authMode = 'login';
+    this.profile = null;
+    this.selectedCourse = null;
+    this.renderLogin();
+  },
+
   _cancelOnboarding() {
     if (!this._onboardingState.isEdit) return;  // not allowed during first-run
     this.renderShell();
@@ -408,6 +647,15 @@ const App = {
     const PROGRAM_LABEL = { CS: 'CS', IS: 'IS', BA: 'BA', BS: 'BS', AI: 'AI', GS: 'GS', AS: 'A&S' };
     const meta = ROLE_META[p.role];
     const roleLabel = meta ? meta.label : p.role;
+
+    // Admin — distinct badge, no program affiliation
+    if (p.role === 'admin') {
+      return `
+        <button class="role-badge rb-ah" onclick="App.editRole()" title="Click to change role">
+          <span class="rb-segment rb-primary">Admin <span class="rb-suffix">· Curriculum data</span></span>
+          <span class="rb-edit-hint">Edit</span>
+        </button>`;
+    }
 
     // Area Head with no specific major (legacy "all programs" path)
     if (p.role === 'area_head' && (!p.primary || p.primary === 'AS')) {
@@ -537,6 +785,8 @@ const App = {
             <button class="loc-btn ${this.locationFilter==='pittsburgh'?'active':''}" onclick="App.setLocation('pittsburgh')">🇺🇸 Pittsburgh</button>
           </div>
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
+          ${(this.authedUser && this.authedUser.role === 'admin') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review submitted course flags">Flag review</button>' : ''}
+          ${this.authMode === 'authed' ? '<button class="nav-signout" onclick="App.signOut()" title="Sign out" aria-label="Sign out">Sign out</button>' : ''}
         </div>
       </nav>
 
@@ -1694,7 +1944,7 @@ const App = {
     return this._getWishlist().indexOf(code) !== -1;
   },
 
-  toggleWishlist(code) {
+  async toggleWishlist(code) {
     if (!isStudent(this.profile)) {
       showToast('Wishlist is available to students only.');
       return;
@@ -1705,12 +1955,18 @@ const App = {
     if (idx === -1) {
       list.push(code);
       this._saveWishlist(list);
-      // TODO(backend): POST /api/wishlist {course_code: code}
+      if (this.authMode === 'authed') {
+        const r = await apiAddWishlist(code);
+        if (!r.ok) showToast('Saved locally — sync to server failed.');
+      }
       showToast('Saved for later');
     } else {
       list.splice(idx, 1);
       this._saveWishlist(list);
-      // TODO(backend): DELETE /api/wishlist/{code}
+      if (this.authMode === 'authed') {
+        const r = await apiRemoveWishlist(code);
+        if (!r.ok && r.status !== 404) showToast('Removed locally — sync to server failed.');
+      }
       showToast('Removed from wishlist');
     }
     // Re-render any visible surfaces that show wishlist state
@@ -1887,7 +2143,7 @@ const App = {
     this._flagModalState = null;
   },
 
-  submitFlag() {
+  async submitFlag() {
     const s = this._flagModalState;
     if (!s || !s.reason) return;
     const course = this.courseIndex[s.courseCode];
@@ -1906,18 +2162,148 @@ const App = {
       primary: this.profile.primary || null,
       secondary: this.profile.secondary || null,
       timestamp: Date.now(),
-      status: 'pending',  // pending | reviewed | resolved | dismissed
+      status: 'pending',
     };
 
+    // Persist locally first so the action is reflected even if the network
+    // is slow / offline — the server submission is best-effort sync.
     const flags = this._getFlags();
     flags.push(flag);
     this._saveFlags(flags);
 
-    // TODO(backend): POST /api/flags with body = flag, server assigns canonical id + status.
+    let toast = 'Flag submitted — admins will review';
+    if (this.authMode === 'authed') {
+      const r = await apiCreateFlag(flag);
+      if (!r.ok) {
+        toast = 'Saved locally — sync to server failed (will retry next sign-in).';
+      }
+    } else {
+      toast = 'Flag saved (offline) — sign in to submit for admin review.';
+    }
 
     this.closeFlagModal();
-    showToast('Flag submitted — admins will review');
-    this.renderTree();  // refresh in case a leaf badge needs to appear later
+    showToast(toast);
+    this.renderTree();
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // ADMIN — Flag review
+  // ══════════════════════════════════════════════════════════
+  _adminState: { status: 'pending', items: [], total: 0 },
+
+  async showFlagReview() {
+    if (!(this.authedUser && this.authedUser.role === 'admin')) {
+      showToast('Admin access required.');
+      return;
+    }
+    this._homeView = 'admin';
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="spinner"></div><div class="empty-text" style="margin-top:12px">Loading flag review…</div></div>';
+    await this._loadFlagReview();
+  },
+
+  async _loadFlagReview() {
+    const s = this._adminState;
+    const r = await apiListFlags('status=' + encodeURIComponent(s.status) + '&limit=100');
+    if (!r.ok) {
+      const el = document.getElementById('leftBody');
+      if (el) el.innerHTML = `<div class="empty-state"><div class="empty-text">Could not load flags: ${esc((r.data && r.data.message) || r.error || 'error')}</div></div>`;
+      return;
+    }
+    s.items = r.data.items || [];
+    s.total = r.data.total || 0;
+    this._renderFlagReview();
+  },
+
+  _renderFlagReview() {
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    const s = this._adminState;
+
+    const tab = (status, label) => `
+      <button class="adm-tab ${s.status === status ? 'active' : ''}" onclick="App._switchFlagStatus('${status}')">${label}</button>
+    `;
+
+    const rowsHtml = s.items.length === 0
+      ? `<div class="empty-state"><div class="empty-text">No flags with status “${esc(s.status)}”.</div></div>`
+      : s.items.map(f => this._renderFlagRow(f)).join('');
+
+    el.innerHTML = `
+      <div class="adm-view">
+        <div class="adm-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <div class="adm-title">Flag review <span class="adm-count">· ${s.total}</span></div>
+        </div>
+        <div class="adm-tabs">
+          ${tab('pending',   'Pending')}
+          ${tab('reviewed',  'Reviewed')}
+          ${tab('resolved',  'Resolved')}
+          ${tab('dismissed', 'Dismissed')}
+        </div>
+        <div class="adm-list">${rowsHtml}</div>
+      </div>
+    `;
+  },
+
+  _renderFlagRow(f) {
+    const when = f.created_at ? new Date(f.created_at).toLocaleDateString() : '';
+    const submitter = `${esc(f.submitted_by_name || f.submitted_by_email || 'Unknown')} <span class="adm-role">· ${esc(f.submitted_by_role || '')}${f.submitted_program ? ' · ' + esc(f.submitted_program) : ''}</span>`;
+    const notes = f.notes ? `<div class="adm-notes"><strong>Notes:</strong> ${esc(f.notes)}</div>` : '';
+    const adminNotes = f.admin_notes ? `<div class="adm-notes adm-notes-admin"><strong>Admin:</strong> ${esc(f.admin_notes)}</div>` : '';
+    const actions = (f.status === 'pending' || f.status === 'reviewed') ? `
+      <div class="adm-actions">
+        <button class="adm-btn adm-btn-resolve"  onclick="App._setFlagStatus('${esc(f.id)}','resolved')">Resolve</button>
+        <button class="adm-btn adm-btn-review"   onclick="App._setFlagStatus('${esc(f.id)}','reviewed')">Mark reviewed</button>
+        <button class="adm-btn adm-btn-dismiss"  onclick="App._setFlagStatus('${esc(f.id)}','dismissed')">Dismiss</button>
+        <button class="adm-btn adm-btn-note"     onclick="App._promptFlagNote('${esc(f.id)}')">Add note…</button>
+      </div>` : `
+      <div class="adm-actions">
+        <button class="adm-btn" onclick="App._setFlagStatus('${esc(f.id)}','pending')">Reopen as pending</button>
+        <button class="adm-btn adm-btn-note" onclick="App._promptFlagNote('${esc(f.id)}')">Add note…</button>
+      </div>`;
+    return `
+      <div class="adm-row">
+        <div class="adm-row-head">
+          <div class="adm-course">
+            <span class="adm-course-code">${esc(f.course_code)}</span>
+            <span class="adm-course-name">${esc(f.course_name)}</span>
+          </div>
+          <span class="adm-status adm-status-${esc(f.status)}">${esc(f.status)}</span>
+        </div>
+        <div class="adm-reason">${esc(f.reason_label || f.reason_code)}</div>
+        ${notes}
+        ${adminNotes}
+        <div class="adm-meta">By ${submitter} · ${esc(when)}</div>
+        ${actions}
+      </div>`;
+  },
+
+  async _switchFlagStatus(status) {
+    this._adminState.status = status;
+    await this._loadFlagReview();
+  },
+
+  async _setFlagStatus(id, status) {
+    const r = await apiUpdateFlag(id, { status });
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Update failed.');
+      return;
+    }
+    showToast('Flag marked ' + status);
+    await this._loadFlagReview();
+  },
+
+  async _promptFlagNote(id) {
+    const note = window.prompt('Admin note for this flag (leave empty to clear):', '');
+    if (note === null) return;  // cancelled
+    const r = await apiUpdateFlag(id, { admin_notes: note });
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Update failed.');
+      return;
+    }
+    showToast('Note saved');
+    await this._loadFlagReview();
   },
 
   _iconWarn() {

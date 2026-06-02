@@ -72,7 +72,7 @@ function getMinorAsMajorCode(profile) {
 // Internal roles store the precise identity (Area Head vs Associate Area
 // Head stay distinct for the database). The UI collapses both under one
 // "Area / Associate Area Head" group to avoid button-heavy onboarding.
-const VALID_ROLES = ['student', 'professor', 'area_head', 'associate_area_head', 'advisor'];
+const VALID_ROLES = ['student', 'professor', 'area_head', 'associate_area_head', 'advisor', 'admin'];
 
 const ROLE_META = {
   student:             { label: 'Student',                    faculty: false, needsMajor: true,  allowsMinor: true,  allowsAllPrograms: false, group: 'student'   },
@@ -80,6 +80,10 @@ const ROLE_META = {
   area_head:           { label: 'Area Head',                  faculty: true,  needsMajor: true,  allowsMinor: false, allowsAllPrograms: false, group: 'area_lead' },
   associate_area_head: { label: 'Associate Area Head',        faculty: true,  needsMajor: true,  allowsMinor: false, allowsAllPrograms: false, group: 'area_lead' },
   advisor:             { label: 'Advisor',                    faculty: true,  needsMajor: false, allowsMinor: false, allowsAllPrograms: true,  group: 'advisor'   },
+  // Admins are not user-pickable in onboarding — they're promoted via the
+  // server's ADMIN_EMAILS env var. Treated as faculty for flagging visibility
+  // (admins can also flag courses) but get the dedicated Flag-Review surface.
+  admin:               { label: 'Admin',                      faculty: true,  needsMajor: false, allowsMinor: false, allowsAllPrograms: true,  group: 'admin'     },
 };
 
 // Display groups for the onboarding UI. Single source of truth — adding a
@@ -129,6 +133,9 @@ function getAdvisorScopeLabel(scope) {
 function computeViewMode(profile) {
   if (!profile || !profile.role) return null;
 
+  // Admins always browse all programs.
+  if (profile.role === 'admin') return 'cross-program';
+
   // Advisor view mode follows scope.
   if (profile.role === 'advisor') {
     if (profile.scope === 'all_programs' || profile.scope === 'arts_sciences') return 'cross-program';
@@ -169,6 +176,11 @@ function validateProfile(profile) {
   if (profile.role === 'professor') {
     if (profile.primary === 'AS') return true;
     if (!MAJOR_LIST.includes(profile.primary)) return false;
+    return true;
+  }
+
+  if (profile.role === 'admin') {
+    // No program required — admins are scoped by server, not by UI.
     return true;
   }
 

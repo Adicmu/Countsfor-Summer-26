@@ -2704,3 +2704,214 @@ body {
   border-color: var(--cmu-red);
   color: var(--cmu-red);
 }
+
+/* ════════════════════════════════════════════════════════════
+   LOGIN SCREEN (Google SSO)
+   Re-uses the onboarding splash chrome; Google button is mounted
+   inside .auth-google-mount by the Google Identity Services script.
+   ════════════════════════════════════════════════════════════ */
+
+.auth-card { text-align: left; }
+.auth-warning {
+  margin-top: 20px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255,255,255,0.35);
+  border-left: 4px solid #FBBF24;
+  border-radius: 8px;
+  background: rgba(0,0,0,0.20);
+  color: #fff;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.auth-warning code {
+  background: rgba(255,255,255,0.18);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11.5px;
+}
+.auth-google-mount {
+  margin-top: 22px;
+  min-height: 44px;
+  display: flex;
+  justify-content: flex-start;
+}
+.auth-note {
+  margin-top: 14px;
+  font-size: 12.5px;
+  color: rgba(255,255,255,0.78);
+  line-height: 1.5;
+}
+
+/* Navbar admin shortcut */
+.nav-admin {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--cmu-red);
+  background: var(--major-cs-bg);
+  color: var(--cmu-red);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  cursor: pointer;
+  letter-spacing: 0.02em;
+  transition: background 120ms, color 120ms;
+}
+.nav-admin:hover {
+  background: var(--cmu-red);
+  color: #fff;
+}
+
+/* Navbar sign-out button */
+.nav-signout {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 8px;
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+.nav-signout:hover {
+  border-color: var(--cmu-red);
+  color: var(--cmu-red);
+}
+
+/* ════════════════════════════════════════════════════════════
+   ADMIN — Flag review view
+   ════════════════════════════════════════════════════════════ */
+
+.adm-view { padding: 18px 24px 40px; }
+.adm-header { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.adm-title  { font-size: 16px; font-weight: 800; color: var(--text-primary); }
+.adm-count  { font-weight: 500; color: var(--text-tertiary); }
+
+.adm-tabs {
+  display: flex;
+  gap: 4px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-light);
+  border-radius: 10px;
+  padding: 4px;
+  margin-bottom: 14px;
+  width: fit-content;
+}
+.adm-tab {
+  padding: 7px 14px;
+  border: 0;
+  background: transparent;
+  border-radius: 7px;
+  font-family: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+.adm-tab:hover { background: var(--bg-tertiary); color: var(--text-primary); }
+.adm-tab.active { background: var(--cmu-red); color: #fff; }
+
+.adm-list { display: flex; flex-direction: column; gap: 10px; }
+
+.adm-row {
+  border: 1.5px solid var(--border-light);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--bg-card);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.adm-row-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.adm-course { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.adm-course-code {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 800;
+  font-size: 14px;
+  color: var(--cmu-red);
+}
+.adm-course-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.adm-status {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  flex-shrink: 0;
+}
+.adm-status-pending   { background: var(--major-is-bg); color: var(--major-is-text); border: 1px solid var(--major-is-border); }
+.adm-status-reviewed  { background: var(--major-ba-bg); color: var(--major-ba-text); border: 1px solid var(--major-ba-border); }
+.adm-status-resolved  { background: var(--major-bs-bg); color: var(--major-bs-text); border: 1px solid var(--major-bs-border); }
+.adm-status-dismissed { background: var(--bg-tertiary); color: var(--text-tertiary); border: 1px solid var(--border-light); }
+
+.adm-reason {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.adm-notes {
+  font-size: 12.5px;
+  color: var(--text-secondary);
+  background: var(--bg-secondary);
+  padding: 8px 10px;
+  border-radius: 6px;
+  line-height: 1.5;
+}
+.adm-notes-admin {
+  background: var(--major-bs-bg);
+  color: var(--major-bs-text);
+}
+.adm-meta {
+  font-size: 11.5px;
+  color: var(--text-tertiary);
+}
+.adm-role {
+  color: var(--text-tertiary);
+}
+
+.adm-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 4px;
+}
+.adm-btn {
+  padding: 6px 12px;
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
+}
+.adm-btn:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+.adm-btn-resolve { color: var(--major-bs-text); border-color: var(--major-bs-border); }
+.adm-btn-resolve:hover { background: var(--major-bs-bg); }
+.adm-btn-dismiss { color: var(--text-tertiary); }
+.adm-btn-note { color: var(--major-ba-text); border-color: var(--major-ba-border); }
+.adm-btn-note:hover { background: var(--major-ba-bg); }

@@ -5,3 +5,11 @@ node_modules/
 .superpowers/
 .claude/
 CONTEXT.md
+
+# Backend artifacts — Flask instance dir, local SQLite, env files, caches
+instance/
+*.db
+.env
+__pycache__/
+.pytest_cache/
+backend/.venv/
