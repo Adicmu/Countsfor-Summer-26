@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-02T16:46:59.868491+00:00",
+    "last_scrape": "2026-06-03T17:03:11.768684+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -8041,9 +8041,9 @@
             {
               "section": "W",
               "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
+              "days": "U",
+              "begin_time": "02:30PM",
+              "end_time": "03:45PM",
               "location": "Doha, Qatar",
               "delivery_mode": "In-person Expectation",
               "campus": "Qatar"
@@ -20491,7 +20491,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "04:20PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -30704,9 +30704,9 @@
             {
               "section": "Lec 1",
               "mini": "",
-              "days": "T",
-              "begin_time": "12:30PM",
-              "end_time": "01:50PM",
+              "days": "MW",
+              "begin_time": "03:30PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -30714,9 +30714,9 @@
             {
               "section": "A",
               "mini": "",
-              "days": "R",
-              "begin_time": "12:30PM",
-              "end_time": "01:50PM",
+              "days": "W",
+              "begin_time": "03:30PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -30724,9 +30724,9 @@
             {
               "section": "B",
               "mini": "",
-              "days": "R",
-              "begin_time": "12:30PM",
-              "end_time": "01:50PM",
+              "days": "W",
+              "begin_time": "03:30PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -48190,7 +48190,7 @@
         },
         {
           "course_number": "76236",
-          "title": "CMU Prison Education Project: : Major Fiction Then and Now",
+          "title": "CMU Prison Education Project: : Major Fiction Then and NowThis Section Cancelled",
           "units": "12",
           "department_code": "ENG",
           "department": "English",
@@ -49626,7 +49626,7 @@
         },
         {
           "course_number": "76481",
-          "title": "Introduction to Multimedia Design",
+          "title": "Introduction to Multimedia Design This Section Cancelled",
           "units": "12",
           "department_code": "ENG",
           "department": "English",
@@ -50558,7 +50558,7 @@
         },
         {
           "course_number": "76881",
-          "title": "Introduction to Multimedia Design",
+          "title": "Introduction to Multimedia Design This Section Cancelled",
           "units": "12",
           "department_code": "ENG",
           "department": "English",
@@ -56291,9 +56291,9 @@
             {
               "section": "W",
               "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
+              "days": "UT",
+              "begin_time": "08:30AM",
+              "end_time": "09:45AM",
               "location": "Doha, Qatar",
               "delivery_mode": "In-person Expectation",
               "campus": "Qatar"
@@ -66911,6 +66911,28 @@
           ]
         },
         {
+          "course_number": "82387",
+          "title": "Introduction to Linguistic Data Analysis Using R",
+          "units": "9",
+          "department_code": "LCL",
+          "department": "Languages Cultures & Appl Linguistics",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "TR",
+              "begin_time": "02:00PM",
+              "end_time": "03:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
           "course_number": "82388",
           "title": "Topics in Second Language Acquisition : Research Methods in SLA",
           "units": "9",
@@ -68179,28 +68201,6 @@
         {
           "course_number": "82062",
           "title": "Audio Docs: Experimental Narrative Storytelling in Sound",
-          "units": "3",
-          "department_code": "LCL",
-          "department": "Languages Cultures & Appl Linguistics",
-          "sections": [
-            {
-              "section": "W1",
-              "mini": "Y",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
-              "location": "Doha, Qatar",
-              "delivery_mode": "In-person + remote",
-              "campus": "Qatar"
-            }
-          ],
-          "campus": [
-            "Qatar"
-          ]
-        },
-        {
-          "course_number": "82187",
-          "title": "Documentary, Found Sound, and Hidden Frequencies in Language and Culture",
           "units": "3",
           "department_code": "LCL",
           "department": "Languages Cultures & Appl Linguistics",
@@ -76554,7 +76554,7 @@
         },
         {
           "course_number": "24650",
-          "title": "Applied Finite Element Analysis",
+          "title": "Applied Finite Element Analysis This Section Cancelled",
           "units": "12",
           "department_code": "MEG",
           "department": "Mechanical Engineering",
@@ -76726,7 +76726,7 @@
             {
               "section": "A",
               "mini": "",
-              "days": "MWF",
+              "days": "MW",
               "begin_time": "10:00AM",
               "end_time": "11:50AM",
               "location": "Pittsburgh, Pennsylvania",
@@ -79665,16 +79665,6 @@
             },
             {
               "section": "B",
-              "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
-              "campus": "Pittsburgh"
-            },
-            {
-              "section": "C",
               "mini": "",
               "days": "TBA",
               "begin_time": "TBA",
@@ -106126,7 +106116,7 @@
           "code": "MUS",
           "name": "Music",
           "courses": 313,
-          "sections": 1013
+          "sections": 1012
         },
         {
           "code": "NVS",
@@ -106213,9 +106203,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-02T16:46:59.868491+00:00",
+      "scraped_at": "2026-06-03T17:03:11.768684+00:00",
       "total_courses": 3123,
-      "total_sections": 6826
+      "total_sections": 6825
     }
   }
 }
