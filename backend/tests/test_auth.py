@@ -111,6 +111,111 @@ def test_patch_me_admin_cannot_self_demote(client, admin):
     assert r.get_json()["error"] == "cannot_change_admin_role"
 
 
+# ── PATCH /api/me cross-field validation ────────────────────
+
+def test_patch_me_rejects_student_without_program(client, student):
+    login(client, student)
+    # Trying to clear primary_program while keeping role=student
+    r = client.patch("/api/me", json={"primary_program": ""})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "inconsistent_profile"
+
+
+def test_patch_me_rejects_advisor_major_scope_without_program(client):
+    # Seed a fresh advisor user via session
+    from backend.db import db
+    from backend.models import User
+    with client.application.app_context():
+        u = User(email="adv@andrew.cmu.edu", name="Adv", role="advisor", advisor_scope="major", primary_program="CS", google_sub="g-adv")
+        db.session.add(u); db.session.commit()
+        uid = u.id
+    with client.session_transaction() as s: s.clear(); s["uid"] = uid; s.permanent = True
+
+    # Trying to clear primary_program while role=advisor + scope=major
+    r = client.patch("/api/me", json={"primary_program": ""})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "inconsistent_profile"
+
+
+def test_patch_me_accepts_consistent_advisor_minor(client):
+    from backend.db import db
+    from backend.models import User
+    with client.application.app_context():
+        u = User(email="adv2@andrew.cmu.edu", name="Adv2", role="advisor", advisor_scope="major", primary_program="CS", google_sub="g-adv2")
+        db.session.add(u); db.session.commit()
+        uid = u.id
+    with client.session_transaction() as s: s.clear(); s["uid"] = uid; s.permanent = True
+
+    # Switch advisor from major-scope CS to minor-scope History
+    r = client.patch("/api/me", json={
+        "advisor_scope": "minor",
+        "primary_program": "",
+        "minor_code": "history",
+    })
+    assert r.status_code == 200, r.get_json()
+    body = r.get_json()
+    assert body["advisor_scope"] == "minor"
+    assert body["primary_program"] is None
+    assert body["minor_code"] == "history"
+
+
+def test_patch_me_rejects_advisor_all_programs_with_program(client):
+    from backend.db import db
+    from backend.models import User
+    with client.application.app_context():
+        u = User(email="adv3@andrew.cmu.edu", name="Adv3", role="advisor", advisor_scope="all_programs", google_sub="g-adv3")
+        db.session.add(u); db.session.commit()
+        uid = u.id
+    with client.session_transaction() as s: s.clear(); s["uid"] = uid; s.permanent = True
+
+    # all_programs scope should not also have a primary_program
+    r = client.patch("/api/me", json={"primary_program": "CS"})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "inconsistent_profile"
+
+
+# ── Admin demotion / no-demotion via env ───────────────────
+
+def test_google_signin_does_not_demote_existing_non_admin(client):
+    """If a user is a professor and their email isn't in ADMIN_EMAILS,
+    re-login must not silently change their role."""
+    with patch("backend.auth.id_token.verify_oauth2_token",
+               return_value=_fake_google_payload(email="prof@andrew.cmu.edu", sub="g-prof")):
+        # First login — creates as student (default), but we then update role to professor
+        client.post("/api/auth/google", json={"credential": "stub"})
+
+    from backend.db import db
+    from backend.models import User
+    with client.application.app_context():
+        u = db.session.query(User).filter_by(email="prof@andrew.cmu.edu").one()
+        u.role = "professor"
+        u.primary_program = "IS"
+        db.session.commit()
+
+    # Re-login — role must stay professor
+    with patch("backend.auth.id_token.verify_oauth2_token",
+               return_value=_fake_google_payload(email="prof@andrew.cmu.edu", sub="g-prof")):
+        r = client.post("/api/auth/google", json={"credential": "stub"})
+    assert r.get_json()["role"] == "professor"
+
+
+def test_google_signin_does_not_demote_admin_when_removed_from_env(client):
+    """If an existing admin's email is later removed from ADMIN_EMAILS,
+    their role stays 'admin' (demotion is manual). Tested by using an email
+    NOT in TestConfig.ADMIN_EMAILS but with role pre-set to admin."""
+    from backend.db import db
+    from backend.models import User
+    with client.application.app_context():
+        u = User(email="exadmin@andrew.cmu.edu", name="Ex", role="admin", google_sub="g-ex")
+        db.session.add(u); db.session.commit()
+
+    # Now they sign in — their email is NOT in ADMIN_EMAILS
+    with patch("backend.auth.id_token.verify_oauth2_token",
+               return_value=_fake_google_payload(email="exadmin@andrew.cmu.edu", sub="g-ex")):
+        r = client.post("/api/auth/google", json={"credential": "stub"})
+    assert r.get_json()["role"] == "admin"  # not demoted
+
+
 # ── Logout ──────────────────────────────────────────────────
 
 def test_logout_clears_session(client, student):

@@ -81,16 +81,14 @@ def google_signin():
         if not user.name and name:
             user.name = name
 
-    # Admin auto-promotion via env var. Always applied so removing an email
-    # from ADMIN_EMAILS demotes the user on next login — predictable behavior.
+    # Admin promotion is one-way via env var: if the email is in
+    # ADMIN_EMAILS, the user gets promoted to admin on every login. We do
+    # NOT auto-demote — removing an email from the env var stops new
+    # admin grants but doesn't clobber a previously-set role. To demote
+    # an existing admin, edit the DB directly (`UPDATE users SET role=...`).
     admin_emails = current_app.config.get("ADMIN_EMAILS") or set()
     if email in admin_emails and user.role != "admin":
         user.role = "admin"
-    elif email not in admin_emails and user.role == "admin":
-        # Demote — but only if no role was ever set otherwise; preserves the
-        # case where an admin set a different role intentionally is moot here
-        # since admins enter via env, not the profile picker.
-        user.role = "student"
 
     db.session.commit()
 
@@ -129,6 +127,69 @@ ALLOWED_PROFILE_FIELDS = {
 USER_SETTABLE_ROLES = {"student", "professor", "area_head", "associate_area_head", "advisor"}
 
 
+VALID_PROGRAMS_FOR_PATCH = {"CS", "IS", "BA", "BS", "AI", "GS", "AS"}
+VALID_MINORS_FOR_PATCH = {
+    "arabic", "biology", "business", "cs", "economics", "finance", "history",
+    "math", "neuroscience", "product", "writing", "psychology", "sociology",
+    "self_defined", "tech_entre",
+}
+VALID_ADVISOR_SCOPES = {"major", "minor", "arts_sciences", "all_programs"}
+
+
+def _validate_consistent_profile(role, primary_program, minor_code, advisor_scope):
+    """Return None if the combination is internally consistent, else an error message.
+
+    Mirrors the validateProfile() rules from js/profile.js so server can't be
+    pushed into a state the frontend won't render correctly."""
+    if role == "student":
+        if not primary_program or primary_program not in VALID_PROGRAMS_FOR_PATCH - {"AS"}:
+            return "Students must have a primary_program (CS/IS/BA/BS/AI/GS)."
+        if minor_code and minor_code not in VALID_MINORS_FOR_PATCH:
+            return f"Unknown minor_code: {minor_code}."
+        if advisor_scope:
+            return "Students cannot have an advisor_scope."
+        return None
+    if role == "professor":
+        if primary_program not in VALID_PROGRAMS_FOR_PATCH:
+            return "Professors must have a primary_program."
+        if minor_code:
+            return "Professors cannot have a minor_code."
+        if advisor_scope:
+            return "Professors cannot have an advisor_scope."
+        return None
+    if role in ("area_head", "associate_area_head"):
+        if primary_program is not None and primary_program not in VALID_PROGRAMS_FOR_PATCH:
+            return "Invalid primary_program for area lead."
+        if minor_code:
+            return "Area leads cannot have a minor_code."
+        if advisor_scope:
+            return "Area leads cannot have an advisor_scope."
+        return None
+    if role == "advisor":
+        if advisor_scope not in VALID_ADVISOR_SCOPES:
+            return f"Advisor must have advisor_scope ∈ {sorted(VALID_ADVISOR_SCOPES)}."
+        if advisor_scope == "major":
+            if primary_program not in (VALID_PROGRAMS_FOR_PATCH - {"AS"}):
+                return "Advisor with scope=major needs a primary_program (CS/IS/BA/BS/AI/GS)."
+            if minor_code:
+                return "Advisor with scope=major cannot also have a minor_code."
+        elif advisor_scope == "minor":
+            if minor_code not in VALID_MINORS_FOR_PATCH:
+                return "Advisor with scope=minor needs a valid minor_code."
+            if primary_program:
+                return "Advisor with scope=minor cannot also have a primary_program."
+        else:
+            # arts_sciences / all_programs — no target needed
+            if primary_program:
+                return f"Advisor with scope={advisor_scope} cannot have a primary_program."
+            if minor_code:
+                return f"Advisor with scope={advisor_scope} cannot have a minor_code."
+        return None
+    if role == "admin":
+        return None  # admins are scoped server-side, no per-field constraints
+    return f"Unknown role: {role}."
+
+
 @bp.route("/me", methods=["PATCH"])
 @require_login
 def update_me():
@@ -142,12 +203,21 @@ def update_me():
     user: User = g.user
     is_admin = user.role == "admin"
 
+    # Compute what the user would look like AFTER applying the patch, then
+    # validate cross-field consistency before any DB write.
+    def _next(field, default):
+        if field in data:
+            v = data[field]
+            return None if v == "" else v
+        return default
+
+    new_role            = _next("role", user.role)
+    new_primary         = _next("primary_program", user.primary_program)
+    new_minor           = _next("minor_code", user.minor_code)
+    new_advisor_scope   = _next("advisor_scope", user.advisor_scope)
+
     if "role" in data:
-        new_role = data["role"]
         if is_admin:
-            # Don't let admins demote themselves to non-admin via the API —
-            # admin status is env-driven; setting another role would just get
-            # flipped back on the next login anyway.
             if new_role != "admin":
                 return jsonify(
                     error="cannot_change_admin_role",
@@ -156,8 +226,14 @@ def update_me():
         else:
             if new_role not in USER_SETTABLE_ROLES:
                 return jsonify(error="invalid_role", message=f"Role must be one of {sorted(USER_SETTABLE_ROLES)}."), 400
-            user.role = new_role
 
+    err = _validate_consistent_profile(new_role, new_primary, new_minor, new_advisor_scope)
+    if err:
+        return jsonify(error="inconsistent_profile", message=err), 400
+
+    # All checks passed — apply the patch.
+    if "role" in data and not is_admin:
+        user.role = new_role
     for field in ("name", "primary_program", "minor_code", "advisor_scope", "department_scope"):
         if field in data:
             value = data[field]

@@ -617,6 +617,13 @@ const App = {
   },
 
   async signOut() {
+    // Best-effort sync of any locally-saved-but-unsynced data BEFORE we
+    // clear it. If the user is offline / backend unreachable, the sync
+    // attempt will just no-op and we proceed to local cleanup.
+    if (this.authMode === 'authed' && this.authedUser) {
+      try { await this._syncLocalToServer(); } catch {}
+    }
+
     await apiLogout();
     clearProfile();
     // Clear per-user local caches so a different account on the same browser
@@ -730,6 +737,13 @@ const App = {
   },
 
   editRole() {
+    // Admins can't change their role from the UI — ADMIN_EMAILS on the
+    // server is authoritative. Show a non-destructive notice instead of
+    // walking them through onboarding that will fail on PATCH.
+    if (this.authedUser && this.authedUser.role === 'admin') {
+      showToast('Admin role is managed via the ADMIN_EMAILS env var on the server.');
+      return;
+    }
     this.renderOnboarding(true);
   },
 
@@ -1957,7 +1971,11 @@ const App = {
       this._saveWishlist(list);
       if (this.authMode === 'authed') {
         const r = await apiAddWishlist(code);
-        if (!r.ok) showToast('Saved locally — sync to server failed.');
+        if (!r.ok) {
+          // Drop the synced flag so next sign-in retries the migration loop.
+          try { localStorage.removeItem('cf_synced'); } catch {}
+          showToast('Saved locally — sync to server failed.');
+        }
       }
       showToast('Saved for later');
     } else {
@@ -1965,7 +1983,10 @@ const App = {
       this._saveWishlist(list);
       if (this.authMode === 'authed') {
         const r = await apiRemoveWishlist(code);
-        if (!r.ok && r.status !== 404) showToast('Removed locally — sync to server failed.');
+        if (!r.ok && r.status !== 404) {
+          try { localStorage.removeItem('cf_synced'); } catch {}
+          showToast('Removed locally — sync to server failed.');
+        }
       }
       showToast('Removed from wishlist');
     }
@@ -2175,6 +2196,7 @@ const App = {
     if (this.authMode === 'authed') {
       const r = await apiCreateFlag(flag);
       if (!r.ok) {
+        try { localStorage.removeItem('cf_synced'); } catch {}
         toast = 'Saved locally — sync to server failed (will retry next sign-in).';
       }
     } else {
