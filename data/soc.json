@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-03T17:03:11.768684+00:00",
+    "last_scrape": "2026-06-04T15:31:33.782111+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -12077,7 +12077,7 @@
         },
         {
           "course_number": "46926",
-          "title": "Machine Learning I",
+          "title": "Machine Learning I This Section Cancelled",
           "units": "6",
           "department_code": "BUS",
           "department": "Business Administration",
@@ -18594,6 +18594,28 @@
           ]
         },
         {
+          "course_number": "99023",
+          "title": "CMUPD Citizens Police Academy",
+          "units": "1",
+          "department_code": "CMU",
+          "department": "Carnegie Mellon University-Wide Studies",
+          "sections": [
+            {
+              "section": "A2",
+              "mini": "Y",
+              "days": "W",
+              "begin_time": "02:00PM",
+              "end_time": "04:00PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person only",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
           "course_number": "99101",
           "title": "Core@CMU",
           "units": "3",
@@ -20491,7 +20513,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -20501,7 +20523,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "07:20PM",
+              "end_time": "08:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -20659,7 +20681,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "04:50PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -26518,6 +26540,16 @@
               "campus": "Pittsburgh"
             },
             {
+              "section": "I",
+              "mini": "",
+              "days": "F",
+              "begin_time": "01:00PM",
+              "end_time": "01:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            },
+            {
               "section": "Lec 2",
               "mini": "",
               "days": "MW",
@@ -28011,6 +28043,28 @@
               "days": "MW",
               "begin_time": "11:00AM",
               "end_time": "12:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
+          "course_number": "15889",
+          "title": "Science of Frontier AI: Capabilities and Safety",
+          "units": "12",
+          "department_code": "CS",
+          "department": "Computer Science",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -37231,6 +37285,28 @@
           ]
         },
         {
+          "course_number": "54508",
+          "title": "Theatrical Sound System Design 1",
+          "units": "9",
+          "department_code": "DRA",
+          "department": "Drama",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
           "course_number": "54519",
           "title": "Acting for the Camera",
           "units": "6",
@@ -40761,6 +40837,28 @@
               "end_time": "11:50AM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
+          "course_number": "54804",
+          "title": "Theatrical Sound System Design 1",
+          "units": "9",
+          "department_code": "DRA",
+          "department": "Drama",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
             }
           ],
@@ -91829,6 +91927,28 @@
           ]
         },
         {
+          "course_number": "86600",
+          "title": "Reading and Research MS",
+          "units": "VAR",
+          "department_code": "NSI",
+          "department": "Neuroscience Institute",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
           "course_number": "86631",
           "title": "Neural Data Analysis",
           "units": "12",
@@ -105917,8 +106037,8 @@
         {
           "code": "CMU",
           "name": "Carnegie Mellon University-Wide Studies",
-          "courses": 24,
-          "sections": 44
+          "courses": 25,
+          "sections": 45
         },
         {
           "code": "CHE",
@@ -105947,8 +106067,8 @@
         {
           "code": "CS",
           "name": "Computer Science",
-          "courses": 93,
-          "sections": 313
+          "courses": 94,
+          "sections": 315
         },
         {
           "code": "BCA",
@@ -105971,8 +106091,8 @@
         {
           "code": "DRA",
           "name": "Drama",
-          "courses": 270,
-          "sections": 701
+          "courses": 272,
+          "sections": 703
         },
         {
           "code": "ECO",
@@ -106127,8 +106247,8 @@
         {
           "code": "NSI",
           "name": "Neuroscience Institute",
-          "courses": 7,
-          "sections": 7
+          "courses": 8,
+          "sections": 8
         },
         {
           "code": "PHI",
@@ -106203,9 +106323,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-03T17:03:11.768684+00:00",
-      "total_courses": 3123,
-      "total_sections": 6825
+      "scraped_at": "2026-06-04T15:31:33.782111+00:00",
+      "total_courses": 3128,
+      "total_sections": 6831
     }
   }
 }
