@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-04T15:31:33.782111+00:00",
+    "last_scrape": "2026-06-05T15:19:23.213414+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -11850,6 +11850,38 @@
           ]
         },
         {
+          "course_number": "46902",
+          "title": "Data Structures and Algorithms for Computational Finance",
+          "units": "6",
+          "department_code": "BUS",
+          "department": "Business Administration",
+          "sections": [
+            {
+              "section": "I1",
+              "mini": "Y",
+              "days": "TR",
+              "begin_time": "10:00AM",
+              "end_time": "11:30AM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            },
+            {
+              "section": "I2",
+              "mini": "Y",
+              "days": "TR",
+              "begin_time": "03:00PM",
+              "end_time": "04:30PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
           "course_number": "46904",
           "title": "Financial Computing IV",
           "units": "6",
@@ -12197,7 +12229,7 @@
         },
         {
           "course_number": "46964",
-          "title": "C++ Programming for Computational Finance",
+          "title": "Algorithm Design and Applications for Computational Finance",
           "units": "6",
           "department_code": "BUS",
           "department": "Business Administration",
@@ -12210,28 +12242,6 @@
               "end_time": "06:30PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
-              "campus": "Pittsburgh"
-            }
-          ],
-          "campus": [
-            "Pittsburgh"
-          ]
-        },
-        {
-          "course_number": "46965",
-          "title": "Financial Computing I Adv",
-          "units": "6",
-          "department_code": "BUS",
-          "department": "Business Administration",
-          "sections": [
-            {
-              "section": "I1",
-              "mini": "Y",
-              "days": "MW",
-              "begin_time": "05:00PM",
-              "end_time": "06:30PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             }
           ],
@@ -48138,10 +48148,21 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "W",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Doha, Qatar",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Qatar"
             }
           ],
           "campus": [
-            "Pittsburgh"
+            "Pittsburgh",
+            "Qatar"
           ]
         },
         {
@@ -49976,7 +49997,7 @@
         },
         {
           "course_number": "76714",
-          "title": "Data Stories",
+          "title": "Data Stories This Section Cancelled",
           "units": "VAR",
           "department_code": "ENG",
           "department": "English",
@@ -99142,7 +99163,7 @@
         },
         {
           "course_number": "90714",
-          "title": "Social Policies in the US and Developing Countries",
+          "title": "Policy and Politics: American Political Institutions",
           "units": "12",
           "department_code": "PPP",
           "department": "Public Policy & Mgt:Sch of Pub Pol & Mgt",
@@ -106008,7 +106029,7 @@
           "code": "BUS",
           "name": "Business Administration",
           "courses": 201,
-          "sections": 389
+          "sections": 390
         },
         {
           "code": "CFA",
@@ -106122,7 +106143,7 @@
           "code": "ENG",
           "name": "English",
           "courses": 124,
-          "sections": 253
+          "sections": 254
         },
         {
           "code": "ETC",
@@ -106323,9 +106344,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-04T15:31:33.782111+00:00",
+      "scraped_at": "2026-06-05T15:19:23.213414+00:00",
       "total_courses": 3128,
-      "total_sections": 6831
+      "total_sections": 6833
     }
   }
 }
