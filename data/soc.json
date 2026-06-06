@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-05T15:19:23.213414+00:00",
+    "last_scrape": "2026-06-06T13:59:10.081945+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -2490,6 +2490,28 @@
               "days": "W",
               "begin_time": "09:30AM",
               "end_time": "10:50AM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
+          "course_number": "48709",
+          "title": "History and Future of Interaction Design",
+          "units": "12",
+          "department_code": "ARC",
+          "department": "Architecture",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "MW",
+              "begin_time": "07:00PM",
+              "end_time": "08:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -8989,6 +9011,16 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "B",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
             }
           ],
           "campus": [
@@ -15333,6 +15365,28 @@
           ]
         },
         {
+          "course_number": "70379",
+          "title": "Project Management",
+          "units": "9",
+          "department_code": "BUS",
+          "department": "Business Administration",
+          "sections": [
+            {
+              "section": "W",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Doha, Qatar",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Qatar"
+            }
+          ],
+          "campus": [
+            "Qatar"
+          ]
+        },
+        {
           "course_number": "70388",
           "title": "Islamic Finance",
           "units": "9",
@@ -20691,7 +20745,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -29367,6 +29421,28 @@
           ]
         },
         {
+          "course_number": "51495",
+          "title": "History and Future of Interaction Design",
+          "units": "9",
+          "department_code": "DES",
+          "department": "Design",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "MW",
+              "begin_time": "07:00PM",
+              "end_time": "08:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
           "course_number": "51499",
           "title": "Senior Independent Study",
           "units": "3-12",
@@ -29867,6 +29943,28 @@
               "days": "M",
               "begin_time": "07:00PM",
               "end_time": "09:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
+          "course_number": "51695",
+          "title": "History and Future of Interaction Design",
+          "units": "12",
+          "department_code": "DES",
+          "department": "Design",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "MW",
+              "begin_time": "07:00PM",
+              "end_time": "08:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -45322,16 +45420,6 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
-            },
-            {
-              "section": "B",
-              "mini": "",
-              "days": "MW",
-              "begin_time": "03:30PM",
-              "end_time": "04:50PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
-              "campus": "Pittsburgh"
             }
           ],
           "campus": [
@@ -57623,7 +57711,7 @@
               "begin_time": "02:00PM",
               "end_time": "03:20PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person Expectation Rotation",
               "campus": "Pittsburgh"
             },
             {
@@ -57633,7 +57721,7 @@
               "begin_time": "12:30PM",
               "end_time": "01:50PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person + remote",
               "campus": "Pittsburgh"
             }
           ],
@@ -62462,10 +62550,21 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "Remote only",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "W",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Doha, Qatar",
+              "delivery_mode": "Remote only",
+              "campus": "Qatar"
             }
           ],
           "campus": [
-            "Pittsburgh"
+            "Pittsburgh",
+            "Qatar"
           ]
         },
         {
@@ -97190,9 +97289,9 @@
             {
               "section": "I",
               "mini": "",
-              "days": "T",
-              "begin_time": "08:00PM",
-              "end_time": "09:50PM",
+              "days": "F",
+              "begin_time": "03:00PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -97205,6 +97304,16 @@
               "end_time": "05:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
+              "campus": "Pittsburgh"
+            },
+            {
+              "section": "K",
+              "mini": "",
+              "days": "F",
+              "begin_time": "01:00PM",
+              "end_time": "02:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
             }
           ],
@@ -105992,8 +106101,8 @@
         {
           "code": "ARC",
           "name": "Architecture",
-          "courses": 110,
-          "sections": 259
+          "courses": 111,
+          "sections": 260
         },
         {
           "code": "ART",
@@ -106023,13 +106132,13 @@
           "code": "BMD",
           "name": "Biomedical Engineering",
           "courses": 46,
-          "sections": 50
+          "sections": 51
         },
         {
           "code": "BUS",
           "name": "Business Administration",
-          "courses": 201,
-          "sections": 390
+          "courses": 202,
+          "sections": 391
         },
         {
           "code": "CFA",
@@ -106100,8 +106209,8 @@
         {
           "code": "DES",
           "name": "Design",
-          "courses": 99,
-          "sections": 126
+          "courses": 101,
+          "sections": 128
         },
         {
           "code": "HSS",
@@ -106125,7 +106234,7 @@
           "code": "ECE",
           "name": "Electrical & Computer Engineering",
           "courses": 112,
-          "sections": 182
+          "sections": 181
         },
         {
           "code": "EPP",
@@ -106209,7 +106318,7 @@
           "code": "LTI",
           "name": "Language Technologies Institute",
           "courses": 55,
-          "sections": 222
+          "sections": 223
         },
         {
           "code": "LCL",
@@ -106293,7 +106402,7 @@
           "code": "PSY",
           "name": "Psychology",
           "courses": 53,
-          "sections": 107
+          "sections": 108
         },
         {
           "code": "PMP",
@@ -106344,9 +106453,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-05T15:19:23.213414+00:00",
-      "total_courses": 3128,
-      "total_sections": 6833
+      "scraped_at": "2026-06-06T13:59:10.081945+00:00",
+      "total_courses": 3132,
+      "total_sections": 6839
     }
   }
 }
