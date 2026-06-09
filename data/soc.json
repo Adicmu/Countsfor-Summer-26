@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-08T16:08:04.380810+00:00",
+    "last_scrape": "2026-06-09T15:19:41.993109+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -6659,7 +6659,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -6679,7 +6679,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -8439,7 +8439,7 @@
               "begin_time": "02:00PM",
               "end_time": "03:20PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person Expectation Rotation",
               "campus": "Pittsburgh"
             }
           ],
@@ -14885,39 +14885,6 @@
           ]
         },
         {
-          "course_number": "70471",
-          "title": "Supply Chain Management",
-          "units": "9",
-          "department_code": "BUS",
-          "department": "Business Administration",
-          "sections": [
-            {
-              "section": "A",
-              "mini": "",
-              "days": "MW",
-              "begin_time": "09:30AM",
-              "end_time": "10:50AM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
-              "campus": "Pittsburgh"
-            },
-            {
-              "section": "W",
-              "mini": "",
-              "days": "UT",
-              "begin_time": "08:30AM",
-              "end_time": "09:45AM",
-              "location": "Doha, Qatar",
-              "delivery_mode": "In-person only",
-              "campus": "Qatar"
-            }
-          ],
-          "campus": [
-            "Pittsburgh",
-            "Qatar"
-          ]
-        },
-        {
           "course_number": "70483",
           "title": "Advertising and Marketing Communications",
           "units": "9",
@@ -15463,6 +15430,28 @@
               "section": "W",
               "mini": "",
               "days": "MW",
+              "begin_time": "08:30AM",
+              "end_time": "09:45AM",
+              "location": "Doha, Qatar",
+              "delivery_mode": "In-person only",
+              "campus": "Qatar"
+            }
+          ],
+          "campus": [
+            "Qatar"
+          ]
+        },
+        {
+          "course_number": "70471",
+          "title": "Supply Chain Management",
+          "units": "9",
+          "department_code": "BUS",
+          "department": "Business Administration",
+          "sections": [
+            {
+              "section": "W",
+              "mini": "",
+              "days": "UT",
               "begin_time": "08:30AM",
               "end_time": "09:45AM",
               "location": "Doha, Qatar",
@@ -17132,6 +17121,28 @@
           ]
         },
         {
+          "course_number": "84200",
+          "title": "Security War Game Simulation",
+          "units": "3",
+          "department_code": "CST",
+          "department": "CM Institute for Strategy and Tech",
+          "sections": [
+            {
+              "section": "A2",
+              "mini": "Y",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
           "course_number": "84215",
           "title": "Tomorrow's Professionals",
           "units": "3",
@@ -18009,6 +18020,28 @@
             {
               "section": "B",
               "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
+          "course_number": "84600",
+          "title": "Security War Game Simulation",
+          "units": "3",
+          "department_code": "CST",
+          "department": "CM Institute for Strategy and Tech",
+          "sections": [
+            {
+              "section": "A2",
+              "mini": "Y",
               "days": "TBA",
               "begin_time": "TBA",
               "end_time": "TBA",
@@ -28379,28 +28412,6 @@
           ]
         },
         {
-          "course_number": "51150",
-          "title": "Personal Design Futures",
-          "units": "5",
-          "department_code": "DES",
-          "department": "Design",
-          "sections": [
-            {
-              "section": "A2",
-              "mini": "Y",
-              "days": "R",
-              "begin_time": "12:00PM",
-              "end_time": "01:50PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
-              "campus": "Pittsburgh"
-            }
-          ],
-          "campus": [
-            "Pittsburgh"
-          ]
-        },
-        {
           "course_number": "51173",
           "title": "Human Experience in Design",
           "units": "9",
@@ -30185,28 +30196,6 @@
               "days": "MW",
               "begin_time": "02:00PM",
               "end_time": "04:50PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
-              "campus": "Pittsburgh"
-            }
-          ],
-          "campus": [
-            "Pittsburgh"
-          ]
-        },
-        {
-          "course_number": "51750",
-          "title": "Personal Design Futures",
-          "units": "5",
-          "department_code": "DES",
-          "department": "Design",
-          "sections": [
-            {
-              "section": "A2",
-              "mini": "Y",
-              "days": "R",
-              "begin_time": "12:00PM",
-              "end_time": "01:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -106138,7 +106127,7 @@
           "code": "BUS",
           "name": "Business Administration",
           "courses": 202,
-          "sections": 391
+          "sections": 390
         },
         {
           "code": "CFA",
@@ -106155,8 +106144,8 @@
         {
           "code": "CST",
           "name": "CM Institute for Strategy and Tech",
-          "courses": 62,
-          "sections": 89
+          "courses": 64,
+          "sections": 91
         },
         {
           "code": "CMQ",
@@ -106209,8 +106198,8 @@
         {
           "code": "DES",
           "name": "Design",
-          "courses": 101,
-          "sections": 128
+          "courses": 99,
+          "sections": 126
         },
         {
           "code": "HSS",
@@ -106453,9 +106442,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-08T16:08:04.380810+00:00",
+      "scraped_at": "2026-06-09T15:19:41.993109+00:00",
       "total_courses": 3132,
-      "total_sections": 6839
+      "total_sections": 6838
     }
   }
 }
