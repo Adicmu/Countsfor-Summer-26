@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-09T15:19:41.993109+00:00",
+    "last_scrape": "2026-06-10T15:54:02.158136+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -6679,7 +6679,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -37987,6 +37987,16 @@
               "campus": "Pittsburgh"
             },
             {
+              "section": "H",
+              "mini": "",
+              "days": "MTWRF",
+              "begin_time": "05:00PM",
+              "end_time": "10:30PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            },
+            {
               "section": "I",
               "mini": "",
               "days": "MTWRF",
@@ -45275,7 +45285,7 @@
         },
         {
           "course_number": "18753",
-          "title": "Information Theory Measures for Artificial and Natural Intelligence Systems",
+          "title": "Information Theory Measures for Artificial and Natural Intelligence Systems This Section Cancelled",
           "units": "12",
           "department_code": "ECE",
           "department": "Electrical & Computer Engineering",
@@ -65168,7 +65178,7 @@
         },
         {
           "course_number": "11968",
-          "title": "Large Language Model Systems",
+          "title": "Large Language Model Systems This Section Cancelled",
           "units": "12",
           "department_code": "LTI",
           "department": "Language Technologies Institute",
@@ -87973,7 +87983,7 @@
         },
         {
           "course_number": "57738",
-          "title": "Graduate Vocal Literature I : Works of Stephen Sondheim",
+          "title": "Graduate Vocal Literature I : French Lit and Rep",
           "units": "3",
           "department_code": "MUS",
           "department": "Music",
@@ -106211,7 +106221,7 @@
           "code": "DRA",
           "name": "Drama",
           "courses": 272,
-          "sections": 703
+          "sections": 704
         },
         {
           "code": "ECO",
@@ -106442,9 +106452,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-09T15:19:41.993109+00:00",
+      "scraped_at": "2026-06-10T15:54:02.158136+00:00",
       "total_courses": 3132,
-      "total_sections": 6838
+      "total_sections": 6839
     }
   }
 }
