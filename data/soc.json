@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-10T15:54:02.158136+00:00",
+    "last_scrape": "2026-06-11T16:14:45.190935+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -83,7 +83,7 @@
         },
         {
           "course_number": "48100",
-          "title": "Architecture Design Studio: POIESIS STUDIO 1",
+          "title": "Architecture Design Studio: Core 1 - Foundations",
           "units": "15",
           "department_code": "ARC",
           "department": "Architecture",
@@ -355,7 +355,7 @@
         },
         {
           "course_number": "48200",
-          "title": "Architecture Design Studio: Poiesis Studio 3",
+          "title": "Architecture Design Studio: Core 3 - Tectonics",
           "units": "18",
           "department_code": "ARC",
           "department": "Architecture",
@@ -535,7 +535,7 @@
         },
         {
           "course_number": "48300",
-          "title": "Architecture Design Studio: Design 5",
+          "title": "Architecture Design Studio: Core 5 - Ecologies",
           "units": "18",
           "department_code": "ARC",
           "department": "Architecture",
@@ -875,7 +875,7 @@
         },
         {
           "course_number": "48400",
-          "title": "Architecture Design Studio: CORE 6 Studio",
+          "title": "Architecture Design Studio: Core 7 - Integrations",
           "units": "18",
           "department_code": "ARC",
           "department": "Architecture",
@@ -6679,7 +6679,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -7469,7 +7469,7 @@
         },
         {
           "course_number": "03642",
-          "title": "Graduate Molecular Biology",
+          "title": "Graduate Molecular Biology This Section Cancelled",
           "units": "12",
           "department_code": "BSC",
           "department": "Biological Sciences",
@@ -7487,9 +7487,9 @@
             {
               "section": "A",
               "mini": "",
-              "days": "M",
-              "begin_time": "03:30PM",
-              "end_time": "04:50PM",
+              "days": "MWF",
+              "begin_time": "09:00AM",
+              "end_time": "09:50AM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -15341,11 +15341,11 @@
             {
               "section": "W",
               "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
+              "days": "UT",
+              "begin_time": "08:30AM",
+              "end_time": "09:45AM",
               "location": "Doha, Qatar",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person only",
               "campus": "Qatar"
             }
           ],
@@ -15443,7 +15443,7 @@
         },
         {
           "course_number": "70471",
-          "title": "Supply Chain Management",
+          "title": "Supply Chain Management This Section Cancelled",
           "units": "9",
           "department_code": "BUS",
           "department": "Business Administration",
@@ -20610,7 +20610,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "04:20PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -20620,7 +20620,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "08:50PM",
+              "end_time": "07:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -80695,7 +80695,7 @@
         },
         {
           "course_number": "57338",
-          "title": "Sound Editing and Mastering This Section Cancelled",
+          "title": "Audio Editing and Mastering This Section Cancelled",
           "units": "6",
           "department_code": "MUS",
           "department": "Music",
@@ -90435,7 +90435,7 @@
         },
         {
           "course_number": "57948",
-          "title": "Sound Editing and Mastering This Section Cancelled",
+          "title": "Audio Editing and Mastering This Section Cancelled",
           "units": "6",
           "department_code": "MUS",
           "department": "Music",
@@ -106452,7 +106452,7 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-10T15:54:02.158136+00:00",
+      "scraped_at": "2026-06-11T16:14:45.190935+00:00",
       "total_courses": 3132,
       "total_sections": 6839
     }
