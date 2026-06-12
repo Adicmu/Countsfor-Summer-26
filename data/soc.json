@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-11T16:14:45.190935+00:00",
+    "last_scrape": "2026-06-12T15:30:57.529650+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -745,7 +745,7 @@
         },
         {
           "course_number": "48324",
-          "title": "Structural Design 1: Form and Forces",
+          "title": "Structural Design 2: Materials and Analysis",
           "units": "6",
           "department_code": "ARC",
           "department": "Architecture",
@@ -6679,7 +6679,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -20778,7 +20778,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -106452,7 +106452,7 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-11T16:14:45.190935+00:00",
+      "scraped_at": "2026-06-12T15:30:57.529650+00:00",
       "total_courses": 3132,
       "total_sections": 6839
     }
