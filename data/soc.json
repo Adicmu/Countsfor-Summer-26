@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-12T15:30:57.529650+00:00",
+    "last_scrape": "2026-06-13T14:15:22.303624+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -502,6 +502,38 @@
               "days": "WF",
               "begin_time": "11:00AM",
               "end_time": "12:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
+          "course_number": "48234",
+          "title": "Structural Design 1: Form and Forces",
+          "units": "6",
+          "department_code": "ARC",
+          "department": "Architecture",
+          "sections": [
+            {
+              "section": "Lec 1",
+              "mini": "",
+              "days": "TR",
+              "begin_time": "11:00AM",
+              "end_time": "12:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            },
+            {
+              "section": "A",
+              "mini": "",
+              "days": "F",
+              "begin_time": "11:00AM",
+              "end_time": "11:50AM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -6679,7 +6711,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -20610,7 +20642,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -20778,7 +20810,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "04:50PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -67371,6 +67403,16 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "B",
+              "mini": "",
+              "days": "W",
+              "begin_time": "03:00PM",
+              "end_time": "03:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
             }
           ],
           "campus": [
@@ -106100,8 +106142,8 @@
         {
           "code": "ARC",
           "name": "Architecture",
-          "courses": 111,
-          "sections": 260
+          "courses": 112,
+          "sections": 262
         },
         {
           "code": "ART",
@@ -106323,7 +106365,7 @@
           "code": "LCL",
           "name": "Languages Cultures & Appl Linguistics",
           "courses": 123,
-          "sections": 178
+          "sections": 179
         },
         {
           "code": "MCS",
@@ -106452,9 +106494,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-12T15:30:57.529650+00:00",
-      "total_courses": 3132,
-      "total_sections": 6839
+      "scraped_at": "2026-06-13T14:15:22.303624+00:00",
+      "total_courses": 3133,
+      "total_sections": 6842
     }
   }
 }
