@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-17T15:52:54.849559+00:00",
+    "last_scrape": "2026-06-18T15:41:53.803197+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -6844,7 +6844,7 @@
               "begin_time": "12:00PM",
               "end_time": "01:50PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person Expectation Rotation",
               "campus": "Pittsburgh"
             },
             {
@@ -9226,36 +9226,6 @@
               "end_time": "03:45PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
-              "campus": "Pittsburgh"
-            },
-            {
-              "section": "M2",
-              "mini": "Y",
-              "days": "T",
-              "begin_time": "08:30PM",
-              "end_time": "09:45PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "Remote only",
-              "campus": "Pittsburgh"
-            },
-            {
-              "section": "O2",
-              "mini": "Y",
-              "days": "T",
-              "begin_time": "07:00PM",
-              "end_time": "08:15PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "Remote only",
-              "campus": "Pittsburgh"
-            },
-            {
-              "section": "P2",
-              "mini": "Y",
-              "days": "T",
-              "begin_time": "05:30PM",
-              "end_time": "06:45PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "Remote only",
               "campus": "Pittsburgh"
             }
           ],
@@ -20630,7 +20600,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "08:50PM",
+              "end_time": "07:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -27466,6 +27436,16 @@
             },
             {
               "section": "H",
+              "mini": "",
+              "days": "F",
+              "begin_time": "01:00PM",
+              "end_time": "01:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            },
+            {
+              "section": "I",
               "mini": "",
               "days": "F",
               "begin_time": "01:00PM",
@@ -37401,9 +37381,9 @@
             {
               "section": "A",
               "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
+              "days": "T",
+              "begin_time": "02:00PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -38003,7 +37983,7 @@
               "begin_time": "05:00PM",
               "end_time": "10:30PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             },
             {
@@ -40971,9 +40951,9 @@
             {
               "section": "A",
               "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
+              "days": "T",
+              "begin_time": "02:00PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -51206,9 +51186,9 @@
             {
               "section": "W1",
               "mini": "Y",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
+              "days": "UMT",
+              "begin_time": "06:00PM",
+              "end_time": "07:30PM",
               "location": "Doha, Qatar",
               "delivery_mode": "In-person + remote",
               "campus": "Qatar"
@@ -56399,9 +56379,9 @@
             {
               "section": "W1",
               "mini": "Y",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
+              "days": "UMWR",
+              "begin_time": "06:00PM",
+              "end_time": "08:00PM",
               "location": "Doha, Qatar",
               "delivery_mode": "In-person + remote",
               "campus": "Qatar"
@@ -57227,6 +57207,28 @@
             },
             {
               "section": "B",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
+          "course_number": "05686",
+          "title": "Special Research in HCI - MSLE",
+          "units": "VAR",
+          "department_code": "HCI",
+          "department": "Human-Computer Interaction",
+          "sections": [
+            {
+              "section": "A",
               "mini": "",
               "days": "TBA",
               "begin_time": "TBA",
@@ -77159,7 +77161,7 @@
             {
               "section": "A",
               "mini": "",
-              "days": "MW",
+              "days": "TR",
               "begin_time": "12:00PM",
               "end_time": "01:50PM",
               "location": "Pittsburgh, Pennsylvania",
@@ -84115,6 +84117,16 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "B",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person only",
+              "campus": "Pittsburgh"
             }
           ],
           "campus": [
@@ -87276,6 +87288,16 @@
               "end_time": "TBA",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            },
+            {
+              "section": "B",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
             }
           ],
@@ -106113,7 +106135,7 @@
           "code": "BUS",
           "name": "Business Administration",
           "courses": 201,
-          "sections": 389
+          "sections": 386
         },
         {
           "code": "CFA",
@@ -106173,7 +106195,7 @@
           "code": "CS",
           "name": "Computer Science",
           "courses": 94,
-          "sections": 315
+          "sections": 316
         },
         {
           "code": "BCA",
@@ -106250,8 +106272,8 @@
         {
           "code": "HCI",
           "name": "Human-Computer Interaction",
-          "courses": 45,
-          "sections": 68
+          "courses": 46,
+          "sections": 69
         },
         {
           "code": "BHA",
@@ -106341,7 +106363,7 @@
           "code": "MUS",
           "name": "Music",
           "courses": 313,
-          "sections": 1012
+          "sections": 1014
         },
         {
           "code": "NVS",
@@ -106428,9 +106450,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-16T17:09:52.099746+00:00",
-      "total_courses": 3130,
-      "total_sections": 6839
+      "scraped_at": "2026-06-18T15:41:53.803197+00:00",
+      "total_courses": 3131,
+      "total_sections": 6840
     }
   }
 }
