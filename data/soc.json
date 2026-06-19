@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet",
-    "last_scrape": "2026-06-18T15:41:53.803197+00:00",
+    "last_scrape": "2026-06-19T15:34:42.599962+00:00",
     "semesters_available": [
       "F26"
     ],
@@ -777,7 +777,7 @@
         },
         {
           "course_number": "48324",
-          "title": "Structural Design 2: Materials and Analysis",
+          "title": "Structural Design 2: Materials and Analysis This Section Cancelled",
           "units": "6",
           "department_code": "ARC",
           "department": "Architecture",
@@ -20758,7 +20758,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "04:50PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -50990,7 +50990,7 @@
         },
         {
           "course_number": "76921",
-          "title": "PHD/R Pre-Dissertation Prospectus",
+          "title": "PHD/R Dissertation Prospectus",
           "units": "5-36",
           "department_code": "ENG",
           "department": "English",
@@ -63311,6 +63311,28 @@
               "end_time": "01:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ]
+        },
+        {
+          "course_number": "11861",
+          "title": "Quantum Computing for Multimedia Processing",
+          "units": "6",
+          "department_code": "LTI",
+          "department": "Language Technologies Institute",
+          "sections": [
+            {
+              "section": "A2",
+              "mini": "Y",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-Person + Technology",
               "campus": "Pittsburgh"
             }
           ],
@@ -106314,8 +106336,8 @@
         {
           "code": "LTI",
           "name": "Language Technologies Institute",
-          "courses": 55,
-          "sections": 223
+          "courses": 56,
+          "sections": 224
         },
         {
           "code": "LCL",
@@ -106450,9 +106472,9 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-18T15:41:53.803197+00:00",
-      "total_courses": 3131,
-      "total_sections": 6840
+      "scraped_at": "2026-06-19T15:34:42.599962+00:00",
+      "total_courses": 3132,
+      "total_sections": 6841
     }
   }
 }
