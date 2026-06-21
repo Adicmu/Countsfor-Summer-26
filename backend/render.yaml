@@ -13,8 +13,8 @@ services:
     region: oregon            # closest free region; latency to Qatar is OK for v1
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    # gunicorn imports `backend.app` from the repo root, so we cd up one level.
-    startCommand: cd .. && gunicorn --workers=2 --bind 0.0.0.0:$PORT --access-logfile - 'backend.app:create_app()'
+    preDeployCommand: cd .. && python -m backend.bootstrap_db
+    startCommand: cd .. && SKIP_DB_BOOTSTRAP=1 gunicorn --workers=1 --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - 'backend.app:create_app()'
     healthCheckPath: /health
 
     envVars:

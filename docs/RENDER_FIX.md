@@ -20,7 +20,8 @@ Open **Countsfor-Summer-26 → Settings**:
 |---------|--------|
 | **Root Directory** | leave **empty** (repo root) |
 | **Build Command** | `pip install -r requirements.txt` |
-| **Start Command** | `gunicorn --workers=2 --bind 0.0.0.0:$PORT --access-logfile - 'backend.app:create_app()'` |
+| **Pre-Deploy Command** | `python -m backend.bootstrap_db` |
+| **Start Command** | `SKIP_DB_BOOTSTRAP=1 gunicorn --workers=1 --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - 'backend.app:create_app()'` |
 | **Health Check Path** | `/health` |
 | **Python Version** | `3.11.9` (or add env `PYTHON_VERSION=3.11.9`) |
 
@@ -30,7 +31,8 @@ Alternative (also valid):
 |---------|--------|
 | **Root Directory** | `backend` |
 | **Build Command** | `pip install -r requirements.txt` |
-| **Start Command** | `cd .. && gunicorn --workers=2 --bind 0.0.0.0:$PORT --access-logfile - 'backend.app:create_app()'` |
+| **Pre-Deploy Command** | `cd .. && python -m backend.bootstrap_db` |
+| **Start Command** | `cd .. && SKIP_DB_BOOTSTRAP=1 gunicorn --workers=1 --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - 'backend.app:create_app()'` |
 
 Use **one** of these pairs, not a mix.
 
@@ -79,6 +81,7 @@ If builds still fail, open **Logs** and look for the first red line after `pip i
 | `Could not open requirements file: requirements.txt` | Push root `requirements.txt` or set Root Directory to `backend` |
 | `ModuleNotFoundError: No module named 'backend'` | Use the Start Command above (must run gunicorn from repo root) |
 | `No module named 'psycopg2'` | Set Python to **3.11.9**, redeploy with cache clear |
-| `Application failed to respond` on `/health` | Check DATABASE_URL is linked to Postgres |
+| `Application failed to respond` on `/health` | Set **Pre-Deploy** + **Start** commands above; link **DATABASE_URL** to Postgres; use **1 worker** on free tier |
+| Pre-deploy fails on DB | Open **CountsFor_Summer_2026** database is **Available**; **Environment → DATABASE_URL** must link to that DB |
 
 Paste the first error block from the build log if it still fails after these steps.

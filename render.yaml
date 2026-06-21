@@ -10,7 +10,8 @@ services:
     region: ohio
     rootDir: backend
     buildCommand: pip install -r requirements.txt
-    startCommand: cd .. && gunicorn --workers=2 --bind 0.0.0.0:$PORT --access-logfile - 'backend.app:create_app()'
+    preDeployCommand: python -m backend.bootstrap_db
+    startCommand: SKIP_DB_BOOTSTRAP=1 gunicorn --workers=1 --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - 'backend.app:create_app()'
     healthCheckPath: /health
 
     envVars:

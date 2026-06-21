@@ -19,19 +19,28 @@ from .config import Config
 from .db import db
 
 
-def create_app(config_class=Config) -> Flask:
-    app = Flask(__name__)
-    app.config.from_object(config_class)
-
-    # Database
-    db.init_app(app)
+def init_database(app: Flask) -> list[str]:
+    """Create tables and run additive migrations. Used locally and in Render pre-deploy."""
     with app.app_context():
-        # SQLAlchemy creates tables on first run. Use Alembic when the schema
-        # starts changing meaningfully.
         from . import models  # noqa: F401 — register tables
         db.create_all()
         from .migrate import run_migrations
-        run_migrations()
+        return run_migrations()
+
+
+def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flask:
+    app = Flask(__name__)
+    app.config.from_object(config_class)
+
+    db.init_app(app)
+    if bootstrap_db is None:
+        bootstrap_db = os.environ.get("SKIP_DB_BOOTSTRAP", "").lower() not in (
+            "1",
+            "true",
+            "yes",
+        )
+    if bootstrap_db:
+        init_database(app)
 
     # CORS — cookies need explicit allow-list + credentials=True
     CORS(
