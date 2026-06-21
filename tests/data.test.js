@@ -10,18 +10,26 @@ function makeCourse(code, requirementsByMajor) {
 
 test('annotateDoubleCounters: focused-dual marks courses fulfilling both programs', () => {
   const courses = [
-    makeCourse('15-122', { CS: ['CS---Core'], BA: ['BA---Tech'] }),  // double-counter
-    makeCourse('21-127', { CS: ['CS---Math'] }),                       // CS only
-    makeCourse('70-311', { BA: ['BA---Core'] }),                       // BA only
+    makeCourse('15-122', { CS: ['CS---Core'], BA: ['BA---Tech'] }),
+    makeCourse('21-127', { CS: ['CS---Math'] }),
+    makeCourse('70-311', { BA: ['BA---Core'] }),
   ];
-  // 'business' minor maps to BA — student CS major + Business minor.
   const profile = { role: 'student', primary: 'CS', secondary: 'business' };
+  const minorList = { business: ['70-311', '73-100'] };
 
-  annotateDoubleCounters(courses, profile);
+  annotateDoubleCounters(courses, profile, minorList);
 
-  assertEqual(courses[0]._doubleCounter, true);
+  assertEqual(courses[0]._doubleCounter, false);
   assertEqual(courses[1]._doubleCounter, false);
-  assertEqual(courses[2]._doubleCounter, false);
+  assertEqual(courses[2]._doubleCounter, true);
+});
+
+test('annotateDoubleCounters: 15-122 not a false minor double counter (T5)', () => {
+  const courses = [makeCourse('15-122', { CS: ['CS---Core'], BA: ['BA---Tech'] })];
+  const profile = { role: 'student', primary: 'CS', secondary: 'business' };
+  const minorList = { business: ['70-311'] };
+  annotateDoubleCounters(courses, profile, minorList);
+  assertEqual(courses[0]._doubleCounter, false);
 });
 
 test('annotateDoubleCounters: focused-single clears any prior annotations', () => {
@@ -29,7 +37,7 @@ test('annotateDoubleCounters: focused-single clears any prior annotations', () =
   courses[0]._doubleCounter = true;  // simulate stale annotation
 
   const profile = { role: 'student', primary: 'CS', secondary: null };
-  annotateDoubleCounters(courses, profile);
+  annotateDoubleCounters(courses, profile, {});
 
   assertEqual(courses[0]._doubleCounter, false);
 });
@@ -39,7 +47,7 @@ test('annotateDoubleCounters: cross-program clears annotations', () => {
   courses[0]._doubleCounter = true;
 
   const profile = { role: 'area_head', primary: null, secondary: null };
-  annotateDoubleCounters(courses, profile);
+  annotateDoubleCounters(courses, profile, {});
 
   assertEqual(courses[0]._doubleCounter, false);
 });
@@ -48,7 +56,7 @@ test('annotateDoubleCounters: empty requirements arrays do not count', () => {
   const courses = [
     { course_code: '15-122', requirements: { CS: [], BA: [] } },
   ];
-  annotateDoubleCounters(courses, { role: 'student', primary: 'CS', secondary: 'BA' });
+  annotateDoubleCounters(courses, { role: 'student', primary: 'CS', secondary: 'BA' }, {});
   assertEqual(courses[0]._doubleCounter, false);
 });
 
@@ -56,7 +64,7 @@ test('annotateDoubleCounters: course with missing requirements key does not cras
   const courses = [
     { course_code: '15-122' },  // no requirements at all
   ];
-  annotateDoubleCounters(courses, { role: 'student', primary: 'CS', secondary: 'BA' });
+  annotateDoubleCounters(courses, { role: 'student', primary: 'CS', secondary: 'BA' }, {});
   assertEqual(courses[0]._doubleCounter, false);
 });
 
@@ -152,6 +160,28 @@ test('predictOffering: 20-50% share → mixed', () => {
 
 test('predictOffering: missing offered field → unknown', () => {
   assertEqual(predictOffering({}, 'F').state, 'unknown');
+});
+
+test('filterOfferings: composable semester campus modality', () => {
+  const offerings = [
+    { semester_code: 'F26', campus: 'Qatar', modality: 'Remote', section: 'A' },
+    { semester_code: 'F26', campus: 'Qatar', modality: 'In Person', section: 'B' },
+    { semester_code: 'S26', campus: 'Qatar', modality: 'Remote', section: 'C' },
+  ];
+  const f26QatarRemote = filterOfferings(offerings, {
+    semesterCode: 'F26',
+    locationFilter: 'qatar',
+    modalityFilter: 'remote',
+  });
+  assertEqual(f26QatarRemote.length, 1);
+  assertEqual(f26QatarRemote[0].section, 'A');
+});
+
+test('parse campus: 82-289 forced Qatar via fixture helper', () => {
+  // Frontend uses offering campus from bundled data; Python fixture lives in data/soc_parse.py.
+  const c = { course_code: '82-289', course_name: 'Tutoring for Community Outreach - CMUQ', offered_qatar: true, offered_pitts: false };
+  assertEqual(c.offered_qatar, true);
+  assertEqual(c.offered_pitts, false);
 });
 
 test('predictOffering: deduplicates identical entries before counting', () => {

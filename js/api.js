@@ -95,15 +95,26 @@ async function fetchAllCourses() {
 // deployed. Override at runtime by setting window.CF_BACKEND_URL before
 // app.js loads.
 
+// Production backend URL. Set in index.html via
+// `<meta name="cf-backend-url" content="https://your-service.onrender.com">`
+// so you do not need to edit this file after deploy. Falls back to the
+// placeholder below when the meta tag is empty.
+function getBackendUrl() {
+  const meta = typeof document !== 'undefined'
+    ? document.querySelector('meta[name="cf-backend-url"]')
+    : null;
+  const fromMeta = (meta && meta.getAttribute('content') || '').trim();
+  if (fromMeta) return fromMeta.replace(/\/$/, '');
+  return 'https://countsfor-backend.onrender.com';
+}
+
 const CF_BACKEND_URL = (() => {
   if (typeof window !== 'undefined' && window.CF_BACKEND_URL) return window.CF_BACKEND_URL;
   const host = (typeof location !== 'undefined' ? location.hostname : '');
   if (host === 'localhost' || host === '127.0.0.1' || host === '') {
     return 'http://localhost:5000';
   }
-  // Production. Update this once the Render deploy is live, OR set
-  // `window.CF_BACKEND_URL = '...'` before app.js in index.html.
-  return 'https://countsfor-backend.onrender.com';
+  return getBackendUrl();
 })();
 
 // Public Google OAuth client ID. Set this in index.html via
@@ -160,6 +171,24 @@ async function apiLogout()  { return apiFetch('/api/auth/logout', { method: 'POS
 async function apiGetMe()   { return apiFetch('/api/me'); }
 async function apiPatchMe(patch) {
   return apiFetch('/api/me', { method: 'PATCH', body: patch });
+}
+
+// ── Users (admin / area head) ────────────────────────────────
+async function apiListUsers(query = '') {
+  return apiFetch('/api/users' + (query ? '?' + query : ''));
+}
+async function apiPatchUser(id, patch) {
+  return apiFetch('/api/users/' + encodeURIComponent(id), { method: 'PATCH', body: patch });
+}
+
+async function fetchMinorCourses() {
+  try {
+    const res = await fetch('data/minor_courses.json');
+    if (!res.ok) throw new Error('minor courses missing');
+    return await res.json();
+  } catch {
+    return {};
+  }
 }
 
 // ── Flags ────────────────────────────────────────────────────

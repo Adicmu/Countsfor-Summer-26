@@ -14,6 +14,9 @@ const App = {
   selectedCourse: null,
   treeSearchQuery: '',
   locationFilter: 'all', // 'all' | 'qatar' | 'pittsburgh'
+  activeSemester: 'F26',
+  modalityFilter: 'all', // 'all' | 'in_person' | 'remote' | 'hybrid'
+  minorCourseList: {},
   theme: loadStore('cf_theme', 'light'),
   expandedNodes: new Set(),
   highlightedPath: null,
@@ -115,6 +118,7 @@ const App = {
 
   _serverProfileIsComplete(u) {
     if (!u || !u.role) return false;
+    if (u.profile_completed) return true;
     // Admins never need to pick a program — they review flags.
     if (u.role === 'admin') return true;
     if (u.role === 'student')              return !!u.primary_program;
@@ -143,6 +147,10 @@ const App = {
       secondary,
       scope,
     };
+    // Server is source of truth in authed mode — keep localStorage aligned.
+    if (this.authMode === 'authed' && validateProfile(this.profile)) {
+      try { saveProfile(this.profile); } catch {}
+    }
   },
 
   // ── Theme ─────────────────────────────────────────────────
@@ -167,9 +175,14 @@ const App = {
     try {
       this.courses = await fetchAllCourses();
       this.courseIndex = buildCourseIndex(this.courses);
+      try {
+        this.minorCourseList = await fetchMinorCourses();
+      } catch {
+        this.minorCourseList = {};
+      }
 
       // Profile-aware annotations
-      annotateDoubleCounters(this.courses, this.profile);
+      annotateDoubleCounters(this.courses, this.profile, this.minorCourseList);
       annotateMultiProgram(this.courses);
 
       // Build trees for each major
@@ -511,6 +524,7 @@ const App = {
         showToast('Could not save profile to the server — using local copy.');
       } else {
         this.authedUser = r.data;
+        this._hydrateProfileFromServer(r.data);
       }
     }
 
@@ -524,7 +538,7 @@ const App = {
     this.bindGlobalEvents();
 
     if (wasEdit) {
-      annotateDoubleCounters(this.courses, this.profile);
+      annotateDoubleCounters(this.courses, this.profile, this.minorCourseList);
       this.renderLeftEmpty();
       this.renderTree();
     } else {
@@ -793,12 +807,22 @@ const App = {
         ${this._roleBadgeHtml()}
         ${this._navbarWishlistHtml()}
         <div class="navbar-right">
+          <div class="navbar-semester">
+            <label class="sr-only" for="semesterSelect">Semester</label>
+            <select id="semesterSelect" class="semester-select" onchange="App.setSemester(this.value)">
+              ${SEMESTER_OPTIONS.map(s => `<option value="${s.code}" ${this.activeSemester===s.code?'selected':''}>${esc(s.label)}</option>`).join('')}
+            </select>
+          </div>
           <div class="navbar-location-toggle">
             <button class="loc-btn ${this.locationFilter==='all'?'active':''}" onclick="App.setLocation('all')">All</button>
             <button class="loc-btn ${this.locationFilter==='qatar'?'active':''}" onclick="App.setLocation('qatar')">🇶🇦 Qatar</button>
             <button class="loc-btn ${this.locationFilter==='pittsburgh'?'active':''}" onclick="App.setLocation('pittsburgh')">🇺🇸 Pittsburgh</button>
           </div>
+          <div class="navbar-modality-toggle">
+            ${MODALITY_OPTIONS.map(m => `<button class="mod-btn ${this.modalityFilter===m.id?'active':''}" onclick="App.setModalityFilter('${m.id}')">${esc(m.label)}</button>`).join('')}
+          </div>
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
+          ${(this.authedUser && (this.authedUser.role === 'admin' || this.authedUser.role === 'area_head' || this.authedUser.role === 'associate_area_head')) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
           ${(this.authedUser && this.authedUser.role === 'admin') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review submitted course flags">Flag review</button>' : ''}
           ${this.authMode === 'authed' ? '<button class="nav-signout" onclick="App.signOut()" title="Sign out" aria-label="Sign out">Sign out</button>' : ''}
         </div>
@@ -902,33 +926,55 @@ const App = {
     });
   },
 
-  // ── Location filter ───────────────────────────────────────
-  setLocation(loc) {
-    this.locationFilter = loc;
-    // Re-render navbar buttons
-    document.querySelectorAll('.loc-btn').forEach(b => {
-      b.classList.toggle('active', b.textContent.includes(loc === 'all' ? 'All' : loc === 'qatar' ? 'Qatar' : 'Pittsburgh'));
+  _filterParams() {
+    return {
+      semesterCode: this.activeSemester,
+      locationFilter: this.locationFilter,
+      modalityFilter: this.modalityFilter,
+    };
+  },
+
+  setSemester(code) {
+    this.activeSemester = code;
+    this._refreshFilters();
+    showToast('Showing ' + semesterLabel(code));
+  },
+
+  setModalityFilter(mod) {
+    this.modalityFilter = mod;
+    document.querySelectorAll('.mod-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent.trim() === (MODALITY_OPTIONS.find(m => m.id === mod) || {}).label);
     });
-    // If there's a selected course, check if it's offered at the selected campus
+    this._refreshFilters();
+    const label = (MODALITY_OPTIONS.find(m => m.id === mod) || {}).label || mod;
+    showToast('Modality: ' + label);
+  },
+
+  _refreshFilters() {
     if (this.selectedCourse) {
-      if (!this.filterByLocation(this.selectedCourse) && loc !== 'all') {
-        const campus = loc === 'qatar' ? '\ud83c\uddf6\ud83c\udde6 Qatar' : '\ud83c\uddfa\ud83c\uddf8 Pittsburgh';
-        const el = document.getElementById('leftBody');
-        if (el) el.innerHTML = '<div class="empty-state"><div class="empty-icon">\ud83d\udeab</div><div class="empty-text">' + esc(this.selectedCourse.course_code) + ' is not offered at the ' + campus + ' campus</div><div class="empty-hint">Try switching to "All" to see this course, or search for another.</div></div>';
+      if (!this.filterByLocation(this.selectedCourse) && (this.locationFilter !== 'all' || this.modalityFilter !== 'all')) {
+        this.renderCourseCard(this.selectedCourse);
       } else {
         this.renderCourseCard(this.selectedCourse);
       }
     }
-    // Re-render tree
     this.renderTree();
-    showToast(loc === 'all' ? 'Showing all courses' : loc === 'qatar' ? 'Showing Qatar courses only' : 'Showing Pittsburgh courses only');
+  },
+
+  // ── Location filter ───────────────────────────────────────
+  setLocation(loc) {
+    this.locationFilter = loc;
+    document.querySelectorAll('.loc-btn').forEach(b => {
+      b.classList.toggle('active', b.textContent.includes(loc === 'all' ? 'All' : loc === 'qatar' ? 'Qatar' : 'Pittsburgh'));
+    });
+    this._refreshFilters();
+    showToast(loc === 'all' ? 'Showing all campuses' : loc === 'qatar' ? 'Showing Qatar only' : 'Showing Pittsburgh only');
   },
 
   filterByLocation(courseOrLeaf) {
-    if (this.locationFilter === 'all') return true;
-    if (this.locationFilter === 'qatar') return courseOrLeaf.offered_qatar;
-    if (this.locationFilter === 'pittsburgh') return courseOrLeaf.offered_pitts;
-    return true;
+    if (!courseOrLeaf) return true;
+    const full = this.courseIndex[courseOrLeaf.course_code || courseOrLeaf.code] || courseOrLeaf;
+    return courseHasMatchingOffering(full, this._filterParams());
   },
 
   // ── Mobile lens toggle ────────────────────────────────────
@@ -1460,7 +1506,8 @@ const App = {
     const semesters = sortSemesters(course.offered || []);
     const prereq = formatPrereq(course.prerequisites);
     const mappings = getCourseMappings(course);
-    const sections = course.soc_sections || [];
+    const sections = filterOfferings(getCourseOfferings(course), this._filterParams());
+    const semLabel = semesterLabel(this.activeSemester);
     const isDoubleCounter = !!course._doubleCounter;
     const profile = this.profile;
     const pLower = profile && profile.primary ? profile.primary.toLowerCase() : 'cs';
@@ -1492,17 +1539,13 @@ const App = {
       <div class="cc-kv"><span class="cc-k">Prereq</span><span class="cc-v">${prereq ? esc(prereq) : '<em>None</em>'}</span></div>
     `;
 
-    // Fall 2026 schedule rows (filtered + up to 4 inline; rest behind a button)
+    // Schedule rows for active semester + campus + modality
     let filtered = sections.slice();
-    if (this.locationFilter === 'qatar') {
-      filtered = filtered.filter(s => s.location && (s.location.includes('Qatar') || s.location.includes('Doha')));
-    } else if (this.locationFilter === 'pittsburgh') {
-      filtered = filtered.filter(s => s.location && s.location.includes('Pittsburgh'));
-    }
     let schedHtml = '';
     if (filtered.length === 0) {
       const campus = this.locationFilter === 'qatar' ? 'Qatar' : this.locationFilter === 'pittsburgh' ? 'Pittsburgh' : 'this filter';
-      schedHtml = `<div class="cc-empty">Not offered at ${campus} for Fall 2026</div>`;
+      const mod = this.modalityFilter !== 'all' ? (' · ' + (MODALITY_OPTIONS.find(m => m.id === this.modalityFilter) || {}).label) : '';
+      schedHtml = `<div class="cc-empty">No matching sections for ${esc(semLabel)}${mod ? esc(mod) : ''}${this.locationFilter !== 'all' ? ' · ' + esc(campus) : ''}</div>`;
     } else {
       const inline = filtered.slice(0, 4).map(s => this._renderSchedRow(s)).join('');
       const extraCount = filtered.length - 4;
@@ -1562,8 +1605,8 @@ const App = {
             ${aboutRows}
           </div>
           <div class="cc-section">
-            <div class="cc-h4">FALL 2026</div>
-            ${this._renderOfferingPredictionHtml(course, 'F')}
+            <div class="cc-h4">${esc(semLabel.toUpperCase())}</div>
+            ${this._renderOfferingPredictionHtml(course, this.activeSemester ? this.activeSemester[0] : 'F')}
             ${schedHtml}
           </div>
         </div>
@@ -1589,17 +1632,21 @@ const App = {
   },
 
   _renderSchedRow(s) {
-    const time = (s.begin_time && s.begin_time !== 'TBA')
-      ? `${esc(s.begin_time)}–${esc(s.end_time)}`
-      : 'TBA';
+    const time = (s.days_times && s.days_times !== 'TBA')
+      ? esc(s.days_times)
+      : ((s.begin_time && s.begin_time !== 'TBA')
+        ? `${esc(s.days || 'TBA')} ${esc(s.begin_time)}–${esc(s.end_time)}`
+        : 'TBA');
     const dmCls = (dm) => {
       const d = (dm || '').toLowerCase();
       if (d.includes('remote')) return 'cc-dm-remote';
-      if (d.includes('in-person')) return 'cc-dm-inperson';
+      if (d.includes('in person') || d.includes('in-person')) return 'cc-dm-inperson';
       return 'cc-dm-other';
     };
-    const dm = s.delivery_mode ? `<span class="cc-dm-pill ${dmCls(s.delivery_mode)}">${esc(s.delivery_mode).toUpperCase()}</span>` : '';
-    return `<div class="cc-kv"><span class="cc-k">Sec ${esc(s.section)}</span><span class="cc-v">${esc(s.days || 'TBA')} ${time} ${dm}</span></div>`;
+    const mod = s.modality || s.delivery_mode || '';
+    const campusBadge = s.campus ? `<span class="cc-campus-pill">${esc(s.campus)}</span>` : '';
+    const dm = mod ? `<span class="cc-dm-pill ${dmCls(mod)}">${esc(mod).toUpperCase()}</span>` : '';
+    return `<div class="cc-kv"><span class="cc-k">Sec ${esc(s.section)}</span><span class="cc-v">${time} ${campusBadge} ${dm}</span></div>`;
   },
 
   expandScheduleV2(e) {
@@ -2206,6 +2253,105 @@ const App = {
     this.closeFlagModal();
     showToast(toast);
     this.renderTree();
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // ADMIN / AREA HEAD — User role management
+  // ══════════════════════════════════════════════════════════
+  _userAdminState: { items: [], search: '' },
+
+  async showUserManagement() {
+    const role = this.authedUser && this.authedUser.role;
+    if (!role || !['admin', 'area_head', 'associate_area_head'].includes(role)) {
+      showToast('Admin or area head access required.');
+      return;
+    }
+    this._homeView = 'users';
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="spinner"></div><div class="empty-text" style="margin-top:12px">Loading users…</div></div>';
+    await this._loadUserAdmin();
+  },
+
+  async _loadUserAdmin() {
+    const q = this._userAdminState.search ? 'search=' + encodeURIComponent(this._userAdminState.search) : '';
+    const r = await apiListUsers(q);
+    const el = document.getElementById('leftBody');
+    if (!r.ok) {
+      if (el) el.innerHTML = `<div class="empty-state"><div class="empty-text">Could not load users: ${esc((r.data && r.data.message) || r.error || 'error')}</div></div>`;
+      return;
+    }
+    this._userAdminState.items = r.data.items || [];
+    this._renderUserAdmin();
+  },
+
+  _renderUserAdmin() {
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    const items = this._userAdminState.items;
+    const rows = items.length === 0
+      ? '<div class="empty-state"><div class="empty-text">No users found.</div></div>'
+      : items.map(u => this._renderUserAdminRow(u)).join('');
+
+    el.innerHTML = `
+      <div class="adm-view">
+        <div class="adm-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <div class="adm-title">User roles <span class="adm-count">· ${items.length}</span></div>
+        </div>
+        <div class="adm-search-row">
+          <input type="search" class="adm-search" placeholder="Search by email or name" value="${esc(this._userAdminState.search)}"
+            onkeydown="if(event.key==='Enter'){App._userAdminState.search=this.value;App._loadUserAdmin();}" />
+          <button class="adm-btn" onclick="App._userAdminState.search=document.querySelector('.adm-search').value;App._loadUserAdmin();">Search</button>
+        </div>
+        <div class="adm-list">${rows}</div>
+      </div>
+    `;
+  },
+
+  _renderUserAdminRow(u) {
+    const prog = u.primary_program || '—';
+    const minor = u.minor_code ? getMinorLabel(u.minor_code) : '—';
+    const roleOpts = ['student', 'professor', 'area_head', 'associate_area_head', 'advisor']
+      .concat(this.authedUser.role === 'admin' ? ['admin'] : [])
+      .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${esc((ROLE_META[r] && ROLE_META[r].label) || r)}</option>`)
+      .join('');
+    const majorOpts = MAJOR_LIST.map(m => `<option value="${m}" ${u.primary_program === m ? 'selected' : ''}>${m}</option>`).join('');
+    return `
+      <div class="adm-row adm-user-row" data-user-id="${u.id}">
+        <div class="adm-row-head">
+          <div>
+            <div class="adm-course-code">${esc(u.email)}</div>
+            <div class="adm-course-name">${esc(u.name)} · ${esc(u.role)} · ${esc(prog)}${u.minor_code ? ' · minor ' + esc(minor) : ''}</div>
+          </div>
+        </div>
+        <div class="adm-user-fields">
+          <label>Role<select class="adm-select" id="role-${u.id}">${roleOpts}</select></label>
+          <label>Major<select class="adm-select" id="major-${u.id}"><option value="">—</option>${majorOpts}</select></label>
+          <label>Minor<select class="adm-select" id="minor-${u.id}"><option value="">—</option>${MINOR_LIST.map(m => `<option value="${m.code}" ${u.minor_code === m.code ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}</select></label>
+        </div>
+        <div class="adm-actions">
+          <button class="adm-btn adm-btn-resolve" onclick="App._saveUserAdmin(${u.id})">Save</button>
+        </div>
+      </div>`;
+  },
+
+  async _saveUserAdmin(userId) {
+    const roleEl = document.getElementById('role-' + userId);
+    const majorEl = document.getElementById('major-' + userId);
+    const minorEl = document.getElementById('minor-' + userId);
+    const patch = {
+      role: roleEl ? roleEl.value : undefined,
+      primary_program: majorEl ? majorEl.value : undefined,
+      minor_code: minorEl ? minorEl.value : undefined,
+    };
+    const r = await apiPatchUser(userId, patch);
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Could not save user.');
+      return;
+    }
+    showToast('User updated.');
+    await this._loadUserAdmin();
   },
 
   // ══════════════════════════════════════════════════════════

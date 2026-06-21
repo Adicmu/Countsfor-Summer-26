@@ -6,6 +6,8 @@ A role-aware curriculum explorer for Carnegie Mellon University in Qatar. Tell t
 
 **Live:** [adicmu.github.io/Countsfor-Summer-26](https://adicmu.github.io/Countsfor-Summer-26/) · **CMU-Q deployment:** [countsfor.qatar.cmu.edu](https://countsfor.qatar.cmu.edu) (CMU network only)
 
+**Production deploy (Google SSO + User table):** see [`docs/DEPLOY_PRODUCTION.md`](docs/DEPLOY_PRODUCTION.md)
+
 ---
 
 ## What's new

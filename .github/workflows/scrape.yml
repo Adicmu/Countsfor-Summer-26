@@ -3,16 +3,22 @@ name: Scrape SOC
 # When this runs:
 on:
   schedule:
-    # Daily at 12:00 UTC (~7am EST / 8am EDT — well before students wake up)
+    # Daily baseline — 12:00 UTC (~3pm Qatar / ~7am US East)
     - cron: '0 12 * * *'
-  # run it manually from the Actions tab in GitHub
+    # Registration windows — edit months/days for Fall/Spring/Summer registration.
+    # Fall registration (Aug 1 – Sep 15): every 4 hours
+    - cron: '0 0,4,8,12,16,20 8-9 1-15 *'
+    # Spring registration (Nov 15 – Jan 15): every 4 hours
+    - cron: '0 0,4,8,12,16,20 11-12,1 15-31,1-15 *'
+    # Summer registration (Mar 15 – May 15): every 4 hours
+    - cron: '0 0,4,8,12,16,20 3-5 15-31,1-15 *'
   workflow_dispatch:
 
 jobs:
   scrape:
     runs-on: ubuntu-latest
     permissions:
-      contents: write   # needed so the job can commit data/soc.json back to the repo
+      contents: write
 
     steps:
       - name: Check out repo
@@ -23,14 +29,17 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Run scraper
+      - name: Run SOC scraper
         run: python data/scrape_soc.py
+
+      - name: Reconcile offerings into bundled course data
+        run: python data/reconcile_offerings.py
 
       - name: Commit data if it changed
         run: |
           git config user.name  "soc-bot"
           git config user.email "soc-bot@users.noreply.github.com"
-          git add data/soc.json
+          git add data/soc.json data/courses.json data_all_courses.json
           if git diff --staged --quiet; then
             echo "No changes — nothing to commit."
           else

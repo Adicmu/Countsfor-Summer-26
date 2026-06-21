@@ -5,6 +5,10 @@ Frontend posts the Google ID token (JWT from Google Identity Services) to
 cookie. Subsequent requests carry the cookie automatically (with CORS
 `credentials: 'include'`).
 """
+import json
+import os
+from pathlib import Path
+
 from flask import Blueprint, current_app, jsonify, request, session
 
 from google.oauth2 import id_token
@@ -16,6 +20,55 @@ from .permissions import require_login, current_user
 
 
 bp = Blueprint("auth", __name__, url_prefix="/api")
+
+
+def _load_seed_users() -> dict[str, dict]:
+    """Optional JSON file of pre-seeded faculty/staff profiles keyed by email."""
+    path = current_app.config.get("SEED_USERS_PATH") or ""
+    if not path:
+        return {}
+    p = Path(path)
+    if not p.is_file():
+        return {}
+    try:
+        rows = json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    out = {}
+    for row in rows if isinstance(rows, list) else []:
+        email = (row.get("email") or "").lower()
+        if email:
+            out[email] = row
+    return out
+
+
+def _apply_seed(user: User, seed: dict) -> None:
+    """Merge seed row into a new or incomplete user. Does not overwrite admin."""
+    if user.role == "admin":
+        return
+    for field in ("name", "role", "primary_program", "minor_code", "advisor_scope", "department", "department_scope"):
+        if field in seed and seed[field]:
+            setattr(user, field, seed[field])
+    if user.role == "admin" or seed.get("role") == "admin":
+        user.is_admin = True
+
+
+def _sync_admin_flag(user: User, email: str) -> None:
+    admin_emails = current_app.config.get("ADMIN_EMAILS") or set()
+    if email in admin_emails:
+        user.role = "admin"
+        user.is_admin = True
+
+
+def _write_session(user: User) -> None:
+    session.permanent = True
+    session["uid"] = user.id
+    session["email"] = user.email
+    session["name"] = user.name
+    session["role"] = user.role
+    session["primary_program"] = user.primary_program
+    session["minor_code"] = user.minor_code
+    session["is_admin"] = user.is_admin
 
 
 # ── Google Sign-In ───────────────────────────────────────────
@@ -71,29 +124,33 @@ def google_signin():
             email=email,
             name=name,
             google_sub=google_sub,
-            role="student",  # default; the profile-completion step refines this
+            role="student",
         )
         db.session.add(user)
+        seed = _load_seed_users().get(email)
+        if seed:
+            _apply_seed(user, seed)
     else:
         # Keep google_sub up to date for users who first authed differently
         if google_sub and not user.google_sub:
             user.google_sub = google_sub
         if not user.name and name:
             user.name = name
+        if not user.profile_completed:
+            seed = _load_seed_users().get(email)
+            if seed:
+                _apply_seed(user, seed)
 
-    # Admin promotion is one-way via env var: if the email is in
-    # ADMIN_EMAILS, the user gets promoted to admin on every login. We do
-    # NOT auto-demote — removing an email from the env var stops new
-    # admin grants but doesn't clobber a previously-set role. To demote
-    # an existing admin, edit the DB directly (`UPDATE users SET role=...`).
-    admin_emails = current_app.config.get("ADMIN_EMAILS") or set()
-    if email in admin_emails and user.role != "admin":
-        user.role = "admin"
+    _sync_admin_flag(user, email)
+
+    from datetime import datetime, timezone
+    user.last_login = datetime.now(timezone.utc)
+    if user.profile_is_complete():
+        user.profile_completed = True
 
     db.session.commit()
 
-    session.permanent = True
-    session["uid"] = user.id
+    _write_session(user)
     return jsonify(user.to_public_dict())
 
 
@@ -123,6 +180,7 @@ ALLOWED_PROFILE_FIELDS = {
     "minor_code",
     "advisor_scope",
     "department_scope",
+    "department",
 }
 USER_SETTABLE_ROLES = {"student", "professor", "area_head", "associate_area_head", "advisor"}
 
@@ -234,12 +292,14 @@ def update_me():
     # All checks passed — apply the patch.
     if "role" in data and not is_admin:
         user.role = new_role
-    for field in ("name", "primary_program", "minor_code", "advisor_scope", "department_scope"):
+    for field in ("name", "primary_program", "minor_code", "advisor_scope", "department_scope", "department"):
         if field in data:
             value = data[field]
             if value == "":
                 value = None
             setattr(user, field, value)
 
+    user.profile_completed = user.profile_is_complete()
     db.session.commit()
+    _write_session(user)
     return jsonify(user.to_public_dict())

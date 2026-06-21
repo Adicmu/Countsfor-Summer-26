@@ -37,13 +37,17 @@ services:
       - key: GOOGLE_CLIENT_ID
         sync: false           # e.g. "1234567890-abc.apps.googleusercontent.com"
       - key: ADMIN_EMAILS
-        sync: false           # e.g. "avivek@andrew.cmu.edu,ladyhodhod@andrew.cmu.edu"
+        value: hjendara@andrew.cmu.edu
       - key: ALLOWED_EMAIL_DOMAIN
-        value: andrew.cmu.edu # leave empty to allow any verified Google account
+        value: andrew.cmu.edu
 
-      # CORS allow-list — update if the frontend ever moves off GH Pages
+      # CORS — browser origin is https://hindjendara.github.io (no path)
       - key: FRONTEND_ORIGIN
-        value: https://adicmu.github.io,http://localhost:8765
+        value: https://hindjendara.github.io,http://localhost:8765
+
+      # Optional: commit backend/seed_users.json with faculty emails
+      - key: SEED_USERS_PATH
+        value: backend/seed_users.json
 
 databases:
   - name: countsfor-db

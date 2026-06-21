@@ -8,16 +8,20 @@ const MAJOR_META = {
   IS: { code: 'IS', label: 'Information Systems',    color: 'is', degree: 'B.S. in Information Systems' },
   BA: { code: 'BA', label: 'Business Administration',color: 'ba', degree: 'B.S. in Business Administration' },
   BS: { code: 'BS', label: 'Biological Sciences',    color: 'bs', degree: 'B.S. in Biological Sciences' },
+  AI: { code: 'AI', label: 'Artificial Intelligence', color: 'ai', degree: 'B.S. in Artificial Intelligence', dataPending: true },
+  GS: { code: 'GS', label: 'General Studies',         color: 'gs', degree: 'B.S. in General Studies', dataPending: true },
 };
 
 const MAJOR_ORDER = ['CS', 'IS', 'BA', 'BS'];
+// AI and GS scaffolded — add to MAJOR_ORDER once Hind supplies requirement specs (T7/T8).
 
-// ── Accent-color helpers (spec § 4.5) ──────────────────────
 const MAJOR_BRAND = {
   CS: '#C41230',
   IS: '#D97706',
   BA: '#2563EB',
   BS: '#059669',
+  AI: '#7C3AED',
+  GS: '#64748B',
 };
 
 // First match in this ordered list wins. rule.color === null means "use major brand".
@@ -457,25 +461,134 @@ function getDeptName(courseCode) {
   return DEPT_NAMES[prefix] || `Dept ${prefix}`;
 }
 
+// ── Semester / modality filters (Phase 3) ────────────────────
+const SEMESTER_OPTIONS = [
+  { code: 'F26', label: 'Fall 2026' },
+  { code: 'M26', label: 'Summer 2026' },
+  { code: 'S26', label: 'Spring 2026' },
+  { code: 'F25', label: 'Fall 2025' },
+  { code: 'M25', label: 'Summer 2025' },
+];
+
+const MODALITY_OPTIONS = [
+  { id: 'all', label: 'All' },
+  { id: 'in_person', label: 'In Person' },
+  { id: 'remote', label: 'Remote' },
+  { id: 'hybrid', label: 'Hybrid' },
+];
+
+function semesterLabel(code) {
+  const hit = SEMESTER_OPTIONS.find(s => s.code === code);
+  return hit ? hit.label : code;
+}
+
+function getCourseOfferings(course) {
+  if (!course) return [];
+  if (Array.isArray(course.offerings) && course.offerings.length) {
+    return course.offerings;
+  }
+  // Legacy soc_sections → normalized offering shape
+  return (course.soc_sections || []).map(s => ({
+    semester: s.semester || semesterLabel(s.semester_code || 'F26'),
+    semester_code: s.semester_code || 'F26',
+    campus: s.campus || (s.location && s.location.includes('Qatar') ? 'Qatar'
+      : s.location && s.location.includes('Pittsburgh') ? 'Pittsburgh' : null),
+    section: s.section,
+    modality: s.modality || normalizeOfferingModality(s.delivery_mode),
+    units: course.units,
+    days_times: s.days_times || formatLegacyDaysTimes(s),
+    instructor: s.instructor || '',
+    location: s.location,
+    delivery_mode_raw: s.delivery_mode,
+  }));
+}
+
+function formatLegacyDaysTimes(s) {
+  const days = s.days || 'TBA';
+  if (s.begin_time && s.begin_time !== 'TBA' && s.end_time) {
+    return `${days} ${s.begin_time}-${s.end_time}`;
+  }
+  return days;
+}
+
+function normalizeOfferingModality(raw) {
+  const d = (raw || '').toLowerCase();
+  if (!d) return 'In Person';
+  if (d.includes('remote only') || d === 'remote') return 'Remote';
+  if (d.includes('hybrid') || (d.includes('remote') && d.includes('in-person'))) return 'Hybrid';
+  if (d.includes('remote')) return 'Remote';
+  return 'In Person';
+}
+
+function modalityFilterMatches(offeringModality, filterId) {
+  if (!filterId || filterId === 'all') return true;
+  const m = (offeringModality || 'In Person').toLowerCase().replace(/\s+/g, '_');
+  if (filterId === 'in_person') return m === 'in_person';
+  return m === filterId;
+}
+
+function campusFilterMatches(offeringCampus, locationFilter) {
+  if (!locationFilter || locationFilter === 'all') return true;
+  if (locationFilter === 'qatar') return offeringCampus === 'Qatar';
+  if (locationFilter === 'pittsburgh') return offeringCampus === 'Pittsburgh';
+  return true;
+}
+
+function filterOfferings(offerings, { semesterCode, locationFilter, modalityFilter }) {
+  return (offerings || []).filter(o => {
+    if (semesterCode && o.semester_code !== semesterCode) return false;
+    if (!campusFilterMatches(o.campus, locationFilter)) return false;
+    if (!modalityFilterMatches(o.modality, modalityFilter)) return false;
+    return true;
+  });
+}
+
+function courseHasMatchingOffering(course, filters) {
+  const all = getCourseOfferings(course);
+  if (all.length === 0) {
+    if (filters.semesterCode) {
+      const hist = Array.isArray(course.offered) ? course.offered : [];
+      if (hist.length && !hist.includes(filters.semesterCode)) return false;
+    }
+    if (!campusFilterMatches(null, filters.locationFilter)) {
+      if (filters.locationFilter === 'qatar') return !!course.offered_qatar;
+      if (filters.locationFilter === 'pittsburgh') return !!course.offered_pitts;
+    }
+    return filters.modalityFilter === 'all' || filters.modalityFilter === 'in_person';
+  }
+  return filterOfferings(all, filters).length > 0;
+}
+
+// ── Minor course lists (T5) ──────────────────────────────────
+function courseCountsForMinor(course, minorCode, minorCourseList) {
+  if (!minorCode || !course) return false;
+  const list = minorCourseList && minorCourseList[minorCode];
+  if (Array.isArray(list)) {
+    return list.includes(course.course_code);
+  }
+  const mapped = MINOR_CODE_TO_MAJOR[minorCode];
+  if (!mapped) return false;
+  const reqs = course.requirements || {};
+  return Array.isArray(reqs[mapped]) && reqs[mapped].length > 0;
+}
+
 // ── Profile-aware annotations ────────────────────────────
 
-function annotateDoubleCounters(courses, profile) {
+function annotateDoubleCounters(courses, profile, minorCourseList) {
   const viewMode = computeViewMode(profile);
   if (viewMode !== 'focused-dual') {
     for (const c of courses) c._doubleCounter = false;
     return;
   }
   const p = profile.primary;
-  // Minors are stored as minor-codes; resolve to a major code we have data for.
-  const s = (typeof getMinorAsMajorCode === 'function') ? getMinorAsMajorCode(profile) : profile.secondary;
-  if (!s) {
+  if (!profile.secondary) {
     for (const c of courses) c._doubleCounter = false;
     return;
   }
   for (const c of courses) {
     const req = c.requirements || {};
     const hasPrimary = Array.isArray(req[p]) && req[p].length > 0;
-    const hasSecondary = Array.isArray(req[s]) && req[s].length > 0;
+    const hasSecondary = courseCountsForMinor(c, profile.secondary, minorCourseList);
     c._doubleCounter = hasPrimary && hasSecondary;
   }
 }

@@ -1,0 +1,39 @@
+# Render Blueprint (repo root). Use when creating services via Blueprint.
+# If you already have Countsfor-Summer-26 + CountsFor_Summer_2026, fix the
+# existing web service Settings instead (see docs/RENDER_FIX.md).
+
+services:
+  - type: web
+    name: countsfor-backend
+    runtime: python
+    plan: free
+    region: ohio
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: cd .. && gunicorn --workers=2 --bind 0.0.0.0:$PORT --access-logfile - 'backend.app:create_app()'
+    healthCheckPath: /health
+
+    envVars:
+      - key: FLASK_ENV
+        value: production
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: DATABASE_URL
+        fromDatabase:
+          name: CountsFor_Summer_2026
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: ADMIN_EMAILS
+        value: hjendara@andrew.cmu.edu
+      - key: ALLOWED_EMAIL_DOMAIN
+        value: andrew.cmu.edu
+      - key: FRONTEND_ORIGIN
+        value: https://hindjendara.github.io,http://localhost:8765
+
+databases:
+  - name: CountsFor_Summer_2026
+    plan: free
+    region: ohio

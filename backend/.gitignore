@@ -3,5 +3,6 @@ __pycache__/
 *.pyc
 *.db
 .env
+seed_users.json
 .coverage
 .pytest_cache/

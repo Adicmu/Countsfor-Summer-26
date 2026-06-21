@@ -54,6 +54,10 @@ class Config:
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
     ALLOWED_EMAIL_DOMAIN = os.environ.get("ALLOWED_EMAIL_DOMAIN", "").strip().lower()
     ADMIN_EMAILS = {e.lower() for e in _csv(os.environ.get("ADMIN_EMAILS"))}
+    SEED_USERS_PATH = os.environ.get(
+        "SEED_USERS_PATH",
+        str(Path(__file__).resolve().parent / "seed_users.json"),
+    )
 
     # ── CORS ──────────────────────────────────────────────────
     FRONTEND_ORIGINS = _csv(os.environ.get(
@@ -72,3 +76,4 @@ class TestConfig(Config):
     SESSION_COOKIE_SECURE = False
     SESSION_COOKIE_SAMESITE = "Lax"
     FRONTEND_ORIGINS = ["http://localhost:8765"]
+    SEED_USERS_PATH = ""

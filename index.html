@@ -13,8 +13,13 @@
     Google OAuth web client ID. Create one at
     https://console.cloud.google.com/apis/credentials and paste the value
     below. Authorized JavaScript origins must include both the local dev
-    URL (http://localhost:8765) and the deployed GitHub Pages URL.
+    URL (http://localhost:8765) and https://hindjendara.github.io
   -->
+  <!--
+    After Render deploy, paste your service URL (no trailing slash).
+    Likely: https://countsfor-backend.onrender.com
+  -->
+  <meta name="cf-backend-url" content="" />
   <meta name="cf-google-client-id" content="378923997481-bgnvhg3gsgka5ptijjjsb80q4k7kc2vg.apps.googleusercontent.com" />
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>

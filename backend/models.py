@@ -5,7 +5,7 @@ belongs in route modules or permissions.py.
 """
 from datetime import datetime, timezone
 from sqlalchemy import (
-    Integer, String, Text, DateTime, ForeignKey, UniqueConstraint, Index
+    Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint, Index
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .db import db
@@ -41,11 +41,29 @@ class User(db.Model):
     minor_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
     advisor_scope: Mapped[str | None] = mapped_column(String(32), nullable=True)
     department_scope: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    department: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    profile_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow)
 
     flags: Mapped[list["Flag"]] = relationship(back_populates="submitter", foreign_keys="Flag.submitted_by_id")
     wishlist: Mapped[list["WishlistItem"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
+    def profile_is_complete(self) -> bool:
+        """True when the user has enough profile data to skip onboarding."""
+        if self.role == "admin":
+            return True
+        if self.role == "student":
+            return bool(self.primary_program)
+        if self.role == "professor":
+            return bool(self.primary_program)
+        if self.role in ("area_head", "associate_area_head"):
+            return True  # primary optional for legacy area heads
+        if self.role == "advisor":
+            return bool(self.advisor_scope)
+        return False
 
     def to_public_dict(self) -> dict:
         """Returned by /api/me — never expose google_sub or DB-internal ids
@@ -59,6 +77,10 @@ class User(db.Model):
             "minor_code": self.minor_code,
             "advisor_scope": self.advisor_scope,
             "department_scope": self.department_scope,
+            "department": self.department,
+            "is_admin": self.is_admin,
+            "profile_completed": self.profile_completed,
+            "last_login": self.last_login.isoformat() if self.last_login else None,
         }
 
 

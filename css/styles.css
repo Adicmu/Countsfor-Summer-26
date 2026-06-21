@@ -233,6 +233,85 @@ body {
   color:var(--text-secondary);
   background:var(--bg-tertiary);
 }
+.navbar-semester { display:flex; align-items:center; }
+.semester-select {
+  height:34px;
+  border:1px solid var(--border-light);
+  border-radius:8px;
+  background:var(--bg-secondary);
+  color:var(--text-primary);
+  font-family:inherit;
+  font-size:0.75rem;
+  font-weight:600;
+  padding:0 10px;
+}
+.navbar-modality-toggle {
+  display:flex;
+  align-items:center;
+  background:var(--bg-secondary);
+  border:1px solid var(--border-light);
+  border-radius:8px;
+  overflow:hidden;
+  height:34px;
+}
+.mod-btn {
+  padding:0 10px;
+  height:100%;
+  border:none;
+  background:transparent;
+  font-family:inherit;
+  font-size:0.72rem;
+  font-weight:600;
+  color:var(--text-tertiary);
+  cursor:pointer;
+}
+.mod-btn.active {
+  background:var(--cmu-red);
+  color:#fff;
+}
+.adm-search-row { display:flex; gap:8px; margin:12px 0; }
+.adm-search {
+  flex:1;
+  padding:8px 10px;
+  border:1px solid var(--border-light);
+  border-radius:8px;
+  font-family:inherit;
+}
+.adm-user-fields {
+  display:flex;
+  flex-wrap:wrap;
+  gap:10px;
+  margin:8px 0;
+  font-size:0.8rem;
+}
+.adm-user-fields label { display:flex; flex-direction:column; gap:4px; }
+.adm-select {
+  min-width:120px;
+  padding:6px 8px;
+  border:1px solid var(--border-light);
+  border-radius:6px;
+  font-family:inherit;
+}
+.cc-campus-pill {
+  display:inline-block;
+  margin-left:6px;
+  padding:1px 6px;
+  border-radius:999px;
+  font-size:0.65rem;
+  font-weight:700;
+  background:var(--bg-secondary);
+  color:var(--text-secondary);
+}
+.sr-only {
+  position:absolute;
+  width:1px;
+  height:1px;
+  padding:0;
+  margin:-1px;
+  overflow:hidden;
+  clip:rect(0,0,0,0);
+  border:0;
+}
 .theme-toggle {
   width:34px;
   height:34px;

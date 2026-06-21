@@ -41,7 +41,17 @@ import json
 import time
 import sys
 import os
+import sys
 from datetime import datetime, timezone
+
+# Shared parsers live alongside this script.
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from soc_parse import (  # noqa: E402
+    apply_campus_fix,
+    build_offering,
+    course_number_to_code,
+    semester_code_to_label,
+)
 
 # ---------- Configuration ----------
 # Overridable via env vars for local testing against the Flask test server.
@@ -225,6 +235,26 @@ def scrape_semester(semester_code, dept_list):
         print(f"  Below threshold ({MIN_COURSES_FOR_VALID_SCRAPE}) -- "
               f"treating as not-yet-released.")
         return None, None
+
+    # Attach normalized per-semester offerings on each course.
+    sem_label = semester_code_to_label(semester_code)
+    for course in all_courses:
+        offerings = []
+        for section in course.get('sections') or []:
+            off = build_offering(
+                semester_code=semester_code,
+                section=section,
+                units=course.get('units'),
+            )
+            off['campus'] = apply_campus_fix(
+                course.get('course_number', ''),
+                course.get('title'),
+                off.get('campus'),
+            )
+            offerings.append(off)
+        course['offerings'] = offerings
+        course['semester'] = sem_label
+        course['semester_code'] = semester_code
 
     return all_courses, dept_summary
 

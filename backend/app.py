@@ -30,6 +30,8 @@ def create_app(config_class=Config) -> Flask:
         # starts changing meaningfully.
         from . import models  # noqa: F401 — register tables
         db.create_all()
+        from .migrate import run_migrations
+        run_migrations()
 
     # CORS — cookies need explicit allow-list + credentials=True
     CORS(
@@ -42,10 +44,12 @@ def create_app(config_class=Config) -> Flask:
     from .auth import bp as auth_bp
     from .flags import bp as flags_bp
     from .wishlist import bp as wishlist_bp
+    from .users import bp as users_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(flags_bp)
     app.register_blueprint(wishlist_bp)
+    app.register_blueprint(users_bp)
 
     # Health check (Render pings this)
     @app.route("/health")
