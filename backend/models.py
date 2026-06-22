@@ -54,13 +54,13 @@ class User(db.Model):
     def profile_is_complete(self) -> bool:
         """True when the user has enough profile data to skip onboarding."""
         if self.role == "admin":
-            return True
+            return bool(self.primary_program)
         if self.role == "student":
             return bool(self.primary_program)
         if self.role == "professor":
             return bool(self.primary_program)
         if self.role in ("area_head", "associate_area_head"):
-            return True  # primary optional for legacy area heads
+            return bool(self.primary_program)
         if self.role == "advisor":
             return bool(self.advisor_scope)
         return False

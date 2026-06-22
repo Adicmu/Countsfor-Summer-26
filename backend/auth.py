@@ -145,8 +145,7 @@ def google_signin():
 
     from datetime import datetime, timezone
     user.last_login = datetime.now(timezone.utc)
-    if user.profile_is_complete():
-        user.profile_completed = True
+    # profile_completed is set only after PATCH /api/me (onboarding), not on login.
 
     db.session.commit()
 
