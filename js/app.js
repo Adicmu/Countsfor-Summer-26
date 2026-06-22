@@ -41,11 +41,13 @@ const App = {
     if (me.ok) {
       this.authedUser = me.data;
       this.authMode = 'authed';
-      this._hydrateProfileFromServer(me.data);
-      if (!this._serverProfileIsComplete(me.data)) {
-        this.renderOnboarding(false);  // _finishOnboarding now PATCHes /api/me
+      if (this._needsOnboarding(me.data)) {
+        clearProfile();
+        this.profile = null;
+        this.renderOnboarding(false);
         return;
       }
+      this._hydrateProfileFromServer(me.data);
       this._afterAuthed();
       return;
     }
@@ -122,17 +124,20 @@ const App = {
     saveStore('cf_synced', true);
   },
 
-  _serverProfileIsComplete(u) {
-    if (!u || !u.role) return false;
-    if (u.profile_completed) return true;
-    // Admins never need to pick a program — they review flags.
-    if (u.role === 'admin') return true;
-    if (u.role === 'student')              return !!u.primary_program;
-    if (u.role === 'professor')            return !!u.primary_program;
-    if (u.role === 'area_head' ||
-        u.role === 'associate_area_head')  return !!u.primary_program;
-    if (u.role === 'advisor')              return !!u.advisor_scope;
+  _needsOnboarding(u) {
+    if (!u || !u.role) return true;
+    if (!u.profile_completed) return true;
+    // Recover rows that were auto-marked complete without program data.
+    if (u.role === 'student' && !u.primary_program) return true;
+    if (u.role === 'professor' && !u.primary_program) return true;
+    if (u.role === 'advisor' && !u.advisor_scope) return true;
+    if ((u.role === 'area_head' || u.role === 'associate_area_head') && !u.primary_program) return true;
+    if (u.role === 'admin' && !u.primary_program) return true;
     return false;
+  },
+
+  _serverProfileIsComplete(u) {
+    return !this._needsOnboarding(u);
   },
 
   _hydrateProfileFromServer(u) {
@@ -154,7 +159,7 @@ const App = {
       scope,
     };
     // Server is source of truth in authed mode — keep localStorage aligned.
-    if (this.authMode === 'authed' && validateProfile(this.profile)) {
+    if (this.authMode === 'authed' && u.profile_completed && validateProfile(this.profile)) {
       try { saveProfile(this.profile); } catch {}
     }
   },
@@ -525,6 +530,10 @@ const App = {
         serverPatch.minor_code = null;
         serverPatch.advisor_scope = null;
       }
+      // Admin role is env-driven — store program context without changing role.
+      if (this.authedUser && this.authedUser.role === 'admin') {
+        delete serverPatch.role;
+      }
       const r = await apiPatchMe(serverPatch);
       if (!r.ok) {
         showToast('Could not save profile to the server — using local copy.');
@@ -632,12 +641,14 @@ const App = {
     }
     this.authedUser = r.data;
     this.authMode = 'authed';
-    this._hydrateProfileFromServer(r.data);
-    if (!this._serverProfileIsComplete(r.data)) {
+    if (this._needsOnboarding(r.data)) {
+      clearProfile();
+      this.profile = null;
       this.renderOnboarding(false);
-    } else {
-      this._afterAuthed();
+      return;
     }
+    this._hydrateProfileFromServer(r.data);
+    this._afterAuthed();
   },
 
   async signOut() {
