@@ -49,6 +49,11 @@ class Config:
         _raw_db = _raw_db.replace("postgres://", "postgresql://", 1)
     SQLALCHEMY_DATABASE_URI = _raw_db
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    # Fail fast on Render if Postgres is misconfigured instead of hanging gunicorn.
+    _engine_opts: dict = {"pool_pre_ping": True}
+    if _raw_db.startswith("postgresql"):
+        _engine_opts["connect_args"] = {"connect_timeout": 10}
+    SQLALCHEMY_ENGINE_OPTIONS = _engine_opts
 
     # ── Auth ──────────────────────────────────────────────────
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
