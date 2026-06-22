@@ -51,8 +51,14 @@ const App = {
     }
 
     if (me.status === 0) {
-      // Network failure — backend unreachable. Demo mode preserves the
-      // public GH-Pages experience for unauthenticated visitors.
+      // Backend URL is set in index.html — require sign-in, don't silently
+      // fall back to a cached localStorage demo profile.
+      if (isBackendConfigured()) {
+        this.authMode = 'login';
+        this.renderLogin({ backendUnreachable: true });
+        return;
+      }
+      // No backend configured — demo mode preserves the public GH-Pages experience.
       this.authMode = 'demo';
       this.profile = loadProfile();
       if (!this.profile) {
@@ -550,10 +556,13 @@ const App = {
   // LOGIN SCREEN (Google SSO)
   // ══════════════════════════════════════════════════════════
 
-  renderLogin() {
+  renderLogin(opts = {}) {
     const clientId = getGoogleClientId();
     const missingClient = !clientId
       ? `<div class="auth-warning">⚠ Google sign-in is not configured yet. Set the <code>cf-google-client-id</code> meta tag in <code>index.html</code> and the <code>GOOGLE_CLIENT_ID</code> env var on the backend.</div>`
+      : '';
+    const backendWarn = opts.backendUnreachable
+      ? `<div class="auth-warning">⚠ Could not reach the sign-in server. Wait ~30s and refresh (free tier may be waking up).</div>`
       : '';
     document.getElementById('app').innerHTML = `
       <div class="onboarding-splash">
@@ -566,6 +575,7 @@ const App = {
           <div class="ob-sub">Sign in with your CMU Google account. Your role and major sync across devices, and faculty-only tools stay properly gated.</div>
 
           ${missingClient}
+          ${backendWarn}
           <div id="cfGoogleBtn" class="auth-google-mount"></div>
 
           <div class="auth-note">Only verified Google accounts are accepted. We never see your password.</div>

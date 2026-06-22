@@ -108,6 +108,14 @@ function getBackendUrl() {
   return 'https://countsfor-backend.onrender.com';
 }
 
+/** True when index.html sets a production backend URL (not demo-only GH Pages). */
+function isBackendConfigured() {
+  const meta = typeof document !== 'undefined'
+    ? document.querySelector('meta[name="cf-backend-url"]')
+    : null;
+  return !!(meta && (meta.getAttribute('content') || '').trim());
+}
+
 const CF_BACKEND_URL = (() => {
   if (typeof window !== 'undefined' && window.CF_BACKEND_URL) return window.CF_BACKEND_URL;
   const host = (typeof location !== 'undefined' ? location.hostname : '');
