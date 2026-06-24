@@ -295,46 +295,35 @@ const App = {
 
     const majorLabel = 'MAJORING IN';
 
-    document.getElementById('app').innerHTML = `
-      <div class="onboarding-splash">
-        <div class="onboarding-card">
-          <img class="onboarding-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" />
-          <div class="onboarding-brand">CountsFor</div>
-          <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
+    document.getElementById('app').innerHTML = this._renderLandingLayout(`
+      <div class="landing-panel-head">
+        <p class="landing-panel-eyebrow">Almost there</p>
+        <h2 class="landing-panel-title">Tell us about your studies</h2>
+        <p class="landing-panel-lead">We'll tailor the curriculum view to your major and optional minor.</p>
+      </div>
 
-          <div class="ob-heading">Tell us about your studies.</div>
-          <div class="ob-sub">We'll tailor the curriculum view to your major and minor. Faculty &amp; staff are recognized automatically when they sign in.</div>
+      ${showMajorPicker ? `
+        <div class="ob-section">
+          <div class="ob-section-label">${majorLabel}</div>
+          <div class="ob-row-majors">${majorBtns}</div>
+          ${asOptionHtml}
+        </div>
+      ` : ''}
 
-          ${showMajorPicker ? `
-            <div class="ob-section">
-              <div class="ob-section-label">${majorLabel}</div>
-              <div class="ob-row-majors">${majorBtns}</div>
-              ${asOptionHtml}
-            </div>
-          ` : ''}
-
-          ${showMinorSelect ? `
-            <div class="ob-section">
-              <div class="ob-section-label">${s.roleGroup === 'student' ? 'WITH A MINOR IN <span class="ob-optional">— optional</span>' : 'WHICH MINOR'}</div>
-              <div class="ob-select-wrap">
-                <select class="ob-select" onchange="${minorOnChange}">
-                  <option value="" ${(s.roleGroup === 'student' ? !s.secondary : !s.primary) ? 'selected' : ''}>— ${s.roleGroup === 'student' ? 'No minor' : 'Choose a minor'} —</option>
-                  ${minorOptions}
-                </select>
-              </div>
-            </div>
-          ` : ''}
-
-          <button class="onboarding-continue" ${valid ? '' : 'disabled'} onclick="App._finishOnboarding()">Continue →</button>
-
-          <div class="onboarding-institutional">
-            <span class="onboarding-institutional-label">An initiative of</span>
-            <img class="onboarding-cmuq" src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University Qatar" />
+      ${showMinorSelect ? `
+        <div class="ob-section">
+          <div class="ob-section-label">${s.roleGroup === 'student' ? 'WITH A MINOR IN <span class="ob-optional">— optional</span>' : 'WHICH MINOR'}</div>
+          <div class="ob-select-wrap">
+            <select class="ob-select" onchange="${minorOnChange}">
+              <option value="" ${(s.roleGroup === 'student' ? !s.secondary : !s.primary) ? 'selected' : ''}>— ${s.roleGroup === 'student' ? 'No minor' : 'Choose a minor'} —</option>
+              ${minorOptions}
+            </select>
           </div>
         </div>
-        ${cancelHtml}
-      </div>
-    `;
+      ` : ''}
+
+      <button class="onboarding-continue" ${valid ? '' : 'disabled'} onclick="App._finishOnboarding()">Continue →</button>
+    `, { cancelHtml });
   },
 
   _programFullName(p) {
@@ -491,6 +480,57 @@ const App = {
   },
 
   // ══════════════════════════════════════════════════════════
+  // LANDING PAGE — CMU brand shell (login + onboarding)
+  // ══════════════════════════════════════════════════════════
+
+  _landingHeroHtml() {
+    return `
+      <div class="landing-hero-art" aria-hidden="true">
+        <img class="landing-art landing-art-tartan" src="assets/img/cmu-tartan-wave.png" alt="" />
+        <img class="landing-art landing-art-swoosh-lg" src="assets/img/cmu-swoosh-red-lg.png" alt="" />
+        <img class="landing-art landing-art-swoosh-sm" src="assets/img/cmu-swoosh-red-sm.png" alt="" />
+      </div>
+      <div class="landing-hero-inner">
+        <div class="landing-brand-lockup">
+          <img class="landing-scotty" src="assets/img/scotty-head.png" alt="" />
+          <div class="landing-brand-text">
+            <span class="landing-wordmark">CountsFor</span>
+            <span class="landing-wordmark-sub">Carnegie Mellon University · Qatar</span>
+          </div>
+        </div>
+        <h1 class="landing-headline">Every course.<br><span class="landing-headline-accent">Every program.</span><br>One place.</h1>
+        <p class="landing-deck">Search 1,700+ courses and see what counts for CS, IS, Business, and Biological Sciences — tailored for students and faculty.</p>
+        <ul class="landing-highlights">
+          <li><span class="landing-hi-dot"></span>Instant lookup by course or category</li>
+          <li><span class="landing-hi-dot"></span>Double-counter courses for major + minor</li>
+          <li><span class="landing-hi-dot"></span>Faculty can flag data issues</li>
+        </ul>
+      </div>`;
+  },
+
+  _landingFooterHtml() {
+    return `
+      <div class="landing-footer">
+        <img class="landing-footer-wordmark" src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University in Qatar" />
+        <p class="landing-footer-tag">An initiative of CMU-Q</p>
+      </div>`;
+  },
+
+  _renderLandingLayout(panelHtml, opts = {}) {
+    return `
+      <div class="landing">
+        <section class="landing-hero">${this._landingHeroHtml()}</section>
+        <section class="landing-panel">
+          <div class="landing-panel-card">
+            ${panelHtml}
+            ${this._landingFooterHtml()}
+          </div>
+        </section>
+        ${opts.cancelHtml || ''}
+      </div>`;
+  },
+
+  // ══════════════════════════════════════════════════════════
   // LOGIN SCREEN (CMU email)
   // ══════════════════════════════════════════════════════════
 
@@ -501,36 +541,33 @@ const App = {
 
   renderLogin(opts = {}) {
     const backendWarn = opts.backendUnreachable
-      ? `<div class="auth-warning">⚠ Could not reach the sign-in server. Wait ~30s and refresh (free tier may be waking up).</div>`
+      ? `<div class="landing-alert">Could not reach the sign-in server. Wait ~30s and refresh — the free tier may be waking up.</div>`
       : '';
-    document.getElementById('app').innerHTML = `
-      <div class="onboarding-splash">
-        <div class="onboarding-card auth-card">
-          <img class="onboarding-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" />
-          <div class="onboarding-brand">CountsFor</div>
-          <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
-
-          <div class="ob-heading">Sign in to continue.</div>
-          <div class="ob-sub">Enter your CMU email. Faculty are recognized automatically and can flag course issues; students pick their major and minor once.</div>
-
-          ${backendWarn}
-          <form class="auth-email-form" onsubmit="App._onEmailLogin(event)">
-            <label class="auth-email-label" for="cfEmailInput">CMU email address</label>
-            <input class="auth-email-input" id="cfEmailInput" type="email" name="email"
-              placeholder="you@andrew.cmu.edu" autocomplete="email" required />
-            <p class="auth-email-hint">@andrew.cmu.edu, @cmu.edu, or @qatar.cmu.edu only</p>
-            <button type="submit" class="auth-email-submit" id="cfEmailSubmit">Continue →</button>
-          </form>
-
-          <div class="auth-note">Faculty land on the cross-program view with flagging. Students choose major/minor and cannot flag courses.</div>
-
-          <div class="onboarding-institutional">
-            <span class="onboarding-institutional-label">An initiative of</span>
-            <img class="onboarding-cmuq" src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University Qatar" />
-          </div>
-        </div>
+    const panel = `
+      <div class="landing-panel-head">
+        <p class="landing-panel-eyebrow">Welcome</p>
+        <h2 class="landing-panel-title">Sign in with your CMU email</h2>
+        <p class="landing-panel-lead">Faculty are recognized automatically. Students set their major and minor once.</p>
       </div>
-    `;
+      ${backendWarn}
+      <form class="auth-email-form" onsubmit="App._onEmailLogin(event)">
+        <label class="auth-email-label" for="cfEmailInput">CMU email address</label>
+        <input class="auth-email-input" id="cfEmailInput" type="email" name="email"
+          placeholder="you@andrew.cmu.edu" autocomplete="email" required />
+        <p class="auth-email-hint">@andrew.cmu.edu · @cmu.edu · @qatar.cmu.edu</p>
+        <button type="submit" class="auth-email-submit" id="cfEmailSubmit">Continue →</button>
+      </form>
+      <div class="landing-role-hints">
+        <div class="landing-role-hint">
+          <span class="landing-role-icon landing-role-icon-faculty">F</span>
+          <span><strong>Faculty</strong> — cross-program view &amp; course flagging</span>
+        </div>
+        <div class="landing-role-hint">
+          <span class="landing-role-icon landing-role-icon-student">S</span>
+          <span><strong>Students</strong> — focused view by major &amp; minor</span>
+        </div>
+      </div>`;
+    document.getElementById('app').innerHTML = this._renderLandingLayout(panel);
     const input = document.getElementById('cfEmailInput');
     if (input) input.focus();
   },
@@ -1315,6 +1352,10 @@ const App = {
 
     return `
       <div class="home">
+        <div class="home-brand-band" aria-hidden="true">
+          <img class="home-brand-art home-brand-tartan" src="assets/img/cmu-tartan-wave.png" alt="" />
+          <img class="home-brand-art home-brand-swoosh" src="assets/img/cmu-swoosh-red-sm.png" alt="" />
+        </div>
         <h1 class="home-hero">Find a course.</h1>
         <p class="home-lead">${lead}</p>
 
