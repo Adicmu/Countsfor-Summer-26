@@ -1,11 +1,18 @@
 """Auth route tests. /api/auth/google's signature check is mocked — real
 JWT verification needs network round-trips to Google."""
+import json
 from unittest.mock import patch
 import pytest
 
+from backend.app import create_app
+from backend.config import TestConfig
 from backend.db import db
 from backend.models import User
 from .conftest import login
+
+
+def _fake(email, sub):
+    return {"sub": sub, "email": email, "email_verified": True, "name": email.split("@")[0]}
 
 
 def _fake_google_payload(email="alice@andrew.cmu.edu", verified=True, sub="g-123"):
@@ -258,3 +265,67 @@ def test_logout_clears_session(client, student):
     r = client.post("/api/auth/logout")
     assert r.status_code == 200
     assert client.get("/api/me").status_code == 401
+
+
+# ── Self-service role lockdown + seed recognition ───────────
+
+def test_patch_me_rejects_self_assign_faculty(client, student):
+    """A student can no longer PATCH themselves into a faculty role — faculty
+    roles come from the seed file or an admin (users.py), never self-service."""
+    login(client, student)
+    r = client.patch("/api/me", json={"role": "professor", "primary_program": "IS"})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "invalid_role"
+
+
+def test_admin_skips_onboarding(client):
+    """An admin (via ADMIN_EMAILS) is profile-complete on login and never gets
+    bounced to onboarding — even without a primary_program."""
+    with patch("backend.auth.id_token.verify_oauth2_token",
+               return_value=_fake("admin@andrew.cmu.edu", "g-admin")):
+        r = client.post("/api/auth/google", json={"credential": "stub"})
+    body = r.get_json()
+    assert body["role"] == "admin"
+    assert body["is_admin"] is True
+    assert body["profile_completed"] is True
+
+
+def test_seed_user_recognized_as_faculty_on_signin(tmp_path):
+    """A seeded email is recognized as faculty on first login and lands in the
+    app (profile complete), instead of self-declaring on the onboarding page."""
+    seed = tmp_path / "seed_users.json"
+    seed.write_text(json.dumps([
+        {"email": "hbouamor@andrew.cmu.edu", "name": "Houda Bouamor",
+         "role": "professor", "primary_program": "IS", "department": "Information Systems"},
+    ]))
+
+    class SeedConfig(TestConfig):
+        SEED_USERS_PATH = str(seed)
+
+    app = create_app(SeedConfig)
+    with app.test_client() as c:
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake("hbouamor@andrew.cmu.edu", "g-houda")):
+            r = c.post("/api/auth/google", json={"credential": "stub"})
+    body = r.get_json()
+    assert body["role"] == "professor"
+    assert body["primary_program"] == "IS"
+    assert body["profile_completed"] is True
+
+
+def test_admin_email_overrides_seed_role(tmp_path):
+    """If an email is both seeded as faculty AND in ADMIN_EMAILS, admin wins."""
+    seed = tmp_path / "seed_users.json"
+    seed.write_text(json.dumps([
+        {"email": "admin@andrew.cmu.edu", "role": "professor", "primary_program": "IS"},
+    ]))
+
+    class SeedConfig(TestConfig):
+        SEED_USERS_PATH = str(seed)
+
+    app = create_app(SeedConfig)
+    with app.test_client() as c:
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake("admin@andrew.cmu.edu", "g-admin")):
+            r = c.post("/api/auth/google", json={"credential": "stub"})
+    assert r.get_json()["role"] == "admin"

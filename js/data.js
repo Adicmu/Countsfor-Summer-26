@@ -340,25 +340,29 @@ function buildCourseIndex(courses) {
 }
 
 // ── Get display-ready mappings for a course ─────────────────
-function getCourseMappings(course) {
+// opts.full → faculty view: show a deeper breadcrumb (last 3 path segments
+// instead of 2) so faculty maintaining mappings see more of the path.
+function getCourseMappings(course, opts = {}) {
+  const full = !!(opts && opts.full);
+  const depth = full ? 3 : 2;
   const mappings = {};
-  
+
   for (const majorCode of MAJOR_ORDER) {
     const reqs = (course.requirements && course.requirements[majorCode]) || [];
     if (reqs.length === 0) continue;
-    
+
     mappings[majorCode] = reqs.map(req => {
       const parts = req.requirement.split('---');
-      // Show last 2 meaningful segments
+      // Show the last `depth` meaningful segments.
       let shortLabel;
-      if (parts.length >= 3) {
-        shortLabel = parts.slice(-2).map(p => LABEL_OVERRIDES[p] || p).join(' → ');
-      } else if (parts.length === 2) {
-        shortLabel = (LABEL_OVERRIDES[parts[1]] || parts[1]);
+      if (parts.length >= depth + 1) {
+        shortLabel = parts.slice(-depth).map(p => LABEL_OVERRIDES[p] || p).join(' → ');
+      } else if (parts.length >= 2) {
+        shortLabel = parts.slice(1).map(p => LABEL_OVERRIDES[p] || p).join(' → ');
       } else {
         shortLabel = (LABEL_OVERRIDES[parts[0]] || parts[0]);
       }
-      
+
       return {
         shortLabel,
         fullPath: req.requirement,
@@ -367,8 +371,40 @@ function getCourseMappings(course) {
       };
     });
   }
-  
+
   return mappings;
+}
+
+// ── Order the "Counts For" columns by role ──────────────────
+// Students lead with their own program(s) (their lens); faculty/admins get
+// the canonical cross-program order with no personal bias. Pure function.
+function orderCfColumns(mappings, profile) {
+  const present = MAJOR_ORDER.filter(m => mappings[m] && mappings[m].length);
+  if (!profile || (typeof isFaculty === 'function' && isFaculty(profile))) {
+    return present;
+  }
+  const lead = [];
+  if (profile.primary && typeof MAJOR_LIST !== 'undefined'
+      && MAJOR_LIST.includes(profile.primary) && present.includes(profile.primary)) {
+    lead.push(profile.primary);
+  }
+  const minorMajor = (typeof getMinorAsMajorCode === 'function') ? getMinorAsMajorCode(profile) : null;
+  if (minorMajor && present.includes(minorMajor) && !lead.includes(minorMajor)) {
+    lead.push(minorMajor);
+  }
+  const rest = present.filter(m => !lead.includes(m));
+  return [...lead, ...rest];
+}
+
+// ── Count a faculty member's flags by status ────────────────
+// Pure helper for the faculty home "My flags" panel. Unknown statuses are
+// ignored so a future status can't crash the summary.
+function summarizeFlagsByStatus(items) {
+  const counts = { pending: 0, reviewed: 0, resolved: 0, dismissed: 0 };
+  for (const f of (items || [])) {
+    if (f && Object.prototype.hasOwnProperty.call(counts, f.status)) counts[f.status]++;
+  }
+  return counts;
 }
 
 // ── Get "also counts for" tags for a course in a given major ──
