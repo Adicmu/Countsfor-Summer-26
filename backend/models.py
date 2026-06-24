@@ -54,7 +54,7 @@ class User(db.Model):
     def profile_is_complete(self) -> bool:
         """True when the user has enough profile data to skip onboarding."""
         if self.role == "admin":
-            return bool(self.primary_program)
+            return True  # admins are scoped server-side; no major needed → never onboard
         if self.role == "student":
             return bool(self.primary_program)
         if self.role == "professor":

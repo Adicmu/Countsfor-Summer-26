@@ -202,6 +202,9 @@ async function fetchMinorCourses() {
 // ── Flags ────────────────────────────────────────────────────
 async function apiCreateFlag(flag)        { return apiFetch('/api/flags', { method: 'POST', body: flag }); }
 async function apiListFlags(query = '')   { return apiFetch('/api/flags' + (query ? '?' + query : '')); }
+// Same endpoint as apiListFlags, named for intent: the server auto-scopes
+// GET /api/flags to the caller's own submissions for non-admin faculty.
+async function apiGetMyFlags(query = '')  { return apiFetch('/api/flags' + (query ? '?' + query : '')); }
 async function apiUpdateFlag(id, patch)   { return apiFetch('/api/flags/' + encodeURIComponent(id), { method: 'PATCH', body: patch }); }
 
 // ── Wishlist ─────────────────────────────────────────────────

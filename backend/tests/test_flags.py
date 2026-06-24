@@ -86,10 +86,39 @@ def test_re_post_with_same_id_is_idempotent(client, professor):
 
 # ── Admin list/review ───────────────────────────────────────
 
-def test_non_admin_cannot_list_flags(client, professor):
+def test_faculty_sees_only_own_flags(client, professor, advisor):
+    """Faculty can list flags, but ONLY their own submissions (their
+    "My flags" view). One faculty member never sees another's flags."""
+    login(client, professor)
+    client.post("/api/flags", json=dict(VALID_FLAG, id="flg-prof-1"))
+    login(client, advisor)
+    client.post("/api/flags", json=dict(VALID_FLAG, id="flg-adv-1"))
+
     login(client, professor)
     r = client.get("/api/flags")
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["total"] == 1
+    assert body["items"][0]["id"] == "flg-prof-1"
+    assert body["items"][0]["submitted_by_id"] == professor.id
+
+
+def test_student_still_cannot_list_flags(client, student):
+    login(client, student)
+    r = client.get("/api/flags")
     assert r.status_code == 403
+
+
+def test_faculty_my_flags_status_filter(client, professor, admin):
+    login(client, professor)
+    client.post("/api/flags", json=dict(VALID_FLAG, id="flg-p-1"))
+    client.post("/api/flags", json=dict(VALID_FLAG, id="flg-p-2"))
+    login(client, admin)
+    client.patch("/api/flags/flg-p-1", json={"status": "resolved"})
+
+    login(client, professor)
+    assert client.get("/api/flags?status=pending").get_json()["total"] == 1
+    assert client.get("/api/flags?status=resolved").get_json()["total"] == 1
 
 
 def test_admin_can_list_flags(client, professor, admin):

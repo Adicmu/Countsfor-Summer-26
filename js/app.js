@@ -237,16 +237,20 @@ const App = {
   },
 
   renderOnboarding(isEdit) {
+    // Self-service onboarding is STUDENT-ONLY. Faculty/staff roles come from
+    // the seed file or an admin (users.py), never self-selection — so a
+    // student can't claim to be faculty. Rostered/seeded faculty and admins
+    // arrive with a complete profile and skip this screen entirely; editRole()
+    // also blocks them.
     const p = this.profile;
-    const existingRole = p ? p.role : null;
-    const grp = existingRole ? getRoleGroup(existingRole) : null;
+    const keepStudent = !!(p && p.role === 'student');
     this._onboardingState = {
-      role:         existingRole,
-      roleGroup:    existingRole ? (existingRole === 'student' ? 'student' : 'faculty') : null,
-      facultyGroup: (grp && grp !== 'student') ? grp : null,
-      scope:        (p && p.scope) || null,
-      primary:      p ? p.primary : null,
-      secondary:    p ? p.secondary : null,
+      role:         'student',
+      roleGroup:    'student',
+      facultyGroup: null,
+      scope:        null,
+      primary:      keepStudent ? p.primary : null,
+      secondary:    keepStudent ? p.secondary : null,
       isEdit: !!isEdit,
     };
     this._renderOnboardingScreen();
@@ -255,30 +259,13 @@ const App = {
   _renderOnboardingScreen() {
     const s = this._onboardingState;
 
-    const groupSel       = (g) => s.roleGroup === g ? 'selected' : '';
-    const facultyGrpSel  = (g) => s.facultyGroup === g ? 'selected' : '';
-    const subroleSel     = (r) => s.role === r ? 'selected' : '';
-    const scopeSel       = (sc) => s.scope === sc ? 'selected' : '';
+    // Self-service onboarding is student-only (see renderOnboarding): always
+    // show the major picker, and the minor picker once a major is chosen.
     const majorSel       = (m) => s.primary === m ? 'selected' : '';
 
-    const showFacultySubgroups = s.roleGroup === 'faculty';
-    const showAreaSubrole      = s.facultyGroup === 'area_lead';
-    const showAdvisorScope     = s.facultyGroup === 'advisor';
-    const showProfessorPicker  = s.facultyGroup === 'professor';
-    const showAreaPicker       = s.facultyGroup === 'area_lead' && !!s.role;  // wait for subrole
-
-    // Major picker visible for: student, professor, area_lead (after subrole), advisor major scope
-    const showMajorPicker =
-      s.roleGroup === 'student' ||
-      showProfessorPicker ||
-      showAreaPicker ||
-      (showAdvisorScope && s.scope === 'major');
-
-    const showASOption = showProfessorPicker || showAreaPicker; // AS only for prof and area_lead
-
-    const showMinorSelect =
-      (s.roleGroup === 'student' && !!s.primary) ||
-      (showAdvisorScope && s.scope === 'minor');
+    const showMajorPicker = true;
+    const showASOption    = false;             // students never pick Arts & Sciences
+    const showMinorSelect = !!s.primary;
 
     // Validation — drives Continue button enablement.
     const candidate = {
@@ -313,45 +300,9 @@ const App = {
       return `<option value="${m.code}" ${disabled} ${sel}>${esc(m.label)}</option>`;
     }).join('');
 
-    const minorOnChange = (s.roleGroup === 'student') ? 'App._obPickMinor(this.value)' : 'App._obPickMinor(this.value)';
+    const minorOnChange = 'App._obPickMinor(this.value)';
 
-    // Faculty group chips — top row of faculty branch
-    const facultyGroupChips = `
-      <button class="ob-chip ${facultyGrpSel('professor')}" onclick="App._obPickFacultyGroup('professor')">Professor</button>
-      <button class="ob-chip ${facultyGrpSel('area_lead')}" onclick="App._obPickFacultyGroup('area_lead')">Area / Associate Area Head</button>
-      <button class="ob-chip ${facultyGrpSel('advisor')}" onclick="App._obPickFacultyGroup('advisor')">Advisor</button>
-    `;
-
-    // Area-lead subrole radio (Area Head vs Associate Area Head)
-    const areaSubroleHtml = showAreaSubrole ? `
-      <div class="ob-section-label ob-section-label-inline">Which role exactly?</div>
-      <div class="ob-radio-row">
-        <label class="ob-radio ${subroleSel('area_head')}">
-          <input type="radio" name="ob-subrole" value="area_head" ${s.role === 'area_head' ? 'checked' : ''} onchange="App._obPickSubrole('area_head')">
-          <span>Area Head</span>
-        </label>
-        <label class="ob-radio ${subroleSel('associate_area_head')}">
-          <input type="radio" name="ob-subrole" value="associate_area_head" ${s.role === 'associate_area_head' ? 'checked' : ''} onchange="App._obPickSubrole('associate_area_head')">
-          <span>Associate Area Head</span>
-        </label>
-      </div>` : '';
-
-    // Advisor scope segmented control
-    const scopeHtml = showAdvisorScope ? `
-      <div class="ob-section-label ob-section-label-inline">I advise within</div>
-      <div class="ob-seg">
-        <button class="ob-seg-btn ${scopeSel('major')}"         onclick="App._obPickScope('major')">A major</button>
-        <button class="ob-seg-btn ${scopeSel('minor')}"         onclick="App._obPickScope('minor')">A minor</button>
-        <button class="ob-seg-btn ${scopeSel('arts_sciences')}" onclick="App._obPickScope('arts_sciences')">Arts &amp; Sciences</button>
-        <button class="ob-seg-btn ${scopeSel('all_programs')}"  onclick="App._obPickScope('all_programs')">All programs</button>
-      </div>` : '';
-
-    // Section label for the major picker depends on context
-    let majorLabel = '';
-    if (s.roleGroup === 'student')             majorLabel = 'MAJORING IN';
-    else if (showProfessorPicker)              majorLabel = 'I TEACH IN';
-    else if (showAreaPicker)                   majorLabel = 'AREA / PROGRAM';
-    else if (showAdvisorScope && s.scope === 'major') majorLabel = 'WHICH MAJOR';
+    const majorLabel = 'MAJORING IN';
 
     document.getElementById('app').innerHTML = `
       <div class="onboarding-splash">
@@ -360,21 +311,8 @@ const App = {
           <div class="onboarding-brand">CountsFor</div>
           <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
 
-          <div class="ob-heading">Tell us who you are.</div>
-          <div class="ob-sub">We'll tailor the curriculum view to your role.</div>
-
-          <div class="ob-section">
-            <div class="ob-section-label">I AM A</div>
-            <div class="ob-row2">
-              <button class="ob-pill ${groupSel('student')}" onclick="App._obPickRoleGroup('student')">Student</button>
-              <button class="ob-pill ${groupSel('faculty')}" onclick="App._obPickRoleGroup('faculty')">Faculty &amp; Staff</button>
-            </div>
-            ${showFacultySubgroups ? `
-              <div class="ob-chip-row">${facultyGroupChips}</div>
-              ${areaSubroleHtml}
-              ${scopeHtml}
-            ` : ''}
-          </div>
+          <div class="ob-heading">Tell us about your studies.</div>
+          <div class="ob-sub">We'll tailor the curriculum view to your major and minor. Faculty &amp; staff are recognized automatically when they sign in.</div>
 
           ${showMajorPicker ? `
             <div class="ob-section">
@@ -772,11 +710,16 @@ const App = {
   },
 
   editRole() {
-    // Admins can't change their role from the UI — ADMIN_EMAILS on the
-    // server is authoritative. Show a non-destructive notice instead of
-    // walking them through onboarding that will fail on PATCH.
+    // Admins and faculty have server-assigned roles (ADMIN_EMAILS / seed file
+    // / users.py) and can't self-edit them. Show a non-destructive notice
+    // instead of walking them through a student-only flow that would fail on
+    // PATCH. Only students reach the editable onboarding.
     if (this.authedUser && this.authedUser.role === 'admin') {
       showToast('Admin role is managed via the ADMIN_EMAILS env var on the server.');
+      return;
+    }
+    if (isFaculty(this.profile)) {
+      showToast('Your role is set by the CountsFor admin. Contact them to change it.');
       return;
     }
     this.renderOnboarding(true);
@@ -845,6 +788,7 @@ const App = {
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
           ${(this.authedUser && (this.authedUser.role === 'admin' || this.authedUser.role === 'area_head' || this.authedUser.role === 'associate_area_head')) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
           ${(this.authedUser && this.authedUser.role === 'admin') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review submitted course flags">Flag review</button>' : ''}
+          ${(isFaculty(this.profile) && this.authMode === 'authed' && !(this.authedUser && this.authedUser.role === 'admin')) ? '<button class="nav-admin" onclick="App.showMyFlagsView(\'pending\')" title="See the status of course issues you reported">My flags</button>' : ''}
           ${this.authMode === 'authed' ? '<button class="nav-signout" onclick="App.signOut()" title="Sign out" aria-label="Sign out">Sign out</button>' : ''}
         </div>
       </nav>
@@ -1307,6 +1251,12 @@ const App = {
     if (explBtn) explBtn.style.display = 'none';
     this._homeView = 'home';
     el.innerHTML = this._renderHome();
+    // Faculty home shows a "My flags" summary — fetch counts async and swap
+    // the placeholder in place. Admins use the dedicated Flag-review surface.
+    if (isFaculty(this.profile) && this.authMode === 'authed'
+        && !(this.authedUser && this.authedUser.role === 'admin')) {
+      this._loadMyFlagsSummary();
+    }
   },
 
   _renderHome() {
@@ -1409,6 +1359,7 @@ const App = {
         </div>
 
         ${this._renderWishlistEntry()}
+        ${this._renderMyFlagsPanel()}
         ${dcBannerHtml}${mpBannerHtml}
 
         <footer class="home-footer">
@@ -1466,6 +1417,146 @@ const App = {
         </span>
         <span class="home-wishlist-arrow">→</span>
       </div>`;
+  },
+
+  // ── Faculty "My flags" ────────────────────────────────────
+  _myFlagsState: null,                 // { loaded, error, counts, items }
+  _myFlagsView:  { status: 'pending', items: [], total: 0 },
+
+  _renderMyFlagsPanel() {
+    if (!isFaculty(this.profile)) return '';
+    if (this.authedUser && this.authedUser.role === 'admin') return '';  // admins use Flag review
+
+    if (this.authMode !== 'authed') {
+      return `
+        <div class="home-myflags home-myflags-offline">
+          <span class="home-myflags-title">Your flags</span>
+          <span class="home-myflags-sub">Sign in to see the status of course issues you've reported.</span>
+        </div>`;
+    }
+
+    const st = this._myFlagsState;
+    if (!st || !st.loaded) {
+      return `
+        <div class="home-myflags" id="homeMyFlags">
+          <span class="home-myflags-title">Your flags</span>
+          <span class="home-myflags-sub">Loading…</span>
+        </div>`;
+    }
+    if (st.error) {
+      return `
+        <div class="home-myflags" id="homeMyFlags">
+          <span class="home-myflags-title">Your flags</span>
+          <span class="home-myflags-sub">Couldn't load your flags right now.</span>
+        </div>`;
+    }
+
+    const c = st.counts;
+    const total = c.pending + c.reviewed + c.resolved + c.dismissed;
+    if (total === 0) {
+      return `
+        <div class="home-myflags" id="homeMyFlags">
+          <span class="home-myflags-title">Your flags</span>
+          <span class="home-myflags-sub">You haven't reported any course issues yet. Use “Flag course issue” on a course to report one.</span>
+        </div>`;
+    }
+
+    const chip = (n, label, status, cls) => `
+      <button class="home-myflags-chip ${cls}" onclick="App.showMyFlagsView('${status}')">
+        <span class="home-myflags-num">${n}</span>
+        <span class="home-myflags-label">${label}</span>
+      </button>`;
+
+    return `
+      <div class="home-myflags" id="homeMyFlags">
+        <div class="home-myflags-head">
+          <span class="home-myflags-title">Your flags</span>
+          <button class="home-myflags-all" onclick="App.showMyFlagsView('pending')">View all →</button>
+        </div>
+        <div class="home-myflags-chips">
+          ${chip(c.pending,   'Pending',   'pending',   'mf-pending')}
+          ${chip(c.reviewed,  'Reviewed',  'reviewed',  'mf-reviewed')}
+          ${chip(c.resolved,  'Resolved',  'resolved',  'mf-resolved')}
+          ${chip(c.dismissed, 'Dismissed', 'dismissed', 'mf-dismissed')}
+        </div>
+      </div>`;
+  },
+
+  async _loadMyFlagsSummary() {
+    const r = await apiGetMyFlags('limit=100');
+    if (!r.ok) {
+      this._myFlagsState = { loaded: true, error: true, counts: summarizeFlagsByStatus([]), items: [] };
+    } else {
+      const items = (r.data && r.data.items) || [];
+      this._myFlagsState = { loaded: true, error: false, counts: summarizeFlagsByStatus(items), items };
+    }
+    if (this._homeView === 'home') {
+      const node = document.getElementById('homeMyFlags');
+      if (node) node.outerHTML = this._renderMyFlagsPanel();
+    }
+  },
+
+  async showMyFlagsView(status) {
+    if (!isFaculty(this.profile) || this.authMode !== 'authed') {
+      showToast('Sign in as faculty to view your flags.');
+      return;
+    }
+    if (this.authedUser && this.authedUser.role === 'admin') return this.showFlagReview();
+
+    this._homeView = 'myflags';
+    this._myFlagsView = { status: status || 'pending', items: [], total: 0 };
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="spinner"></div><div class="empty-text" style="margin-top:12px">Loading your flags…</div></div>';
+    await this._loadMyFlagsView();
+  },
+
+  async _loadMyFlagsView() {
+    const s = this._myFlagsView;
+    const r = await apiGetMyFlags('status=' + encodeURIComponent(s.status) + '&limit=100');
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    if (!r.ok) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-text">Could not load your flags: ${esc((r.data && r.data.message) || r.error || 'error')}</div></div>`;
+      return;
+    }
+    s.items = r.data.items || [];
+    s.total = r.data.total || 0;
+    this._renderMyFlagsView();
+  },
+
+  _renderMyFlagsView() {
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    const s = this._myFlagsView;
+
+    const tab = (status, label) => `
+      <button class="adm-tab ${s.status === status ? 'active' : ''}" onclick="App._switchMyFlagsStatus('${status}')">${label}</button>
+    `;
+    const rowsHtml = (s.items && s.items.length)
+      ? s.items.map(f => this._renderFlagRow(f, { readOnly: true })).join('')
+      : `<div class="empty-state"><div class="empty-text">No flags with status “${esc(s.status)}”.</div></div>`;
+
+    el.innerHTML = `
+      <div class="adm-view">
+        <div class="adm-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <div class="adm-title">Your flags <span class="adm-count">· ${s.total || 0}</span></div>
+        </div>
+        <div class="adm-tabs">
+          ${tab('pending',   'Pending')}
+          ${tab('reviewed',  'Reviewed')}
+          ${tab('resolved',  'Resolved')}
+          ${tab('dismissed', 'Dismissed')}
+        </div>
+        <div class="adm-list">${rowsHtml}</div>
+      </div>
+    `;
+  },
+
+  async _switchMyFlagsStatus(status) {
+    this._myFlagsView.status = status;
+    await this._loadMyFlagsView();
   },
 
   showDoubleCounterList() {
@@ -1526,11 +1617,12 @@ const App = {
     const deptName = getDeptName(course.course_code);
     const semesters = sortSemesters(course.offered || []);
     const prereq = formatPrereq(course.prerequisites);
-    const mappings = getCourseMappings(course);
+    const profile = this.profile;
+    const facultyView = isFaculty(profile);
+    const mappings = getCourseMappings(course, { full: facultyView });
     const sections = filterOfferings(getCourseOfferings(course), this._filterParams());
     const semLabel = semesterLabel(this.activeSemester);
     const isDoubleCounter = !!course._doubleCounter;
-    const profile = this.profile;
     const pLower = profile && profile.primary ? profile.primary.toLowerCase() : 'cs';
     const minorMajor = getMinorAsMajorCode(profile);
     const sLower = minorMajor ? minorMajor.toLowerCase() : 'cs';
@@ -1541,9 +1633,10 @@ const App = {
     if (course.offered_pitts) whereParts.push('Pittsburgh');
     const whereStr = whereParts.length ? whereParts.join(' &amp; ') : '—';
 
-    // Slim DC banner (spec § 4.4)
+    // Slim DC banner (spec § 4.4) — student lens only; faculty get the full
+    // cross-program grid instead of a "double-counter for you" framing.
     let dcBannerHtml = '';
-    if (isDoubleCounter && profile && minorMajor) {
+    if (!facultyView && isDoubleCounter && profile && minorMajor) {
       dcBannerHtml = `
         <div class="cc-dc-strip">
           <span class="cc-dc-badge cc-dc-${pLower}">${profile.primary}</span>
@@ -1577,9 +1670,11 @@ const App = {
       schedHtml = inline + more;
     }
 
-    // Counts For — horizontal columns per major, omitting majors with no mappings
+    // Counts For — columns per major. Order depends on role: students lead
+    // with their own program(s); faculty see the canonical cross-program order.
+    const cfOrder = orderCfColumns(mappings, profile);
     const cfCols = [];
-    for (const majorCode of MAJOR_ORDER) {
+    for (const majorCode of cfOrder) {
       const majorMappings = mappings[majorCode];
       if (!majorMappings || majorMappings.length === 0) continue;
       const lc = majorCode.toLowerCase();
@@ -1633,7 +1728,7 @@ const App = {
         </div>
 
         <div class="cc-section cc-section-cf">
-          <div class="cc-h4">COUNTS FOR</div>
+          <div class="cc-h4">COUNTS FOR${(facultyView && cfOrder.length) ? ` <span class="cc-cf-summary">· ${cfOrder.length} program${cfOrder.length === 1 ? '' : 's'}</span>` : ''}</div>
           ${cfHtml}
         </div>
 
@@ -2435,12 +2530,15 @@ const App = {
     `;
   },
 
-  _renderFlagRow(f) {
+  _renderFlagRow(f, opts = {}) {
+    const readOnly = !!opts.readOnly;
     const when = f.created_at ? new Date(f.created_at).toLocaleDateString() : '';
     const submitter = `${esc(f.submitted_by_name || f.submitted_by_email || 'Unknown')} <span class="adm-role">· ${esc(f.submitted_by_role || '')}${f.submitted_program ? ' · ' + esc(f.submitted_program) : ''}</span>`;
     const notes = f.notes ? `<div class="adm-notes"><strong>Notes:</strong> ${esc(f.notes)}</div>` : '';
     const adminNotes = f.admin_notes ? `<div class="adm-notes adm-notes-admin"><strong>Admin:</strong> ${esc(f.admin_notes)}</div>` : '';
-    const actions = (f.status === 'pending' || f.status === 'reviewed') ? `
+    // Read-only rows (faculty "My flags") show status + admin feedback but no
+    // review controls — only admins can change a flag's state.
+    const actions = readOnly ? '' : ((f.status === 'pending' || f.status === 'reviewed') ? `
       <div class="adm-actions">
         <button class="adm-btn adm-btn-resolve"  onclick="App._setFlagStatus('${esc(f.id)}','resolved')">Resolve</button>
         <button class="adm-btn adm-btn-review"   onclick="App._setFlagStatus('${esc(f.id)}','reviewed')">Mark reviewed</button>
@@ -2450,7 +2548,7 @@ const App = {
       <div class="adm-actions">
         <button class="adm-btn" onclick="App._setFlagStatus('${esc(f.id)}','pending')">Reopen as pending</button>
         <button class="adm-btn adm-btn-note" onclick="App._promptFlagNote('${esc(f.id)}')">Add note…</button>
-      </div>`;
+      </div>`);
     return `
       <div class="adm-row">
         <div class="adm-row-head">

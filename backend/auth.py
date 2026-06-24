@@ -145,7 +145,12 @@ def google_signin():
 
     from datetime import datetime, timezone
     user.last_login = datetime.now(timezone.utc)
-    # profile_completed is set only after PATCH /api/me (onboarding), not on login.
+    # Seeded faculty and admins arrive with a complete profile — mark them
+    # complete so they skip onboarding entirely (faculty roles aren't
+    # self-selected, so there's nothing for them to fill in). Never un-set a
+    # previously-completed profile.
+    if user.profile_is_complete():
+        user.profile_completed = True
 
     db.session.commit()
 
@@ -181,7 +186,15 @@ ALLOWED_PROFILE_FIELDS = {
     "department_scope",
     "department",
 }
+# Roles an admin/area-head may assign to OTHERS via the user-management API
+# (backend/users.py). Faculty roles are managed, not self-claimed.
 USER_SETTABLE_ROLES = {"student", "professor", "area_head", "associate_area_head", "advisor"}
+
+# Roles a user may set on THEMSELVES via PATCH /api/me. Self-service is
+# student-only: faculty roles come from the seed file or an admin via
+# users.py — never self-selection. Closes the privilege-escalation path
+# where a student could PATCH themselves into a faculty role.
+SELF_SETTABLE_ROLES = {"student"}
 
 
 VALID_PROGRAMS_FOR_PATCH = {"CS", "IS", "BA", "BS", "AI", "GS", "AS"}
@@ -281,8 +294,8 @@ def update_me():
                     message="Admin role is managed via the ADMIN_EMAILS env var.",
                 ), 400
         else:
-            if new_role not in USER_SETTABLE_ROLES:
-                return jsonify(error="invalid_role", message=f"Role must be one of {sorted(USER_SETTABLE_ROLES)}."), 400
+            if new_role not in SELF_SETTABLE_ROLES:
+                return jsonify(error="invalid_role", message=f"You can't set your own role to '{new_role}'. Faculty roles are assigned by an admin."), 400
 
     err = _validate_consistent_profile(new_role, new_primary, new_minor, new_advisor_scope)
     if err:

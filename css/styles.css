@@ -1693,6 +1693,11 @@ body {
   color: var(--text-tertiary); text-transform: uppercase; letter-spacing: 0.08em;
   margin-bottom: 8px;
 }
+/* Faculty-only "· N programs" accent next to COUNTS FOR */
+.cc-cf-summary {
+  font-weight: 600; text-transform: none; letter-spacing: 0;
+  color: var(--text-secondary);
+}
 .cc-kv {
   display: flex; gap: 10px; padding: 7px 0; font-size: 12px;
   border-bottom: 1px solid var(--border-light);
@@ -2231,6 +2236,41 @@ body {
 .home-wishlist-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
 .home-wishlist-sub   { font-size: 12px; color: var(--text-secondary); }
 .home-wishlist-arrow { font-size: 18px; color: var(--text-tertiary); }
+
+/* Faculty home — "My flags" status summary */
+.home-myflags {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border-light);
+  border-left: 4px solid var(--cmu-red);
+  border-radius: 14px;
+  padding: 14px 18px;
+  margin-top: 18px;
+}
+.home-myflags-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.home-myflags-title { font-size: 14px; font-weight: 700; color: var(--text-primary); }
+.home-myflags-sub   { font-size: 12px; color: var(--text-secondary); display: block; margin-top: 4px; }
+.home-myflags-all {
+  background: none; border: 0; cursor: pointer;
+  font-size: 12px; font-weight: 600; color: var(--cmu-red);
+}
+.home-myflags-chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+.home-myflags-chip {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  padding: 10px 6px; border-radius: 10px; cursor: pointer;
+  background: var(--bg-subtle, rgba(0,0,0,0.03));
+  border: 1px solid var(--border-light);
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+.home-myflags-chip:hover { transform: translateY(-1px); border-color: var(--text-tertiary); }
+.home-myflags-num   { font-size: 20px; font-weight: 800; color: var(--text-primary); line-height: 1; }
+.home-myflags-label { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.04em; }
+.home-myflags-chip.mf-pending   { border-left: 3px solid #B45309; }
+.home-myflags-chip.mf-reviewed  { border-left: 3px solid #1D4ED8; }
+.home-myflags-chip.mf-resolved  { border-left: 3px solid #047857; }
+.home-myflags-chip.mf-dismissed { border-left: 3px solid var(--text-tertiary); }
+@media (max-width: 520px) {
+  .home-myflags-chips { grid-template-columns: repeat(2, 1fr); }
+}
 
 .wl-view { padding: 18px 24px 40px; }
 .wl-header { display: flex; align-items: center; gap: 14px; margin-bottom: 18px; }

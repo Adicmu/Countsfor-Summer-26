@@ -189,3 +189,43 @@ test('predictOffering: deduplicates identical entries before counting', () => {
   const c = { offered: ['S22', 'S22', 'S23', 'S23', 'S24', 'S24'] };
   assertEqual(predictOffering(c, 'S').state, 'likely');
 });
+
+// ── orderCfColumns (role-based course-card column order) ─────
+
+test('orderCfColumns: faculty get canonical cross-program order', () => {
+  const mappings = { CS: [1], IS: [1], BA: [1], BS: [1] };
+  assertEqual(orderCfColumns(mappings, { role: 'professor', primary: 'IS' }), ['CS', 'IS', 'BA', 'BS']);
+});
+
+test('orderCfColumns: student leads with major then minor-as-major', () => {
+  const mappings = { CS: [1], IS: [1], BA: [1], BS: [1] };
+  assertEqual(orderCfColumns(mappings, { role: 'student', primary: 'BA', secondary: 'cs' }), ['BA', 'CS', 'IS', 'BS']);
+});
+
+test('orderCfColumns: only includes programs that have mappings', () => {
+  assertEqual(orderCfColumns({ CS: [1], BA: [1] }, { role: 'student', primary: 'BA', secondary: null }), ['BA', 'CS']);
+});
+
+// ── getCourseMappings depth (student vs faculty) ────────────
+
+test('getCourseMappings: student lens shows last 2 path segments', () => {
+  const m = getCourseMappings(makeCourse('X', { CS: ['Root---Mid---Sub---Leaf'] }));
+  assertEqual(m.CS[0].shortLabel, 'Sub → Leaf');
+});
+
+test('getCourseMappings: full (faculty) shows last 3 path segments', () => {
+  const m = getCourseMappings(makeCourse('X', { CS: ['Root---Mid---Sub---Leaf'] }), { full: true });
+  assertEqual(m.CS[0].shortLabel, 'Mid → Sub → Leaf');
+});
+
+// ── summarizeFlagsByStatus ──────────────────────────────────
+
+test('summarizeFlagsByStatus: counts each status, ignores unknown and null', () => {
+  const items = [{ status: 'pending' }, { status: 'pending' }, { status: 'resolved' }, { status: 'weird' }, null];
+  assertEqual(summarizeFlagsByStatus(items), { pending: 2, reviewed: 0, resolved: 1, dismissed: 0 });
+});
+
+test('summarizeFlagsByStatus: empty / missing input → all zero', () => {
+  assertEqual(summarizeFlagsByStatus([]), { pending: 0, reviewed: 0, resolved: 0, dismissed: 0 });
+  assertEqual(summarizeFlagsByStatus(undefined), { pending: 0, reviewed: 0, resolved: 0, dismissed: 0 });
+});
