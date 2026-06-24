@@ -36,6 +36,9 @@ class User(db.Model):
     # Google SSO — no password column. If we ever add email+password, add
     # password_hash here as nullable so SSO users don't need a password.
     google_sub: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reset_token_hash: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    reset_token_expires: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="student", index=True)
     primary_program: Mapped[str | None] = mapped_column(String(8), nullable=True)
     minor_code: Mapped[str | None] = mapped_column(String(32), nullable=True)

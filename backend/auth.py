@@ -7,9 +7,12 @@ cookie. Subsequent requests carry the cookie automatically (with CORS
 """
 import json
 import os
+import secrets
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from flask import Blueprint, current_app, jsonify, request, session
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
@@ -23,6 +26,52 @@ bp = Blueprint("auth", __name__, url_prefix="/api")
 
 
 CMU_EMAIL_DOMAINS = ("andrew.cmu.edu", "cmu.edu", "qatar.cmu.edu")
+MIN_PASSWORD_LEN = 8
+RESET_TOKEN_HOURS = 24
+
+
+def _hash_password(password: str) -> str:
+    return generate_password_hash(password)
+
+
+def _password_ok(user: User, password: str) -> bool:
+    if not user.password_hash:
+        return False
+    return check_password_hash(user.password_hash, password)
+
+
+def _validate_password(password: str) -> str | None:
+    if not password or len(password) < MIN_PASSWORD_LEN:
+        return f"Password must be at least {MIN_PASSWORD_LEN} characters."
+    return None
+
+
+def _finalize_user(user: User, email: str) -> User:
+    """Apply seed/admin rules and mark profile complete when ready."""
+    if not user.profile_completed:
+        seed = _load_seed_users().get(email)
+        if seed:
+            _apply_seed(user, seed)
+    _sync_admin_flag(user, email)
+    user.last_login = datetime.now(timezone.utc)
+    if user.profile_is_complete():
+        user.profile_completed = True
+    db.session.commit()
+    return user
+
+
+def _create_user_with_password(email: str, name: str, password: str) -> User:
+    user = User(
+        email=email,
+        name=name,
+        role="student",
+        password_hash=_hash_password(password),
+    )
+    db.session.add(user)
+    seed = _load_seed_users().get(email)
+    if seed:
+        _apply_seed(user, seed)
+    return _finalize_user(user, email)
 
 
 def _normalize_cmu_email(raw: str) -> str | None:
@@ -159,7 +208,6 @@ def _upsert_user_from_login(email: str, name: str, google_sub: str | None = None
 
     _sync_admin_flag(user, email)
 
-    from datetime import datetime, timezone
     user.last_login = datetime.now(timezone.utc)
     if user.profile_is_complete():
         user.profile_completed = True
@@ -168,7 +216,126 @@ def _upsert_user_from_login(email: str, name: str, google_sub: str | None = None
     return user
 
 
-# ── CMU email sign-in (manual login) ─────────────────────────
+# ── Register / login / password reset ────────────────────────
+@bp.route("/auth/register", methods=["POST"])
+def register():
+    """Create an account with @andrew.cmu.edu email and password."""
+    data = request.get_json(silent=True) or {}
+    email = _normalize_cmu_email(data.get("email") or "")
+    if not email:
+        return jsonify(
+            error="invalid_email",
+            message="Use your @andrew.cmu.edu email to create an account.",
+        ), 400
+    if not _email_allowed(email):
+        allowed_domain = current_app.config.get("ALLOWED_EMAIL_DOMAIN") or "andrew.cmu.edu"
+        return jsonify(error="domain_not_allowed", message=f"Only {allowed_domain} accounts are allowed."), 403
+
+    password = data.get("password") or ""
+    err = _validate_password(password)
+    if err:
+        return jsonify(error="weak_password", message=err), 400
+
+    confirm = data.get("confirm_password") or password
+    if password != confirm:
+        return jsonify(error="password_mismatch", message="Passwords do not match."), 400
+
+    existing = db.session.query(User).filter_by(email=email).one_or_none()
+    if existing:
+        if existing.password_hash:
+            return jsonify(error="email_taken", message="An account with this email already exists. Sign in instead."), 409
+        existing.password_hash = _hash_password(password)
+        if not existing.name:
+            existing.name = (data.get("name") or "").strip() or email.split("@", 1)[0].replace(".", " ").title()
+        user = _finalize_user(existing, email)
+    else:
+        name = (data.get("name") or "").strip() or email.split("@", 1)[0].replace(".", " ").title()
+        user = _create_user_with_password(email, name, password)
+
+    _write_session(user)
+    return jsonify(user.to_public_dict()), 201
+
+
+@bp.route("/auth/login", methods=["POST"])
+def login():
+    """Sign in with @andrew.cmu.edu email and password."""
+    data = request.get_json(silent=True) or {}
+    email = _normalize_cmu_email(data.get("email") or "")
+    password = data.get("password") or ""
+    if not email:
+        return jsonify(error="invalid_email", message="Enter your @andrew.cmu.edu email."), 400
+    if not password:
+        return jsonify(error="missing_password", message="Enter your password."), 400
+
+    user = db.session.query(User).filter_by(email=email).one_or_none()
+    if user is None or not _password_ok(user, password):
+        return jsonify(error="invalid_credentials", message="Email or password is incorrect."), 401
+
+    user = _finalize_user(user, email)
+    _write_session(user)
+    return jsonify(user.to_public_dict())
+
+
+@bp.route("/auth/forgot-password", methods=["POST"])
+def forgot_password():
+    """Start a password reset. Returns a token in dev when EXPOSE_RESET_TOKEN=1."""
+    data = request.get_json(silent=True) or {}
+    email = _normalize_cmu_email(data.get("email") or "")
+    if not email:
+        return jsonify(error="invalid_email", message="Enter your @andrew.cmu.edu email."), 400
+
+    user = db.session.query(User).filter_by(email=email).one_or_none()
+    payload = {
+        "ok": True,
+        "message": "If an account exists for that email, you can reset your password with the link below.",
+    }
+    if user is None:
+        return jsonify(payload)
+
+    raw_token = secrets.token_urlsafe(32)
+    user.reset_token_hash = generate_password_hash(raw_token)
+    user.reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=RESET_TOKEN_HOURS)
+    db.session.commit()
+
+    expose = os.environ.get("EXPOSE_RESET_TOKEN", "").lower() in ("1", "true", "yes")
+    expose = expose or not current_app.config.get("IS_PRODUCTION", False)
+    if expose:
+        payload["reset_token"] = raw_token
+        payload["email"] = email
+    return jsonify(payload)
+
+
+@bp.route("/auth/reset-password", methods=["POST"])
+def reset_password():
+    """Set a new password using the token from forgot-password."""
+    data = request.get_json(silent=True) or {}
+    email = _normalize_cmu_email(data.get("email") or "")
+    token = (data.get("token") or "").strip()
+    password = data.get("password") or ""
+    if not email or not token:
+        return jsonify(error="missing_fields", message="Email and reset token are required."), 400
+    err = _validate_password(password)
+    if err:
+        return jsonify(error="weak_password", message=err), 400
+
+    user = db.session.query(User).filter_by(email=email).one_or_none()
+    if (
+        user is None
+        or not user.reset_token_hash
+        or not user.reset_token_expires
+        or user.reset_token_expires < datetime.now(timezone.utc)
+        or not check_password_hash(user.reset_token_hash, token)
+    ):
+        return jsonify(error="invalid_token", message="This reset link is invalid or has expired."), 400
+
+    user.password_hash = _hash_password(password)
+    user.reset_token_hash = None
+    user.reset_token_expires = None
+    db.session.commit()
+    return jsonify(ok=True, message="Password updated. You can sign in now.")
+
+
+# ── Legacy email sign-in (passwordless — deprecated) ─────────
 @bp.route("/auth/email", methods=["POST"])
 def email_signin():
     """Body: { "email": "name@andrew.cmu.edu" [, "name": "Display Name"] }
