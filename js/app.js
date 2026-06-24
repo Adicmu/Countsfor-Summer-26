@@ -39,16 +39,7 @@ const App = {
 
     const me = await apiGetMe();
     if (me.ok) {
-      this.authedUser = me.data;
-      this.authMode = 'authed';
-      if (this._needsOnboarding(me.data)) {
-        clearProfile();
-        this.profile = null;
-        this.renderOnboarding(false);
-        return;
-      }
-      this._hydrateProfileFromServer(me.data);
-      this._afterAuthed();
+      this._afterSignIn(me.data);
       return;
     }
 
@@ -500,14 +491,15 @@ const App = {
   },
 
   // ══════════════════════════════════════════════════════════
-  // LOGIN SCREEN (Google SSO)
+  // LOGIN SCREEN (CMU email)
   // ══════════════════════════════════════════════════════════
 
+  _isCmuEmail(raw) {
+    const e = (raw || '').trim().toLowerCase();
+    return /^[^\s@]+@(andrew\.cmu\.edu|cmu\.edu|qatar\.cmu\.edu)$/.test(e);
+  },
+
   renderLogin(opts = {}) {
-    const clientId = getGoogleClientId();
-    const missingClient = !clientId
-      ? `<div class="auth-warning">⚠ Google sign-in is not configured yet. Set the <code>cf-google-client-id</code> meta tag in <code>index.html</code> and the <code>GOOGLE_CLIENT_ID</code> env var on the backend.</div>`
-      : '';
     const backendWarn = opts.backendUnreachable
       ? `<div class="auth-warning">⚠ Could not reach the sign-in server. Wait ~30s and refresh (free tier may be waking up).</div>`
       : '';
@@ -519,13 +511,18 @@ const App = {
           <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
 
           <div class="ob-heading">Sign in to continue.</div>
-          <div class="ob-sub">Sign in with your CMU Google account. Your role and major sync across devices, and faculty-only tools stay properly gated.</div>
+          <div class="ob-sub">Enter your CMU email. Faculty are recognized automatically and can flag course issues; students pick their major and minor once.</div>
 
-          ${missingClient}
           ${backendWarn}
-          <div id="cfGoogleBtn" class="auth-google-mount"></div>
+          <form class="auth-email-form" onsubmit="App._onEmailLogin(event)">
+            <label class="auth-email-label" for="cfEmailInput">CMU email address</label>
+            <input class="auth-email-input" id="cfEmailInput" type="email" name="email"
+              placeholder="you@andrew.cmu.edu" autocomplete="email" required />
+            <p class="auth-email-hint">@andrew.cmu.edu, @cmu.edu, or @qatar.cmu.edu only</p>
+            <button type="submit" class="auth-email-submit" id="cfEmailSubmit">Continue →</button>
+          </form>
 
-          <div class="auth-note">Only verified Google accounts are accepted. We never see your password.</div>
+          <div class="auth-note">Faculty land on the cross-program view with flagging. Students choose major/minor and cannot flag courses.</div>
 
           <div class="onboarding-institutional">
             <span class="onboarding-institutional-label">An initiative of</span>
@@ -534,36 +531,40 @@ const App = {
         </div>
       </div>
     `;
-    this._mountGoogleButton();
+    const input = document.getElementById('cfEmailInput');
+    if (input) input.focus();
   },
 
-  _mountGoogleButton() {
-    const clientId = getGoogleClientId();
-    if (!clientId) return;
-    const mount = () => {
-      if (!(window.google && window.google.accounts && window.google.accounts.id)) {
-        // Library still loading — retry shortly.
-        return setTimeout(mount, 150);
-      }
-      window.google.accounts.id.initialize({
-        client_id: clientId,
-        callback: (response) => App._onGoogleCredential(response),
-        ux_mode: 'popup',
-        auto_select: false,
-      });
-      const slot = document.getElementById('cfGoogleBtn');
-      if (slot) {
-        slot.innerHTML = '';
-        window.google.accounts.id.renderButton(slot, {
-          theme: 'filled_blue',
-          size: 'large',
-          text: 'continue_with',
-          shape: 'pill',
-          width: 320,
-        });
-      }
-    };
-    mount();
+  async _onEmailLogin(event) {
+    if (event) event.preventDefault();
+    const input = document.getElementById('cfEmailInput');
+    const btn = document.getElementById('cfEmailSubmit');
+    const raw = input ? input.value : '';
+    if (!this._isCmuEmail(raw)) {
+      showToast('Enter a valid CMU email (@andrew.cmu.edu, @cmu.edu, or @qatar.cmu.edu).');
+      return;
+    }
+    if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
+    const r = await apiSignInWithEmail(raw.trim());
+    if (btn) { btn.disabled = false; btn.textContent = 'Continue →'; }
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Sign-in failed.');
+      return;
+    }
+    this._afterSignIn(r.data);
+  },
+
+  _afterSignIn(user) {
+    this.authedUser = user;
+    this.authMode = 'authed';
+    if (this._needsOnboarding(user)) {
+      clearProfile();
+      this.profile = null;
+      this.renderOnboarding(false);
+      return;
+    }
+    this._hydrateProfileFromServer(user);
+    this._afterAuthed();
   },
 
   async _onGoogleCredential(response) {
@@ -577,16 +578,7 @@ const App = {
       showToast(msg);
       return;
     }
-    this.authedUser = r.data;
-    this.authMode = 'authed';
-    if (this._needsOnboarding(r.data)) {
-      clearProfile();
-      this.profile = null;
-      this.renderOnboarding(false);
-      return;
-    }
-    this._hydrateProfileFromServer(r.data);
-    this._afterAuthed();
+    this._afterSignIn(r.data);
   },
 
   async signOut() {
@@ -1998,7 +1990,7 @@ const App = {
       const saved = this._isInWishlist(course.course_code);
       acts.push(`<button class="tr-leaf-action tr-leaf-wishlist ${saved ? 'is-saved' : ''}" data-action="wishlist" data-course-code="${esc(course.course_code)}" title="${saved ? 'Remove from wishlist' : 'Save for later'}" aria-label="${saved ? 'Remove from wishlist' : 'Save for later'}">${saved ? this._iconBookmarkFilled() : this._iconBookmarkOutline()}</button>`);
     }
-    if (isFaculty(this.profile)) {
+    if (isFaculty(this.profile) && this.authMode === 'authed') {
       acts.push(`<button class="tr-leaf-action tr-leaf-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Flag course data issue" aria-label="Flag course data issue">${this._iconFlag()}</button>`);
     }
     if (!acts.length) return '';
@@ -2030,7 +2022,7 @@ const App = {
           <span>${saved ? 'Saved ✓' : 'Save course'}</span>
         </button>`);
     }
-    if (isFaculty(this.profile)) {
+    if (isFaculty(this.profile) && this.authMode === 'authed') {
       parts.push(`
         <button class="cc-action cc-action-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Report a data issue with this course" aria-label="Flag course issue">
           ${this._iconFlag()}
@@ -2250,8 +2242,8 @@ const App = {
   },
 
   openFlagModal(courseCode) {
-    if (!isFaculty(this.profile)) {
-      showToast('Course flagging is available to faculty only.');
+    if (!isFaculty(this.profile) || this.authMode !== 'authed') {
+      showToast('Course flagging is available to signed-in faculty only.');
       return;
     }
     const course = this.courseIndex[courseCode];

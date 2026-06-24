@@ -175,6 +175,9 @@ async function apiFetch(path, opts = {}) {
 async function apiSignInWithGoogle(credential) {
   return apiFetch('/api/auth/google', { method: 'POST', body: { credential } });
 }
+async function apiSignInWithEmail(email, name) {
+  return apiFetch('/api/auth/email', { method: 'POST', body: { email, name: name || undefined } });
+}
 async function apiLogout()  { return apiFetch('/api/auth/logout', { method: 'POST' }); }
 async function apiGetMe()   { return apiFetch('/api/me'); }
 async function apiPatchMe(patch) {

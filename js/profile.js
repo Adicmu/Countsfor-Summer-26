@@ -143,8 +143,9 @@ function computeViewMode(profile) {
     return 'cross-program';
   }
 
-  // Area Head with no specific major → cross-program (legacy "all programs" path).
-  if (profile.role === 'area_head' && (!profile.primary || profile.primary === 'AS')) {
+  // Area leads with no specific major → cross-program (legacy "all programs" path).
+  if ((profile.role === 'area_head' || profile.role === 'associate_area_head') &&
+      (!profile.primary || profile.primary === 'AS')) {
     return 'cross-program';
   }
   if (profile.role === 'professor' && profile.primary === 'AS') return 'cross-program';

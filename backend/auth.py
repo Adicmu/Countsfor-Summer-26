@@ -22,24 +22,72 @@ from .permissions import require_login, current_user
 bp = Blueprint("auth", __name__, url_prefix="/api")
 
 
-def _load_seed_users() -> dict[str, dict]:
-    """Optional JSON file of pre-seeded faculty/staff profiles keyed by email."""
-    path = current_app.config.get("SEED_USERS_PATH") or ""
-    if not path:
-        return {}
-    p = Path(path)
-    if not p.is_file():
-        return {}
-    try:
-        rows = json.loads(p.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    out = {}
-    for row in rows if isinstance(rows, list) else []:
-        email = (row.get("email") or "").lower()
-        if email:
-            out[email] = row
+CMU_EMAIL_DOMAINS = ("andrew.cmu.edu", "cmu.edu", "qatar.cmu.edu")
+
+
+def _normalize_cmu_email(raw: str) -> str | None:
+    """Accept CMU addresses; store/lookup as @andrew.cmu.edu when possible."""
+    email = (raw or "").strip().lower()
+    if "@" not in email:
+        return None
+    local, _, domain = email.partition("@")
+    if domain not in CMU_EMAIL_DOMAINS:
+        return None
+    if domain in ("cmu.edu", "qatar.cmu.edu"):
+        return f"{local}@andrew.cmu.edu"
+    return email
+
+
+def _seed_file_candidates() -> list[Path]:
+    """Ordered list of seed JSON paths (first match wins)."""
+    paths: list[Path] = []
+    configured = (current_app.config.get("SEED_USERS_PATH") or "").strip()
+    if configured:
+        paths.append(Path(configured))
+    backend_dir = Path(__file__).resolve().parent
+    repo_root = backend_dir.parent
+    if not current_app.config.get("TESTING"):
+        paths.extend([
+            backend_dir / "seed_users.json",
+            backend_dir / "faculty_seed.json",
+            repo_root / "data" / "faculty_directory.json",
+        ])
+    seen: set[str] = set()
+    out: list[Path] = []
+    for p in paths:
+        key = str(p.resolve()) if p.is_absolute() else str(p)
+        if key not in seen:
+            seen.add(key)
+            out.append(p)
     return out
+
+
+def _parse_seed_rows(raw) -> list[dict]:
+    if isinstance(raw, list):
+        return raw
+    if isinstance(raw, dict):
+        if isinstance(raw.get("people"), list):
+            return raw["people"]
+    return []
+
+
+def _load_seed_users() -> dict[str, dict]:
+    """Optional JSON file(s) of pre-seeded faculty/staff profiles keyed by email."""
+    for path in _seed_file_candidates():
+        if not path.is_file():
+            continue
+        try:
+            rows = _parse_seed_rows(json.loads(path.read_text(encoding="utf-8")))
+        except (OSError, json.JSONDecodeError):
+            continue
+        out = {}
+        for row in rows:
+            email = _normalize_cmu_email(row.get("email") or "")
+            if email:
+                out[email] = row
+        if out:
+            return out
+    return {}
 
 
 def _apply_seed(user: User, seed: dict) -> None:
@@ -71,6 +119,82 @@ def _write_session(user: User) -> None:
     session["is_admin"] = user.is_admin
 
 
+def _email_allowed(email: str) -> bool:
+    allowed_domain = (current_app.config.get("ALLOWED_EMAIL_DOMAIN") or "").lower()
+    if allowed_domain:
+        return email.endswith("@" + allowed_domain)
+    return True
+
+
+def _upsert_user_from_login(email: str, name: str, google_sub: str | None = None) -> User:
+    """Find or create a user, apply seed/admin rules, mark profile complete when ready."""
+    user = (
+        db.session.query(User).filter_by(google_sub=google_sub).one_or_none()
+        if google_sub
+        else None
+    )
+    if user is None:
+        user = db.session.query(User).filter_by(email=email).one_or_none()
+
+    if user is None:
+        user = User(
+            email=email,
+            name=name,
+            google_sub=google_sub,
+            role="student",
+        )
+        db.session.add(user)
+        seed = _load_seed_users().get(email)
+        if seed:
+            _apply_seed(user, seed)
+    else:
+        if google_sub and not user.google_sub:
+            user.google_sub = google_sub
+        if not user.name and name:
+            user.name = name
+        if not user.profile_completed:
+            seed = _load_seed_users().get(email)
+            if seed:
+                _apply_seed(user, seed)
+
+    _sync_admin_flag(user, email)
+
+    from datetime import datetime, timezone
+    user.last_login = datetime.now(timezone.utc)
+    if user.profile_is_complete():
+        user.profile_completed = True
+
+    db.session.commit()
+    return user
+
+
+# ── CMU email sign-in (manual login) ─────────────────────────
+@bp.route("/auth/email", methods=["POST"])
+def email_signin():
+    """Body: { "email": "name@andrew.cmu.edu" [, "name": "Display Name"] }
+    Campus-only login for GH Pages when Google SSO is awkward. Faculty in the
+    seed file are recognized automatically; everyone else is a student."""
+    data = request.get_json(silent=True) or {}
+    email = _normalize_cmu_email(data.get("email") or "")
+    if not email:
+        return jsonify(
+            error="invalid_email",
+            message="Enter a valid CMU email (@andrew.cmu.edu, @cmu.edu, or @qatar.cmu.edu).",
+        ), 400
+
+    if not _email_allowed(email):
+        allowed_domain = current_app.config.get("ALLOWED_EMAIL_DOMAIN") or "andrew.cmu.edu"
+        return jsonify(
+            error="domain_not_allowed",
+            message=f"Only {allowed_domain} accounts are allowed.",
+        ), 403
+
+    name = (data.get("name") or "").strip() or email.split("@", 1)[0].replace(".", " ").title()
+    user = _upsert_user_from_login(email, name)
+    _write_session(user)
+    return jsonify(user.to_public_dict())
+
+
 # ── Google Sign-In ───────────────────────────────────────────
 @bp.route("/auth/google", methods=["POST"])
 def google_signin():
@@ -95,13 +219,12 @@ def google_signin():
     except ValueError as e:
         return jsonify(error="invalid_token", message=str(e)), 401
 
-    email = (info.get("email") or "").lower()
+    email = _normalize_cmu_email(info.get("email") or "")
     if not email or not info.get("email_verified"):
         return jsonify(error="email_unverified", message="Google account email is not verified."), 401
 
-    # Optional domain restriction
-    allowed_domain = (current_app.config.get("ALLOWED_EMAIL_DOMAIN") or "").lower()
-    if allowed_domain and not email.endswith("@" + allowed_domain):
+    if not _email_allowed(email):
+        allowed_domain = current_app.config.get("ALLOWED_EMAIL_DOMAIN") or "andrew.cmu.edu"
         return jsonify(
             error="domain_not_allowed",
             message=f"Only {allowed_domain} accounts are allowed.",
@@ -109,51 +232,7 @@ def google_signin():
 
     google_sub = info.get("sub")
     name = info.get("name") or info.get("given_name") or email.split("@", 1)[0]
-
-    # Find existing user by google_sub, else by email, else create.
-    user = (
-        db.session.query(User).filter_by(google_sub=google_sub).one_or_none()
-        if google_sub
-        else None
-    )
-    if user is None:
-        user = db.session.query(User).filter_by(email=email).one_or_none()
-
-    if user is None:
-        user = User(
-            email=email,
-            name=name,
-            google_sub=google_sub,
-            role="student",
-        )
-        db.session.add(user)
-        seed = _load_seed_users().get(email)
-        if seed:
-            _apply_seed(user, seed)
-    else:
-        # Keep google_sub up to date for users who first authed differently
-        if google_sub and not user.google_sub:
-            user.google_sub = google_sub
-        if not user.name and name:
-            user.name = name
-        if not user.profile_completed:
-            seed = _load_seed_users().get(email)
-            if seed:
-                _apply_seed(user, seed)
-
-    _sync_admin_flag(user, email)
-
-    from datetime import datetime, timezone
-    user.last_login = datetime.now(timezone.utc)
-    # Seeded faculty and admins arrive with a complete profile — mark them
-    # complete so they skip onboarding entirely (faculty roles aren't
-    # self-selected, so there's nothing for them to fill in). Never un-set a
-    # previously-completed profile.
-    if user.profile_is_complete():
-        user.profile_completed = True
-
-    db.session.commit()
-
+    user = _upsert_user_from_login(email, name, google_sub=google_sub)
     _write_session(user)
     return jsonify(user.to_public_dict())
 

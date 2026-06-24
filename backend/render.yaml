@@ -47,7 +47,7 @@ services:
 
       # Optional: commit backend/seed_users.json with faculty emails
       - key: SEED_USERS_PATH
-        value: backend/seed_users.json
+        value: ../data/faculty_directory.json
 
 databases:
   - name: countsfor-db
