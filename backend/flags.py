@@ -82,6 +82,35 @@ def create_flag():
     return jsonify(flag.to_dict()), 201
 
 
+# ── GET /api/flags/mine — submitter's own flags ───────────────
+@bp.route("/mine", methods=["GET"])
+@require_role(FACULTY_OR_ADMIN)
+def list_my_flags():
+    status = request.args.get("status")
+    page = max(1, int(request.args.get("page", "1") or "1"))
+    limit = min(100, max(1, int(request.args.get("limit", "50") or "50")))
+
+    q = db.session.query(Flag).filter(Flag.submitted_by_id == g.user.id)
+    if status:
+        if status not in FLAG_STATUSES:
+            return jsonify(error="invalid_status", message=f"status must be one of {list(FLAG_STATUSES)}"), 400
+        q = q.filter(Flag.status == status)
+
+    total = q.count()
+    rows = (
+        q.order_by(Flag.created_at.desc())
+        .offset((page - 1) * limit)
+        .limit(limit)
+        .all()
+    )
+    return jsonify(
+        total=total,
+        page=page,
+        limit=limit,
+        items=[f.to_dict() for f in rows],
+    )
+
+
 # ── GET /api/flags — admin list with filters ──────────────────
 @bp.route("", methods=["GET"])
 @require_role("admin")

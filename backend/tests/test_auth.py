@@ -48,7 +48,34 @@ def test_google_signin_promotes_admin_via_env(client):
     with patch("backend.auth.id_token.verify_oauth2_token",
                return_value=_fake_google_payload(email="admin@andrew.cmu.edu", sub="g-admin")):
         r = client.post("/api/auth/google", json={"credential": "stub"})
-    assert r.get_json()["role"] == "admin"
+    body = r.get_json()
+    assert body["role"] == "admin"
+    assert body["profile_completed"] is True
+
+
+def test_google_signin_marks_seeded_faculty_complete(client):
+    from backend.db import db
+    from backend.models import User
+
+    with client.application.app_context():
+        u = User(
+            email="prof@andrew.cmu.edu",
+            name="Prof",
+            role="professor",
+            primary_program="CS",
+            google_sub="g-prof-seed",
+        )
+        db.session.add(u)
+        db.session.commit()
+
+    with patch(
+        "backend.auth.id_token.verify_oauth2_token",
+        return_value=_fake_google_payload(email="prof@andrew.cmu.edu", sub="g-prof-seed"),
+    ):
+        r = client.post("/api/auth/google", json={"credential": "stub"})
+    body = r.get_json()
+    assert body["role"] == "professor"
+    assert body["profile_completed"] is True
 
 
 def test_google_signin_rejects_unverified_email(client):
@@ -109,6 +136,13 @@ def test_patch_me_admin_cannot_self_demote(client, admin):
     r = client.patch("/api/me", json={"role": "student"})
     assert r.status_code == 400
     assert r.get_json()["error"] == "cannot_change_admin_role"
+
+
+def test_patch_me_student_cannot_promote_to_professor(client, student):
+    login(client, student)
+    r = client.patch("/api/me", json={"role": "professor", "primary_program": "CS"})
+    assert r.status_code == 403
+    assert r.get_json()["error"] == "forbidden_role"
 
 
 # ── PATCH /api/me cross-field validation ────────────────────

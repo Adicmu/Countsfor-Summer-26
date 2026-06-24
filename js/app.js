@@ -126,13 +126,13 @@ const App = {
 
   _needsOnboarding(u) {
     if (!u || !u.role) return true;
+    if (u.role === 'admin' && u.profile_completed) return false;
     if (!u.profile_completed) return true;
     // Recover rows that were auto-marked complete without program data.
     if (u.role === 'student' && !u.primary_program) return true;
     if (u.role === 'professor' && !u.primary_program) return true;
     if (u.role === 'advisor' && !u.advisor_scope) return true;
     if ((u.role === 'area_head' || u.role === 'associate_area_head') && !u.primary_program) return true;
-    if (u.role === 'admin' && !u.primary_program) return true;
     return false;
   },
 
@@ -239,21 +239,25 @@ const App = {
   renderOnboarding(isEdit) {
     const p = this.profile;
     const existingRole = p ? p.role : null;
+    const serverRole = this.authedUser && this.authedUser.role;
+    const studentOnly = this.authMode === 'authed' && serverRole === 'student' && !isEdit;
     const grp = existingRole ? getRoleGroup(existingRole) : null;
     this._onboardingState = {
-      role:         existingRole,
-      roleGroup:    existingRole ? (existingRole === 'student' ? 'student' : 'faculty') : null,
-      facultyGroup: (grp && grp !== 'student') ? grp : null,
+      role:         studentOnly ? 'student' : existingRole,
+      roleGroup:    studentOnly ? 'student' : (existingRole ? (existingRole === 'student' ? 'student' : 'faculty') : null),
+      facultyGroup: studentOnly ? null : ((grp && grp !== 'student') ? grp : null),
       scope:        (p && p.scope) || null,
       primary:      p ? p.primary : null,
       secondary:    p ? p.secondary : null,
       isEdit: !!isEdit,
+      studentOnly: !!studentOnly,
     };
     this._renderOnboardingScreen();
   },
 
   _renderOnboardingScreen() {
     const s = this._onboardingState;
+    const studentOnly = !!s.studentOnly;
 
     const groupSel       = (g) => s.roleGroup === g ? 'selected' : '';
     const facultyGrpSel  = (g) => s.facultyGroup === g ? 'selected' : '';
@@ -261,7 +265,7 @@ const App = {
     const scopeSel       = (sc) => s.scope === sc ? 'selected' : '';
     const majorSel       = (m) => s.primary === m ? 'selected' : '';
 
-    const showFacultySubgroups = s.roleGroup === 'faculty';
+    const showFacultySubgroups = !studentOnly && s.roleGroup === 'faculty';
     const showAreaSubrole      = s.facultyGroup === 'area_lead';
     const showAdvisorScope     = s.facultyGroup === 'advisor';
     const showProfessorPicker  = s.facultyGroup === 'professor';
@@ -360,9 +364,10 @@ const App = {
           <div class="onboarding-brand">CountsFor</div>
           <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
 
-          <div class="ob-heading">Tell us who you are.</div>
-          <div class="ob-sub">We'll tailor the curriculum view to your role.</div>
+          <div class="ob-heading">${studentOnly ? 'Pick your major.' : 'Tell us who you are.'}</div>
+          <div class="ob-sub">${studentOnly ? 'We\'ll remember this for next time.' : 'We\'ll tailor the curriculum view to your role.'}</div>
 
+          ${studentOnly ? '' : `
           <div class="ob-section">
             <div class="ob-section-label">I AM A</div>
             <div class="ob-row2">
@@ -374,7 +379,7 @@ const App = {
               ${areaSubroleHtml}
               ${scopeHtml}
             ` : ''}
-          </div>
+          </div>`}
 
           ${showMajorPicker ? `
             <div class="ob-section">
@@ -845,6 +850,7 @@ const App = {
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
           ${(this.authedUser && (this.authedUser.role === 'admin' || this.authedUser.role === 'area_head' || this.authedUser.role === 'associate_area_head')) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
           ${(this.authedUser && this.authedUser.role === 'admin') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review submitted course flags">Flag review</button>' : ''}
+          ${(this.authedUser && isFaculty({ role: this.authedUser.role }) && this.authedUser.role !== 'admin') ? '<button class="nav-admin" onclick="App.showMyFlags()" title="Track your submitted course flags">My flags</button>' : ''}
           ${this.authMode === 'authed' ? '<button class="nav-signout" onclick="App.signOut()" title="Sign out" aria-label="Sign out">Sign out</button>' : ''}
         </div>
       </nav>
@@ -2373,6 +2379,86 @@ const App = {
     }
     showToast('User updated.');
     await this._loadUserAdmin();
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // FACULTY — My flag submissions
+  // ══════════════════════════════════════════════════════════
+  _myFlagsState: { status: 'pending', items: [], total: 0 },
+
+  async showMyFlags() {
+    if (!(this.authedUser && isFaculty(this.profile))) {
+      showToast('Faculty access required.');
+      return;
+    }
+    this._homeView = 'myflags';
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="spinner"></div><div class="empty-text" style="margin-top:12px">Loading your flags…</div></div>';
+    await this._loadMyFlags();
+  },
+
+  async _loadMyFlags() {
+    const s = this._myFlagsState;
+    const r = await apiListMyFlags('status=' + encodeURIComponent(s.status) + '&limit=100');
+    const el = document.getElementById('leftBody');
+    if (!r.ok) {
+      if (el) el.innerHTML = `<div class="empty-state"><div class="empty-text">Could not load flags: ${esc((r.data && r.data.message) || r.error || 'error')}</div></div>`;
+      return;
+    }
+    s.items = r.data.items || [];
+    s.total = r.data.total || 0;
+    this._renderMyFlags();
+  },
+
+  _renderMyFlags() {
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    const s = this._myFlagsState;
+    const tab = (status, label) =>
+      `<button class="adm-tab ${s.status === status ? 'active' : ''}" onclick="App._switchMyFlagStatus('${status}')">${label}</button>`;
+    const rowsHtml = s.items.length === 0
+      ? `<div class="empty-state"><div class="empty-text">No flags with status “${esc(s.status)}”.</div></div>`
+      : s.items.map(f => this._renderMyFlagRow(f)).join('');
+    el.innerHTML = `
+      <div class="adm-view">
+        <div class="adm-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <div class="adm-title">My flags <span class="adm-count">· ${s.total}</span></div>
+        </div>
+        <div class="adm-tabs">
+          ${tab('pending', 'Pending')}
+          ${tab('reviewed', 'Reviewed')}
+          ${tab('resolved', 'Resolved')}
+          ${tab('dismissed', 'Dismissed')}
+        </div>
+        <div class="adm-list">${rowsHtml}</div>
+      </div>
+    `;
+  },
+
+  _renderMyFlagRow(f) {
+    const when = f.created_at ? new Date(f.created_at).toLocaleDateString() : '';
+    const notes = f.notes ? `<div class="adm-notes"><strong>Your notes:</strong> ${esc(f.notes)}</div>` : '';
+    const adminNotes = f.admin_notes ? `<div class="adm-notes adm-notes-admin"><strong>Admin response:</strong> ${esc(f.admin_notes)}</div>` : '';
+    return `
+      <div class="adm-row">
+        <div class="adm-row-head">
+          <div>
+            <div class="adm-course-code">${esc(f.course_code)} · ${esc(f.reason_label || f.reason_code)}</div>
+            <div class="adm-course-name">${esc(f.course_name)} · ${when}</div>
+          </div>
+          <span class="adm-status adm-status-${esc(f.status)}">${esc(f.status)}</span>
+        </div>
+        ${notes}
+        ${adminNotes}
+      </div>
+    `;
+  },
+
+  _switchMyFlagStatus(status) {
+    this._myFlagsState.status = status;
+    this._loadMyFlags();
   },
 
   // ══════════════════════════════════════════════════════════

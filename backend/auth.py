@@ -145,7 +145,11 @@ def google_signin():
 
     from datetime import datetime, timezone
     user.last_login = datetime.now(timezone.utc)
-    # profile_completed is set only after PATCH /api/me (onboarding), not on login.
+    # Admins and seeded faculty skip onboarding; students complete it once via PATCH.
+    if user.role == "admin":
+        user.profile_completed = True
+    elif user.role != "student" and user.profile_is_complete():
+        user.profile_completed = True
 
     db.session.commit()
 
@@ -182,6 +186,7 @@ ALLOWED_PROFILE_FIELDS = {
     "department",
 }
 USER_SETTABLE_ROLES = {"student", "professor", "area_head", "associate_area_head", "advisor"}
+SELF_SERVICE_FACULTY_ROLES = {"professor", "area_head", "associate_area_head", "advisor"}
 
 
 VALID_PROGRAMS_FOR_PATCH = {"CS", "IS", "BA", "BS", "AI", "GS", "AS"}
@@ -283,6 +288,18 @@ def update_me():
         else:
             if new_role not in USER_SETTABLE_ROLES:
                 return jsonify(error="invalid_role", message=f"Role must be one of {sorted(USER_SETTABLE_ROLES)}."), 400
+            # Students cannot self-promote to faculty; faculty roles are seed/admin assigned.
+            if user.role == "student" and new_role in SELF_SERVICE_FACULTY_ROLES:
+                return jsonify(
+                    error="forbidden_role",
+                    message="Faculty roles are assigned by an administrator.",
+                ), 403
+            # Non-students cannot change role via self-service PATCH.
+            if user.role != "student" and new_role != user.role:
+                return jsonify(
+                    error="forbidden_role",
+                    message="Role changes require an administrator.",
+                ), 403
 
     err = _validate_consistent_profile(new_role, new_primary, new_minor, new_advisor_scope)
     if err:

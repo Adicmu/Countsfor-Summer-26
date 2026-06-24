@@ -202,6 +202,7 @@ async function fetchMinorCourses() {
 // ── Flags ────────────────────────────────────────────────────
 async function apiCreateFlag(flag)        { return apiFetch('/api/flags', { method: 'POST', body: flag }); }
 async function apiListFlags(query = '')   { return apiFetch('/api/flags' + (query ? '?' + query : '')); }
+async function apiListMyFlags(query = '') { return apiFetch('/api/flags/mine' + (query ? '?' + query : '')); }
 async function apiUpdateFlag(id, patch)   { return apiFetch('/api/flags/' + encodeURIComponent(id), { method: 'PATCH', body: patch }); }
 
 // ── Wishlist ─────────────────────────────────────────────────
