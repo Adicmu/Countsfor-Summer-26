@@ -34,7 +34,7 @@ services:
       - key: FRONTEND_ORIGIN
         value: https://adicmu.github.io,https://hindjendara.github.io,http://localhost:8765
       - key: SEED_USERS_PATH
-        value: backend/seed_users.json
+        value: ../data/faculty_directory.json
 
 databases:
   - name: CountsFor_Summer_2026

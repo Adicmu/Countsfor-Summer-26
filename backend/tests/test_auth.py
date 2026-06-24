@@ -148,8 +148,8 @@ def test_patch_me_admin_cannot_self_demote(client, admin):
 def test_patch_me_student_cannot_promote_to_professor(client, student):
     login(client, student)
     r = client.patch("/api/me", json={"role": "professor", "primary_program": "CS"})
-    assert r.status_code == 403
-    assert r.get_json()["error"] == "forbidden_role"
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "invalid_role"
 
 
 # ── PATCH /api/me cross-field validation ────────────────────
@@ -329,3 +329,61 @@ def test_admin_email_overrides_seed_role(tmp_path):
                    return_value=_fake("admin@andrew.cmu.edu", "g-admin")):
             r = c.post("/api/auth/google", json={"credential": "stub"})
     assert r.get_json()["role"] == "admin"
+
+
+# ── CMU email sign-in ───────────────────────────────────────
+
+def test_email_signin_creates_student(client):
+    r = client.post("/api/auth/email", json={"email": "student1@andrew.cmu.edu"})
+    assert r.status_code == 200, r.get_json()
+    body = r.get_json()
+    assert body["email"] == "student1@andrew.cmu.edu"
+    assert body["role"] == "student"
+    assert body["profile_completed"] is False
+
+
+def test_email_signin_rejects_non_cmu(client):
+    r = client.post("/api/auth/email", json={"email": "user@gmail.com"})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "invalid_email"
+
+
+def test_email_signin_normalizes_cmu_domain(tmp_path):
+    seed = tmp_path / "seed_users.json"
+    seed.write_text(json.dumps([
+        {"email": "prof@andrew.cmu.edu", "name": "Prof", "role": "professor", "primary_program": "CS"},
+    ]))
+
+    class SeedConfig(TestConfig):
+        SEED_USERS_PATH = str(seed)
+
+    app = create_app(SeedConfig)
+    with app.test_client() as c:
+        r = c.post("/api/auth/email", json={"email": "prof@cmu.edu"})
+    body = r.get_json()
+    assert r.status_code == 200
+    assert body["email"] == "prof@andrew.cmu.edu"
+    assert body["role"] == "professor"
+    assert body["profile_completed"] is True
+
+
+def test_email_signin_faculty_from_directory_format(tmp_path):
+    seed = tmp_path / "faculty_directory.json"
+    seed.write_text(json.dumps({
+        "people": [
+            {"email": "hbouamor@andrew.cmu.edu", "name": "Houda Bouamor",
+             "role": "professor", "primary_program": "IS", "department": "Information Systems"},
+        ]
+    }))
+
+    class SeedConfig(TestConfig):
+        SEED_USERS_PATH = str(seed)
+
+    app = create_app(SeedConfig)
+    with app.test_client() as c:
+        r = c.post("/api/auth/email", json={"email": "hbouamor@andrew.cmu.edu"})
+    body = r.get_json()
+    assert r.status_code == 200
+    assert body["role"] == "professor"
+    assert body["primary_program"] == "IS"
+    assert body["profile_completed"] is True
