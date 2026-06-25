@@ -78,4 +78,15 @@ def run_migrations() -> list[str]:
         db.session.commit()
         log.append("Backfilled users.profile_completed for existing complete profiles")
 
+    if _add_column_if_missing("users", "password_hash", "password_hash VARCHAR(255)"):
+        log.append("Added users.password_hash")
+
+    if _add_column_if_missing("users", "reset_token_hash", "reset_token_hash VARCHAR(255)"):
+        log.append("Added users.reset_token_hash")
+
+    if _add_column_if_missing(
+        "users", "reset_token_expires", "reset_token_expires TIMESTAMP", "reset_token_expires TIMESTAMPTZ"
+    ):
+        log.append("Added users.reset_token_expires")
+
     return log

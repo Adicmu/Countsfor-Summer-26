@@ -387,3 +387,81 @@ def test_email_signin_faculty_from_directory_format(tmp_path):
     assert body["role"] == "professor"
     assert body["primary_program"] == "IS"
     assert body["profile_completed"] is True
+
+
+# ── Password register / login / reset ───────────────────────
+
+def test_register_and_login(client):
+    r = client.post("/api/auth/register", json={
+        "email": "newbie@andrew.cmu.edu",
+        "password": "securepass1",
+        "confirm_password": "securepass1",
+        "name": "New Student",
+    })
+    assert r.status_code == 201, r.get_json()
+    assert r.get_json()["role"] == "student"
+    assert r.get_json()["profile_completed"] is False
+
+    client.post("/api/auth/logout")
+    bad = client.post("/api/auth/login", json={
+        "email": "newbie@andrew.cmu.edu",
+        "password": "wrongpass",
+    })
+    assert bad.status_code == 401
+
+    ok = client.post("/api/auth/login", json={
+        "email": "newbie@andrew.cmu.edu",
+        "password": "securepass1",
+    })
+    assert ok.status_code == 200
+    assert ok.get_json()["email"] == "newbie@andrew.cmu.edu"
+
+
+def test_register_faculty_from_seed(client, tmp_path):
+    seed = tmp_path / "seed.json"
+    seed.write_text(json.dumps([
+        {"email": "fac@andrew.cmu.edu", "name": "Faculty One",
+         "role": "professor", "primary_program": "CS"},
+    ]))
+
+    class SeedConfig(TestConfig):
+        SEED_USERS_PATH = str(seed)
+
+    app = create_app(SeedConfig)
+    with app.test_client() as c:
+        r = c.post("/api/auth/register", json={
+            "email": "fac@andrew.cmu.edu",
+            "password": "facultypass",
+            "confirm_password": "facultypass",
+        })
+    body = r.get_json()
+    assert r.status_code == 201
+    assert body["role"] == "professor"
+    assert body["profile_completed"] is True
+
+
+def test_forgot_and_reset_password(client):
+    client.post("/api/auth/register", json={
+        "email": "resetme@andrew.cmu.edu",
+        "password": "oldpass123",
+        "confirm_password": "oldpass123",
+    })
+    client.post("/api/auth/logout")
+
+    r = client.post("/api/auth/forgot-password", json={"email": "resetme@andrew.cmu.edu"})
+    assert r.status_code == 200
+    data = r.get_json()
+    assert data.get("reset_token")
+
+    r2 = client.post("/api/auth/reset-password", json={
+        "email": "resetme@andrew.cmu.edu",
+        "token": data["reset_token"],
+        "password": "newpass456",
+    })
+    assert r2.status_code == 200
+
+    ok = client.post("/api/auth/login", json={
+        "email": "resetme@andrew.cmu.edu",
+        "password": "newpass456",
+    })
+    assert ok.status_code == 200

@@ -34,8 +34,20 @@ const App = {
   //      so the GH-Pages-only deploy keeps working.
   authedUser: null,             // server-confirmed user, or null in demo mode
   authMode: 'demo',             // 'authed' | 'demo' | 'login'
+  authView: 'signin',           // signin | register | forgot | reset
+  resetEmail: '',
+  resetToken: '',
   async init() {
     this.applyTheme();
+
+    const params = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
+    const resetTok = params.get('reset') || '';
+    const resetEmail = params.get('email') || '';
+    if (resetTok && resetEmail) {
+      this.resetToken = resetTok;
+      this.resetEmail = resetEmail;
+      this.authView = 'reset';
+    }
 
     const me = await apiGetMe();
     if (me.ok) {
@@ -295,12 +307,15 @@ const App = {
 
     const majorLabel = 'MAJORING IN';
 
-    document.getElementById('app').innerHTML = this._renderLandingLayout(`
-      <div class="landing-panel-head">
-        <p class="landing-panel-eyebrow">Almost there</p>
-        <h2 class="landing-panel-title">Tell us about your studies</h2>
-        <p class="landing-panel-lead">We'll tailor the curriculum view to your major and optional minor.</p>
-      </div>
+    document.getElementById('app').innerHTML = `
+      <div class="auth-page auth-page-compact">
+        <main class="auth-page-main auth-page-main--solo">
+          <div class="auth-page-card">
+            <div class="auth-panel-head">
+              <p class="auth-panel-eyebrow">Almost there</p>
+              <h2 class="auth-panel-title">Your major &amp; minor</h2>
+              <p class="auth-panel-lead">We'll show you the courses that matter for your degree.</p>
+            </div>
 
       ${showMajorPicker ? `
         <div class="ob-section">
@@ -322,8 +337,11 @@ const App = {
         </div>
       ` : ''}
 
-      <button class="onboarding-continue" ${valid ? '' : 'disabled'} onclick="App._finishOnboarding()">Continue →</button>
-    `, { cancelHtml });
+      <button class="onboarding-continue auth-submit" ${valid ? '' : 'disabled'} onclick="App._finishOnboarding()">Continue →</button>
+          </div>
+        </main>
+        ${cancelHtml}
+      </div>`;
   },
 
   _programFullName(p) {
@@ -480,115 +498,457 @@ const App = {
   },
 
   // ══════════════════════════════════════════════════════════
-  // LANDING PAGE — CMU brand shell (login + onboarding)
+  // AUTH LANDING — Scotty hero + sign in / register
   // ══════════════════════════════════════════════════════════
 
-  _landingHeroHtml() {
-    return `
-      <div class="landing-hero-art" aria-hidden="true">
-        <img class="landing-art landing-art-tartan" src="assets/img/cmu-tartan-wave.png" alt="" />
-        <img class="landing-art landing-art-swoosh-lg" src="assets/img/cmu-swoosh-red-lg.png" alt="" />
-        <img class="landing-art landing-art-swoosh-sm" src="assets/img/cmu-swoosh-red-sm.png" alt="" />
-      </div>
-      <div class="landing-hero-inner">
-        <div class="landing-brand-lockup">
-          <img class="landing-scotty" src="assets/img/scotty-head.png" alt="" />
-          <div class="landing-brand-text">
-            <span class="landing-wordmark">CountsFor</span>
-            <span class="landing-wordmark-sub">Carnegie Mellon University · Qatar</span>
-          </div>
-        </div>
-        <h1 class="landing-headline">Every course.<br><span class="landing-headline-accent">Every program.</span><br>One place.</h1>
-        <p class="landing-deck">Search 1,700+ courses and see what counts for CS, IS, Business, and Biological Sciences — tailored for students and faculty.</p>
-        <ul class="landing-highlights">
-          <li><span class="landing-hi-dot"></span>Instant lookup by course or category</li>
-          <li><span class="landing-hi-dot"></span>Double-counter courses for major + minor</li>
-          <li><span class="landing-hi-dot"></span>Faculty can flag data issues</li>
-        </ul>
-      </div>`;
+  _isAndrewEmail(raw) {
+    const e = (raw || '').trim().toLowerCase();
+    return /^[^\s@]+@andrew\.cmu\.edu$/.test(e);
   },
-
-  _landingFooterHtml() {
-    return `
-      <div class="landing-footer">
-        <img class="landing-footer-wordmark" src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University in Qatar" />
-        <p class="landing-footer-tag">An initiative of CMU-Q</p>
-      </div>`;
-  },
-
-  _renderLandingLayout(panelHtml, opts = {}) {
-    return `
-      <div class="landing">
-        <section class="landing-hero">${this._landingHeroHtml()}</section>
-        <section class="landing-panel">
-          <div class="landing-panel-card">
-            ${panelHtml}
-            ${this._landingFooterHtml()}
-          </div>
-        </section>
-        ${opts.cancelHtml || ''}
-      </div>`;
-  },
-
-  // ══════════════════════════════════════════════════════════
-  // LOGIN SCREEN (CMU email)
-  // ══════════════════════════════════════════════════════════
 
   _isCmuEmail(raw) {
     const e = (raw || '').trim().toLowerCase();
     return /^[^\s@]+@(andrew\.cmu\.edu|cmu\.edu|qatar\.cmu\.edu)$/.test(e);
   },
 
-  renderLogin(opts = {}) {
-    const backendWarn = opts.backendUnreachable
-      ? `<div class="landing-alert">Could not reach the sign-in server. Wait ~30s and refresh — the free tier may be waking up.</div>`
-      : '';
-    const panel = `
-      <div class="landing-panel-head">
-        <p class="landing-panel-eyebrow">Welcome</p>
-        <h2 class="landing-panel-title">Sign in with your CMU email</h2>
-        <p class="landing-panel-lead">Faculty are recognized automatically. Students set their major and minor once.</p>
-      </div>
-      ${backendWarn}
-      <form class="auth-email-form" onsubmit="App._onEmailLogin(event)">
-        <label class="auth-email-label" for="cfEmailInput">CMU email address</label>
-        <input class="auth-email-input" id="cfEmailInput" type="email" name="email"
-          placeholder="you@andrew.cmu.edu" autocomplete="email" required />
-        <p class="auth-email-hint">@andrew.cmu.edu · @cmu.edu · @qatar.cmu.edu</p>
-        <button type="submit" class="auth-email-submit" id="cfEmailSubmit">Continue →</button>
-      </form>
-      <div class="landing-role-hints">
-        <div class="landing-role-hint">
-          <span class="landing-role-icon landing-role-icon-faculty">F</span>
-          <span><strong>Faculty</strong> — cross-program view &amp; course flagging</span>
-        </div>
-        <div class="landing-role-hint">
-          <span class="landing-role-icon landing-role-icon-student">S</span>
-          <span><strong>Students</strong> — focused view by major &amp; minor</span>
-        </div>
+  _renderAuthPage(panelHtml) {
+    return `
+      <div class="auth-page">
+        <aside class="auth-page-visual" aria-hidden="true">
+          <div class="auth-page-visual-inner">
+            <div class="auth-scotty-wrap">
+              <div class="auth-scotty-badge">
+                <img class="auth-scotty-hero" src="assets/img/scotty-head.png" alt="" />
+              </div>
+            </div>
+            <div class="auth-visual-copy">
+              <p class="auth-visual-eyebrow">CMU-Q Curriculum Explorer</p>
+              <h1 class="auth-visual-title">CountsFor</h1>
+              <p class="auth-visual-tagline">See what every course counts for across CS, IS, Business, and Biological Sciences.</p>
+              <ul class="auth-visual-features">
+                <li>Sign in with your <strong>@andrew.cmu.edu</strong> email</li>
+                <li>Faculty are recognized automatically from our directory</li>
+                <li>Students pick a major once, then explore</li>
+              </ul>
+            </div>
+          </div>
+        </aside>
+        <main class="auth-page-main">
+          <div class="auth-page-card">
+            ${panelHtml}
+            <div class="auth-page-footer">
+              <img src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University in Qatar" />
+            </div>
+          </div>
+        </main>
       </div>`;
-    document.getElementById('app').innerHTML = this._renderLandingLayout(panel);
-    const input = document.getElementById('cfEmailInput');
-    if (input) input.focus();
   },
 
-  async _onEmailLogin(event) {
-    if (event) event.preventDefault();
-    const input = document.getElementById('cfEmailInput');
-    const btn = document.getElementById('cfEmailSubmit');
-    const raw = input ? input.value : '';
-    if (!this._isCmuEmail(raw)) {
-      showToast('Enter a valid CMU email (@andrew.cmu.edu, @cmu.edu, or @qatar.cmu.edu).');
+  _authPasswordField(id, label, opts = {}) {
+    const hint = opts.hint
+      ? `<p class="auth-field-msg is-hint" id="${id}Hint">${esc(opts.hint)}</p>`
+      : '';
+    return `
+      <div class="auth-field-group">
+        <label class="auth-label" for="${id}">${label}</label>
+        <div class="auth-field">
+          <input class="auth-input" id="${id}" type="password" autocomplete="${opts.autocomplete || 'new-password'}" minlength="${opts.minlength || 8}" required />
+          <button type="button" class="auth-pass-toggle" aria-label="Show password" onclick="App._togglePassword('${id}', this)">Show</button>
+        </div>
+        ${hint}
+        <p class="auth-field-msg" id="${id}Msg" role="alert"></p>
+      </div>`;
+  },
+
+  _authEmailField(id, label) {
+    return `
+      <div class="auth-field-group">
+        <label class="auth-label" for="${id}">${label}</label>
+        <input class="auth-input" id="${id}" type="email" autocomplete="email" placeholder="you@andrew.cmu.edu" required />
+        <p class="auth-field-msg" id="${id}Msg" role="alert"></p>
+      </div>`;
+  },
+
+  _setFieldMsg(inputId, msgId, text, kind) {
+    const input = document.getElementById(inputId);
+    const msg = document.getElementById(msgId);
+    if (msg) {
+      msg.textContent = text || '';
+      msg.className = 'auth-field-msg' + (kind ? ` is-${kind}` : '');
+    }
+    if (input) {
+      input.classList.toggle('is-invalid', kind === 'error');
+      input.classList.toggle('is-valid', kind === 'ok');
+    }
+  },
+
+  _clearFieldMsg(inputId, msgId) {
+    this._setFieldMsg(inputId, msgId, '', '');
+  },
+
+  _validateAndrewField(inputId, msgId) {
+    const el = document.getElementById(inputId);
+    if (!el) return true;
+    const val = (el.value || '').trim();
+    if (!val) {
+      this._clearFieldMsg(inputId, msgId);
+      return false;
+    }
+    if (!this._isAndrewEmail(val)) {
+      this._setFieldMsg(inputId, msgId, 'Use your @andrew.cmu.edu email address.', 'error');
+      return false;
+    }
+    this._clearFieldMsg(inputId, msgId);
+    return true;
+  },
+
+  _validatePasswordMatch(passId, confirmId, msgId) {
+    const pass = document.getElementById(passId)?.value || '';
+    const confirm = document.getElementById(confirmId)?.value || '';
+    if (!confirm) {
+      this._clearFieldMsg(confirmId, msgId);
+      return false;
+    }
+    if (pass !== confirm) {
+      this._setFieldMsg(confirmId, msgId, 'Passwords do not match.', 'error');
+      return false;
+    }
+    this._setFieldMsg(confirmId, msgId, 'Passwords match.', 'ok');
+    return true;
+  },
+
+  _togglePassword(inputId, btn) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const show = input.type === 'password';
+    input.type = show ? 'text' : 'password';
+    btn.textContent = show ? 'Hide' : 'Show';
+    btn.setAttribute('aria-label', show ? 'Hide password' : 'Show password');
+  },
+
+  _setAuthFormError(text) {
+    const box = document.getElementById('cfAuthFormError');
+    if (!box) return;
+    if (text) {
+      box.textContent = text;
+      box.hidden = false;
+    } else {
+      box.textContent = '';
+      box.hidden = true;
+    }
+  },
+
+  _setAuthLoading(loading, idleLabel) {
+    const btn = document.getElementById('cfAuthSubmit');
+    if (!btn) return;
+    btn.classList.toggle('is-loading', loading);
+    if (loading) {
+      btn.disabled = true;
+      btn.innerHTML = `<span class="auth-submit-spinner" aria-hidden="true"></span><span>${idleLabel.replace(' →', '…')}</span>`;
+    } else {
+      btn.textContent = idleLabel;
+      this._updateAuthSubmitState(this.authView);
+    }
+  },
+
+  _updateAuthSubmitState(view) {
+    const btn = document.getElementById('cfAuthSubmit');
+    if (!btn) return;
+    let ready = false;
+    if (view === 'signin') {
+      const email = (document.getElementById('cfLoginEmail')?.value || '').trim();
+      const pass = document.getElementById('cfLoginPass')?.value || '';
+      const emailOk = this._isAndrewEmail(email);
+      ready = emailOk && pass.length > 0;
+      if (email && !emailOk) this._validateAndrewField('cfLoginEmail', 'cfLoginEmailMsg');
+    } else if (view === 'register') {
+      const email = (document.getElementById('cfRegEmail')?.value || '').trim();
+      const pass = document.getElementById('cfRegPass')?.value || '';
+      const confirm = document.getElementById('cfRegPass2')?.value || '';
+      const emailOk = this._isAndrewEmail(email);
+      const passOk = pass.length >= 8;
+      const matchOk = passOk && confirm.length > 0 && pass === confirm;
+      ready = emailOk && passOk && matchOk;
+      if (email && !emailOk) this._validateAndrewField('cfRegEmail', 'cfRegEmailMsg');
+      if (confirm) this._validatePasswordMatch('cfRegPass', 'cfRegPass2', 'cfRegPass2Msg');
+    } else if (view === 'forgot') {
+      const email = (document.getElementById('cfForgotEmail')?.value || '').trim();
+      ready = this._isAndrewEmail(email);
+    } else if (view === 'reset') {
+      const pass = document.getElementById('cfResetPass')?.value || '';
+      const confirm = document.getElementById('cfResetPass2')?.value || '';
+      ready = pass.length >= 8 && pass === confirm;
+    }
+    btn.dataset.empty = ready ? '0' : '1';
+    btn.disabled = !ready || btn.classList.contains('is-loading');
+  },
+
+  _bindAuthForm(view) {
+    const onInput = () => this._updateAuthSubmitState(view);
+    const ids = {
+      signin: ['cfLoginEmail', 'cfLoginPass'],
+      register: ['cfRegName', 'cfRegEmail', 'cfRegPass', 'cfRegPass2'],
+      forgot: ['cfForgotEmail'],
+      reset: ['cfResetPass', 'cfResetPass2'],
+    }[view] || [];
+
+    ids.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.addEventListener('input', onInput);
+      el.addEventListener('blur', () => {
+        if (id === 'cfLoginEmail' || id === 'cfRegEmail' || id === 'cfForgotEmail') {
+          this._validateAndrewField(id, id + 'Msg');
+        }
+        if (id === 'cfRegPass2' || id === 'cfResetPass2') {
+          const passId = view === 'reset' ? 'cfResetPass' : 'cfRegPass';
+          this._validatePasswordMatch(passId, id, id + 'Msg');
+        }
+        this._updateAuthSubmitState(view);
+      });
+    });
+
+    if (view === 'register' || view === 'reset') {
+      const passId = view === 'reset' ? 'cfResetPass' : 'cfRegPass';
+      const confirmId = view === 'reset' ? 'cfResetPass2' : 'cfRegPass2';
+      const passEl = document.getElementById(passId);
+      if (passEl) {
+        passEl.addEventListener('input', () => {
+          const confirm = document.getElementById(confirmId);
+          if (confirm && confirm.value) {
+            this._validatePasswordMatch(passId, confirmId, confirmId + 'Msg');
+          }
+          this._updateAuthSubmitState(view);
+        });
+      }
+    }
+
+    this._updateAuthSubmitState(view);
+  },
+
+  _authTabsHtml(active) {
+    const tab = (id, label) =>
+      `<button type="button" class="auth-tab ${active === id ? 'active' : ''}" onclick="App._switchAuthView('${id}')">${label}</button>`;
+    if (active === 'forgot' || active === 'reset') return '';
+    return `<div class="auth-tabs">${tab('signin', 'Sign in')}${tab('register', 'Create account')}</div>`;
+  },
+
+  _switchAuthView(view) {
+    this.authView = view;
+    this.renderLogin();
+  },
+
+  renderLogin(opts = {}) {
+    const v = this.authView;
+    const backendWarn = opts.backendUnreachable
+      ? `<div class="auth-alert">Could not reach the server — wait ~30s and refresh.</div>`
+      : '';
+    const formError = `<div class="auth-form-error" id="cfAuthFormError" hidden role="alert"></div>`;
+
+    let panel = '';
+    if (v === 'register') {
+      panel = `
+        <div class="auth-card-top">
+          ${this._authTabsHtml('register')}
+          <div class="auth-panel-head">
+            <h2 class="auth-panel-title">Create your account</h2>
+            <p class="auth-panel-lead">Use your <strong>@andrew.cmu.edu</strong> email. Faculty in our directory are recognized automatically; everyone else starts as a student.</p>
+          </div>
+          ${backendWarn}
+        </div>
+        <div class="auth-form-body">
+          <form class="auth-form auth-form--scrollable" onsubmit="App._onRegister(event)">
+            ${formError}
+            <div class="auth-form-fields">
+              <div class="auth-field-group">
+                <label class="auth-label" for="cfRegName">Full name</label>
+                <input class="auth-input" id="cfRegName" type="text" autocomplete="name" placeholder="Your name" />
+              </div>
+              ${this._authEmailField('cfRegEmail', 'Andrew email')}
+              ${this._authPasswordField('cfRegPass', 'Password', { autocomplete: 'new-password', hint: 'At least 8 characters' })}
+              ${this._authPasswordField('cfRegPass2', 'Confirm password', { autocomplete: 'new-password' })}
+            </div>
+            <div class="auth-form-actions">
+              <button type="submit" class="auth-submit" id="cfAuthSubmit" disabled>Create account →</button>
+            </div>
+          </form>
+        </div>`;
+    } else if (v === 'forgot') {
+      panel = `
+        <div class="auth-card-top">
+          <div class="auth-panel-head">
+            <button type="button" class="auth-back" onclick="App._switchAuthView('signin')">← Back to sign in</button>
+            <h2 class="auth-panel-title">Forgot password</h2>
+            <p class="auth-panel-lead">Enter your <strong>@andrew.cmu.edu</strong> email. We'll give you a reset link you can use below.</p>
+          </div>
+          ${backendWarn}
+        </div>
+        <div class="auth-form-body">
+          <form class="auth-form" onsubmit="App._onForgotPassword(event)">
+            ${formError}
+            ${this._authEmailField('cfForgotEmail', 'Andrew email')}
+            <button type="submit" class="auth-submit" id="cfAuthSubmit" disabled>Send reset link →</button>
+          </form>
+          <div id="cfResetLinkBox" class="auth-reset-box" hidden></div>
+        </div>`;
+    } else if (v === 'reset') {
+      panel = `
+        <div class="auth-card-top">
+          <div class="auth-panel-head">
+            <h2 class="auth-panel-title">Set a new password</h2>
+            <p class="auth-panel-lead">Choose a new password for <strong>${esc(this.resetEmail || 'your account')}</strong>.</p>
+          </div>
+        </div>
+        <div class="auth-form-body">
+          <form class="auth-form" onsubmit="App._onResetPassword(event)">
+            ${formError}
+            ${this._authPasswordField('cfResetPass', 'New password', { autocomplete: 'new-password', hint: 'At least 8 characters' })}
+            ${this._authPasswordField('cfResetPass2', 'Confirm password', { autocomplete: 'new-password' })}
+            <button type="submit" class="auth-submit" id="cfAuthSubmit" disabled>Update password →</button>
+          </form>
+        </div>`;
+    } else {
+      panel = `
+        <div class="auth-card-top">
+          ${this._authTabsHtml('signin')}
+          <div class="auth-panel-head auth-panel-head--signin">
+            <h2 class="auth-panel-title">Welcome back</h2>
+          </div>
+          ${backendWarn}
+        </div>
+        <div class="auth-form-body">
+          <form class="auth-form" onsubmit="App._onLogin(event)">
+            ${formError}
+            ${this._authEmailField('cfLoginEmail', 'Andrew email')}
+            ${this._authPasswordField('cfLoginPass', 'Password', { autocomplete: 'current-password' })}
+            <div class="auth-forgot-row">
+              <button type="button" class="auth-link-btn" onclick="App._switchAuthView('forgot')">Forgot password?</button>
+            </div>
+            <button type="submit" class="auth-submit" id="cfAuthSubmit" disabled>Sign in →</button>
+          </form>
+        </div>`;
+    }
+
+    document.getElementById('app').innerHTML = this._renderAuthPage(panel);
+    this._bindAuthForm(v);
+    const focusId = v === 'register' ? 'cfRegEmail' : v === 'forgot' ? 'cfForgotEmail' : v === 'reset' ? 'cfResetPass' : 'cfLoginEmail';
+    const el = document.getElementById(focusId);
+    if (el) el.focus();
+  },
+
+  async _onLogin(event) {
+    event.preventDefault();
+    this._setAuthFormError('');
+    const email = (document.getElementById('cfLoginEmail')?.value || '').trim();
+    const password = document.getElementById('cfLoginPass')?.value || '';
+    if (!this._validateAndrewField('cfLoginEmail', 'cfLoginEmailMsg')) return;
+    if (!password) {
+      this._setFieldMsg('cfLoginPass', 'cfLoginPassMsg', 'Enter your password.', 'error');
       return;
     }
-    if (btn) { btn.disabled = true; btn.textContent = 'Signing in…'; }
-    const r = await apiSignInWithEmail(raw.trim());
-    if (btn) { btn.disabled = false; btn.textContent = 'Continue →'; }
+    this._setAuthLoading(true, 'Sign in →');
+    const r = await apiLogin({ email, password });
+    this._setAuthLoading(false, 'Sign in →');
     if (!r.ok) {
-      showToast((r.data && r.data.message) || 'Sign-in failed.');
+      const msg = (r.data && r.data.message) || 'Email or password is incorrect.';
+      if (r.status === 401) {
+        this._setFieldMsg('cfLoginPass', 'cfLoginPassMsg', msg, 'error');
+      } else {
+        this._setAuthFormError(msg);
+      }
+      this._updateAuthSubmitState('signin');
       return;
     }
     this._afterSignIn(r.data);
+  },
+
+  async _onRegister(event) {
+    event.preventDefault();
+    this._setAuthFormError('');
+    const name = (document.getElementById('cfRegName')?.value || '').trim();
+    const email = (document.getElementById('cfRegEmail')?.value || '').trim();
+    const password = document.getElementById('cfRegPass')?.value || '';
+    const confirm = document.getElementById('cfRegPass2')?.value || '';
+    if (!this._validateAndrewField('cfRegEmail', 'cfRegEmailMsg')) return;
+    if (password.length < 8) {
+      this._setFieldMsg('cfRegPass', 'cfRegPassMsg', 'Password must be at least 8 characters.', 'error');
+      return;
+    }
+    if (!this._validatePasswordMatch('cfRegPass', 'cfRegPass2', 'cfRegPass2Msg')) return;
+    this._setAuthLoading(true, 'Create account →');
+    const r = await apiRegister({ email, password, confirm_password: confirm, name: name || undefined });
+    this._setAuthLoading(false, 'Create account →');
+    if (!r.ok) {
+      const msg = (r.data && r.data.message) || 'Registration failed.';
+      if (r.data && r.data.error === 'email_taken') {
+        this._setFieldMsg('cfRegEmail', 'cfRegEmailMsg', msg, 'error');
+      } else {
+        this._setAuthFormError(msg);
+      }
+      this._updateAuthSubmitState('register');
+      return;
+    }
+    this._afterSignIn(r.data);
+  },
+
+  async _onForgotPassword(event) {
+    event.preventDefault();
+    this._setAuthFormError('');
+    const email = (document.getElementById('cfForgotEmail')?.value || '').trim();
+    if (!this._validateAndrewField('cfForgotEmail', 'cfForgotEmailMsg')) return;
+    this._setAuthLoading(true, 'Send reset link →');
+    const r = await apiForgotPassword(email);
+    this._setAuthLoading(false, 'Send reset link →');
+    if (!r.ok) {
+      this._setAuthFormError((r.data && r.data.message) || 'Request failed.');
+      this._updateAuthSubmitState('forgot');
+      return;
+    }
+    const box = document.getElementById('cfResetLinkBox');
+    if (box && r.data && r.data.reset_token) {
+      const url = `${location.origin}${location.pathname}?reset=${encodeURIComponent(r.data.reset_token)}&email=${encodeURIComponent(r.data.email)}`;
+      box.hidden = false;
+      box.innerHTML = `
+        <p class="auth-reset-msg">${esc(r.data.message || 'Use this link to reset your password:')}</p>
+        <a class="auth-reset-link" href="${esc(url)}">Reset my password →</a>`;
+      this.resetToken = r.data.reset_token;
+      this.resetEmail = r.data.email;
+    } else if (box) {
+      box.hidden = false;
+      box.innerHTML = `<p class="auth-reset-msg">${esc(r.data.message || 'If that email is registered, check for a reset link.')}</p>`;
+    }
+  },
+
+  async _onResetPassword(event) {
+    event.preventDefault();
+    this._setAuthFormError('');
+    const password = document.getElementById('cfResetPass')?.value || '';
+    const confirm = document.getElementById('cfResetPass2')?.value || '';
+    if (password.length < 8) {
+      this._setFieldMsg('cfResetPass', 'cfResetPassMsg', 'Password must be at least 8 characters.', 'error');
+      return;
+    }
+    if (!this._validatePasswordMatch('cfResetPass', 'cfResetPass2', 'cfResetPass2Msg')) return;
+    this._setAuthLoading(true, 'Update password →');
+    const r = await apiResetPassword({
+      email: this.resetEmail,
+      token: this.resetToken,
+      password,
+    });
+    this._setAuthLoading(false, 'Update password →');
+    if (!r.ok) {
+      this._setAuthFormError((r.data && r.data.message) || 'Reset failed.');
+      this._updateAuthSubmitState('reset');
+      return;
+    }
+    showToast('Password updated — sign in with your new password.');
+    this.authView = 'signin';
+    if (typeof history !== 'undefined') history.replaceState({}, '', location.pathname);
+    this.renderLogin();
+  },
+
+  async _onEmailLogin(event) {
+    return this._onLogin(event);
   },
 
   _afterSignIn(user) {
@@ -1352,10 +1712,6 @@ const App = {
 
     return `
       <div class="home">
-        <div class="home-brand-band" aria-hidden="true">
-          <img class="home-brand-art home-brand-tartan" src="assets/img/cmu-tartan-wave.png" alt="" />
-          <img class="home-brand-art home-brand-swoosh" src="assets/img/cmu-swoosh-red-sm.png" alt="" />
-        </div>
         <h1 class="home-hero">Find a course.</h1>
         <p class="home-lead">${lead}</p>
 

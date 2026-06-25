@@ -175,6 +175,19 @@ async function apiFetch(path, opts = {}) {
 async function apiSignInWithGoogle(credential) {
   return apiFetch('/api/auth/google', { method: 'POST', body: { credential } });
 }
+async function apiRegister(body) {
+  return apiFetch('/api/auth/register', { method: 'POST', body });
+}
+async function apiLogin(body) {
+  return apiFetch('/api/auth/login', { method: 'POST', body });
+}
+async function apiForgotPassword(email) {
+  return apiFetch('/api/auth/forgot-password', { method: 'POST', body: { email } });
+}
+async function apiResetPassword(body) {
+  return apiFetch('/api/auth/reset-password', { method: 'POST', body });
+}
+/** @deprecated use apiLogin */
 async function apiSignInWithEmail(email, name) {
   return apiFetch('/api/auth/email', { method: 'POST', body: { email, name: name || undefined } });
 }
