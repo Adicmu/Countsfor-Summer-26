@@ -34,6 +34,12 @@ import urllib.request
 import urllib.parse
 from datetime import datetime, timezone
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from soc_departments import (  # noqa: E402
+    get_department_list as fetch_department_list,
+    get_semester_list as fetch_semester_list,
+)
+
 # ---------- Configuration ----------
 # Reuses the same env vars as scrape_soc.py so testing works the same way.
 
@@ -41,8 +47,9 @@ BASE = os.environ.get("SOC_BASE_URL", "https://enr-apps.as.cmu.edu/open/SOC/SOCS
 SEARCH = BASE + "/search"
 COURSES_PATH = os.environ.get("COURSES_JSON_PATH", "data/courses.json")
 
-# Semesters to scrape. Match scrape_soc.py.
-SEMESTERS_TO_TRY = ["M25", "F25", "S26", "M26", "F26"]
+# Semesters to scrape — read from SOC form (same as scrape_soc.py).
+def get_semester_codes():
+    return [code for code, _ in fetch_semester_list(fetch_get, SEARCH)]
 
 LOCATIONS = [
     ("PIT", "pitts"),   # field suffix used in courses.json: offered_pitts
@@ -78,27 +85,8 @@ def parse_course_numbers(html):
             yield cell0
 
 
-def get_department_list():
-    """Pull the dept dropdown; fall back to a small list if it fails."""
-    try:
-        form_html = fetch_get(SEARCH)
-        dept_block = re.search(r'name="DEPT".*?</select>', form_html, re.DOTALL)
-        if dept_block:
-            depts = []
-            for m in re.finditer(r'value="([A-Z]{2,5})"', dept_block.group()):
-                code = m.group(1)
-                if code != 'All':
-                    depts.append(code)
-            if depts:
-                return depts
-    except Exception as e:
-        print(f"  WARN: couldn't fetch dept list: {e}")
-    # Minimal fallback — same list as scrape_soc.py
-    return ['ARC', 'ART', 'AEM', 'BXA', 'BSC', 'BME', 'BA', 'CFA', 'CIT', 'ISP',
-            'CMU', 'CHE', 'CHM', 'CEE', 'CB', 'CS', 'DES', 'DC', 'DRA', 'ECO',
-            'ECE', 'EPP', 'ENG', 'ETC', 'HIS', 'HCI', 'HSS', 'IDS', 'INI', 'IS',
-            'IPS', 'ISR', 'LTI', 'MSE', 'MCS', 'MTH', 'ME', 'ML', 'MUS', 'NS',
-            'NEU', 'PHI', 'PED', 'PHY', 'PSY', 'ROB', 'SCS', 'SDS', 'STA']
+def get_department_codes():
+    return [code for code, _ in fetch_department_list(fetch_get, SEARCH)]
 
 
 # ---------- Scrape: collect course-number sets per campus ----------
@@ -107,14 +95,15 @@ def scrape_offerings(depts):
     """
     Returns dict: { 'pitts': set('15122', ...), 'qatar': set('79465', ...) }
     Each set contains 5-digit course numbers offered at that campus in any
-    semester in SEMESTERS_TO_TRY.
+    semester in the semesters scraped from the SOC form.
     """
     seen = {suffix: set() for _, suffix in LOCATIONS}
 
-    total_calls = len(SEMESTERS_TO_TRY) * len(LOCATIONS) * len(depts)
+    semesters = get_semester_codes()
+    total_calls = len(semesters) * len(LOCATIONS) * len(depts)
     call_num = 0
 
-    for sem in SEMESTERS_TO_TRY:
+    for sem in semesters:
         for loc_code, suffix in LOCATIONS:
             for dept in depts:
                 call_num += 1
@@ -171,8 +160,10 @@ def main():
     print(f"Loaded {len(courses_list)} courses from {COURSES_PATH}")
 
     # Scrape
-    depts = get_department_list()
+    depts = get_department_codes()
+    semesters = get_semester_codes()
     print(f"Departments: {len(depts)}")
+    print(f"Semesters:   {', '.join(semesters)}")
     seen = scrape_offerings(depts)
 
     total_unique = len(seen['pitts'] | seen['qatar'])
@@ -220,7 +211,7 @@ def main():
     audit = {
         'last_campus_flag_update': datetime.now(timezone.utc).isoformat(),
         'scrape_source': BASE,
-        'semesters_considered': SEMESTERS_TO_TRY,
+        'semesters_considered': semesters,
         'pitts_courses_found': len(seen['pitts']),
         'qatar_courses_found': len(seen['qatar']),
     }

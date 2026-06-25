@@ -52,25 +52,19 @@ from soc_parse import (  # noqa: E402
     course_number_to_code,
     semester_code_to_label,
 )
+from soc_departments import (  # noqa: E402
+    SOC_LOCATION_CODES,
+    get_department_list,
+    get_semester_list,
+    load_soc_form,
+)
 
 # ---------- Configuration ----------
-# Overridable via env vars for local testing against the Flask test server.
-
 BASE = os.environ.get("SOC_BASE_URL", "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet")
 SEARCH = BASE + "/search"
 MIN_COURSES_FOR_VALID_SCRAPE = int(os.environ.get("MIN_COURSES_FOR_VALID_SCRAPE", "100"))
 OUTPUT_PATH = os.environ.get("SOC_OUTPUT_PATH", "data/soc.json")
-
-# Semesters to attempt each run. Add new codes as years roll over.
-# Order: most relevant first. Format = <F|S|M><2-digit year>.
-SEMESTERS_TO_TRY = ["F26", "S27", "M27", "F27", "S28"]
-
-# Campuses to scrape. Only courses offered at these locations will appear in
-# soc.json. Codes come from the PRG_LOCATION dropdown on the SOC search form.
-LOCATIONS_TO_SCRAPE = [
-    ("PIT", "Pittsburgh"),
-    ("DOH", "Qatar"),
-]
+LOCATIONS_TO_SCRAPE = SOC_LOCATION_CODES
 
 
 # ---------- HTTP helpers ----------
@@ -119,50 +113,12 @@ def parse_courses(html, dept_code, dept_name):
     return courses
 
 
-def get_department_list():
-    """Pull the dept dropdown from the search form. Falls back to a hardcoded list."""
-    try:
-        form_html = fetch_get(SEARCH)
-        dept_block = re.search(r'name="DEPT".*?</select>', form_html, re.DOTALL)
-        if dept_block:
-            dept_list = []
-            for m in re.finditer(r'value="([A-Z]{2,5})"[^>]*>(.*?)<',
-                                 dept_block.group(), re.DOTALL):
-                code = m.group(1)
-                name = re.sub(r'\s+', ' ', m.group(2)).strip()
-                name = re.sub(r'\s*\(\d+XXX\)\s*', '', name).strip()
-                if code != 'All' and name:
-                    dept_list.append((code, name))
-            if dept_list:
-                return dept_list
-    except Exception as e:
-        print(f"  WARN: couldn't fetch dept list dynamically: {e}")
+def get_department_list_for_scrape(form_html=None):
+    return get_department_list(fetch_get, SEARCH, form_html=form_html)
 
-    # Fallback list
-    return [
-        ('ARC', 'Architecture'), ('ART', 'Art'), ('AEM', 'Arts & Entertainment Management'),
-        ('BXA', 'BXA Intercollege Degree Programs'), ('BSC', 'Biological Sciences'),
-        ('BME', 'Biomedical Engineering'), ('BA', 'Business Administration'),
-        ('CFA', 'CFA Interdisciplinary'), ('CIT', 'CIT Interdisciplinary'),
-        ('ISP', 'Institute for Strategy and Tech'), ('CMU', 'CMU University-Wide Studies'),
-        ('CHE', 'Chemical Engineering'), ('CHM', 'Chemistry'),
-        ('CEE', 'Civil & Environmental Engineering'), ('CB', 'Computational Biology'),
-        ('CS', 'Computer Science'), ('DES', 'Design'), ('DC', 'Dietrich College Interdisciplinary'),
-        ('DRA', 'Drama'), ('ECO', 'Economics'), ('ECE', 'Electrical & Computer Engineering'),
-        ('EPP', 'Engineering & Public Policy'), ('ENG', 'English'),
-        ('ETC', 'Entertainment Technology Center'), ('HIS', 'History'),
-        ('HCI', 'Human-Computer Interaction'), ('HSS', 'Humanities & Arts'),
-        ('IDS', 'IDeATe'), ('INI', 'Information Networking Institute'),
-        ('IS', 'Information Systems'), ('IPS', 'Institute for Politics and Strategy'),
-        ('ISR', 'Institute for Software Research'), ('LTI', 'Language Technologies Institute'),
-        ('MSE', 'Materials Science & Engineering'), ('MCS', 'MCS Interdisciplinary'),
-        ('MTH', 'Mathematical Sciences'), ('ME', 'Mechanical Engineering'),
-        ('ML', 'Modern Languages'), ('MUS', 'Music'), ('NS', 'Naval Science'),
-        ('NEU', 'Neuroscience'), ('PHI', 'Philosophy'), ('PED', 'Physical Education'),
-        ('PHY', 'Physics'), ('PSY', 'Psychology'), ('ROB', 'Robotics'),
-        ('SCS', 'SCS Interdisciplinary'), ('SDS', 'Social & Decision Sciences'),
-        ('STA', 'Statistics & Data Science'),
-    ]
+
+def get_semester_list_for_scrape(form_html=None):
+    return get_semester_list(fetch_get, SEARCH, form_html=form_html)
 
 
 # ---------- Main scrape per semester ----------
@@ -276,42 +232,53 @@ def main():
     print(f"CMU SOC Scraper (campuses: {campus_names})")
     print("=" * 60)
 
-    dept_list = get_department_list()
+    try:
+        form_html, semester_list, dept_list = load_soc_form(fetch_get, SEARCH)
+    except Exception as e:
+        print(f"ERROR: could not load SOC search form: {e}")
+        sys.exit(1)
+
+    sem_codes = [code for code, _ in semester_list]
+    print(f"Semesters from SOC form: {', '.join(f'{c} ({label})' for c, label in semester_list)}")
     print(f"Departments: {len(dept_list)}")
 
-    existing = load_existing()
-    new_semesters_seen = []
     timestamp = datetime.now(timezone.utc).isoformat()
+    scraped_semesters: dict = {}
+    new_semesters_seen = []
 
-    for sem in SEMESTERS_TO_TRY:
-        courses, summary = scrape_semester(sem, dept_list)
+    for sem_code, sem_label in semester_list:
+        courses, summary = scrape_semester(sem_code, dept_list)
         if courses is None:
+            print(f"  Skipped {sem_code} — no schedule data yet.")
             continue
 
-        was_new = sem not in existing.get('semesters', {})
-        existing.setdefault('semesters', {})[sem] = {
+        scraped_semesters[sem_code] = {
             'courses': courses,
             'department_summary': summary,
             'scraped_at': timestamp,
+            'semester_label': sem_label,
             'total_courses': len(courses),
             'total_sections': sum(len(c['sections']) for c in courses),
         }
-        if was_new:
-            new_semesters_seen.append(sem)
-            print(f"  * NEW semester detected: {sem}")
+        new_semesters_seen.append(sem_code)
 
+    if not scraped_semesters:
+        print("\nNo valid data scraped for any semester on the SOC form. Aborting write.")
+        sys.exit(1)
+
+    existing = {
+        'metadata': {},
+        'semesters': scraped_semesters,
+    }
     existing['metadata'] = {
         'source': 'Carnegie Mellon University -- Schedule of Classes',
-        'url': BASE,
+        'url': SEARCH,
         'last_scrape': timestamp,
-        'semesters_available': sorted(existing.get('semesters', {}).keys()),
+        'semesters_on_form': [{'code': c, 'label': l} for c, l in semester_list],
+        'semesters_available': sorted(scraped_semesters.keys()),
         'campuses': [name for _, name in LOCATIONS_TO_SCRAPE],
-        'note': 'Courses are tagged by campus; sections also carry a campus field.',
+        'note': 'Scraped every semester listed on the SOC form for Pittsburgh (PIT) and Qatar (DOH).',
     }
-
-    if not existing.get('semesters'):
-        print("\nNo valid data scraped. Aborting write.")
-        sys.exit(1)
 
     os.makedirs(os.path.dirname(OUTPUT_PATH) or ".", exist_ok=True)
     with open(OUTPUT_PATH, 'w') as f:
@@ -322,7 +289,7 @@ def main():
     print(f"  Wrote {OUTPUT_PATH} ({size_mb:.2f} MB)")
     print(f"  Semesters: {', '.join(sorted(existing['semesters'].keys()))}")
     if new_semesters_seen:
-        print(f"  NEW THIS RUN: {', '.join(new_semesters_seen)}")
+        print(f"  Scraped: {', '.join(new_semesters_seen)}")
 
 
 if __name__ == '__main__':

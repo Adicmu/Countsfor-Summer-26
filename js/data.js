@@ -515,7 +515,11 @@ const MODALITY_OPTIONS = [
 
 function semesterLabel(code) {
   const hit = SEMESTER_OPTIONS.find(s => s.code === code);
-  return hit ? hit.label : code;
+  if (hit) return hit.label;
+  if (!code || code.length < 3) return code || '';
+  const seasonMap = { F: 'Fall', S: 'Spring', M: 'Summer', N: 'Fall mini' };
+  const season = seasonMap[code[0]] || code[0];
+  return `${season} 20${code.slice(1)}`;
 }
 
 function getCourseOfferings(course) {

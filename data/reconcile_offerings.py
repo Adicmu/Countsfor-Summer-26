@@ -33,9 +33,10 @@ def _save_json(path: str, data) -> None:
         f.write("\n")
 
 
-def offerings_from_soc(soc: dict) -> dict[str, list[dict]]:
-    """course_code -> list of offering dicts across all semesters."""
+def offerings_from_soc(soc: dict) -> tuple[dict[str, list[dict]], dict[str, dict]]:
+    """course_code -> offerings and course_code -> SOC metadata across all semesters."""
     by_code: dict[str, list[dict]] = {}
+    meta_by_code: dict[str, dict] = {}
     semesters = soc.get("semesters") or {}
 
     for sem_code, sem_data in semesters.items():
@@ -44,6 +45,11 @@ def offerings_from_soc(soc: dict) -> dict[str, list[dict]]:
             code = course_number_to_code(num)
             title = course.get("title") or ""
             units = course.get("units")
+            meta_by_code[code] = {
+                "title": title,
+                "units": units,
+                "department": course.get("department") or course.get("department_code"),
+            }
             for section in course.get("sections") or []:
                 off = build_offering(
                     semester_code=sem_code,
@@ -53,7 +59,7 @@ def offerings_from_soc(soc: dict) -> dict[str, list[dict]]:
                 off["campus"] = apply_campus_fix(num, title, off.get("campus"))
                 if off["campus"]:
                     by_code.setdefault(code, []).append(off)
-    return by_code
+    return by_code, meta_by_code
 
 
 def campus_flags_from_offerings(offerings: list[dict]) -> tuple[bool, bool]:
@@ -97,6 +103,37 @@ def reconcile_course(course: dict, offerings: list[dict]) -> None:
     ]
 
 
+def stub_course_from_soc(code: str, offerings: list[dict], meta: dict | None = None) -> dict:
+    """Minimal course row for SOC-only courses not yet in the catalog."""
+    prefix = code.split("-")[0]
+    units_raw = (meta or {}).get("units") or (offerings[0].get("units") if offerings else "")
+    try:
+        units = int(units_raw) if str(units_raw).isdigit() else 0
+    except (TypeError, ValueError):
+        units = 0
+    title = (meta or {}).get("title") or code
+    sem_codes = sorted({o.get("semester_code") for o in offerings if o.get("semester_code")})
+    course = {
+        "course_code": code,
+        "course_name": title,
+        "department": prefix.lstrip("0") or prefix,
+        "units": units,
+        "description": "",
+        "prerequisites": "",
+        "offered": sem_codes,
+        "offered_qatar": False,
+        "offered_pitts": False,
+        "requirements": {"CS": [], "IS": [], "BA": [], "BS": []},
+        "soc_sections": [],
+        "offerings": [],
+        "soc_title": title,
+        "soc_department": (meta or {}).get("department"),
+        "soc_ingested": True,
+    }
+    reconcile_course(course, offerings)
+    return course
+
+
 def reconcile_file(courses_path: str, soc_path: str) -> dict:
     soc = _load_json(soc_path)
     data = _load_json(courses_path)
@@ -107,8 +144,11 @@ def reconcile_file(courses_path: str, soc_path: str) -> dict:
         courses = data["courses"]
         wrapper = data
 
-    by_code = offerings_from_soc(soc)
+    by_code, meta_by_code = offerings_from_soc(soc)
+    existing_codes = {c.get("course_code") for c in courses}
     updated = 0
+    added = 0
+
     for course in courses:
         code = course.get("course_code")
         offs = by_code.get(code, [])
@@ -121,8 +161,19 @@ def reconcile_file(courses_path: str, soc_path: str) -> dict:
         ):
             updated += 1
 
+    for code, offs in sorted(by_code.items()):
+        if code in existing_codes:
+            continue
+        courses.append(stub_course_from_soc(code, offs, meta_by_code.get(code)))
+        existing_codes.add(code)
+        added += 1
+
     _save_json(courses_path, wrapper if wrapper is not None else courses)
-    return {"courses_updated": updated, "offerings_courses": len(by_code)}
+    return {
+        "courses_updated": updated,
+        "courses_added": added,
+        "offerings_courses": len(by_code),
+    }
 
 
 def main():

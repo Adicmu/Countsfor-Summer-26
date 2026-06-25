@@ -40,3 +40,31 @@ def test_modality_hybrid():
 
 def test_modality_in_person():
     assert normalize_modality("In-person Expectation") == "In Person"
+
+
+def test_department_list_parses_soc_form():
+    from soc_departments import parse_department_list
+
+    html = """
+    <select name="DEPT">
+      <option value="All">All Departments</option>
+      <option value="BUS">Business Administration (70XXX)</option>
+      <option value="S3D">Software & Societal Systems (17XXX)</option>
+    </select>
+    """
+    depts = parse_department_list(html)
+    assert depts == [("BUS", "Business Administration"), ("S3D", "Software & Societal Systems")]
+
+
+def test_semester_list_parses_soc_form():
+    from soc_departments import parse_semester_list
+
+    html = """
+    <select name="SEMESTER" class="form-control">
+      <option value="F26">Fall 2026</option>
+      <option value="M26">Summer 2026</option>
+      <option value="S26">Spring 2026</option>
+    </select>
+    """
+    sems = parse_semester_list(html)
+    assert sems == [("F26", "Fall 2026"), ("M26", "Summer 2026"), ("S26", "Spring 2026")]
