@@ -32,8 +32,8 @@ CREATE TABLE IF NOT EXISTS flags (
   course_code         TEXT    NOT NULL,
   course_name         TEXT    NOT NULL,
   reason_code         TEXT    NOT NULL,
-  -- one of: not_offered, campus_wrong, metadata_outdated, prereq_wrong,
-  -- requirement_mismatch, should_be_equivalent, wrong_semester,
+  -- one of: gened_not_counting, not_offered, campus_wrong, metadata_outdated,
+  -- prereq_wrong, requirement_mismatch, should_be_equivalent, wrong_semester,
   -- restrictions_missing, duplicate, other
   reason_label        TEXT    NOT NULL,              -- human-readable copy at submit time
   notes               TEXT,                          -- optional context

@@ -35,6 +35,19 @@ def test_professor_can_flag(client, professor):
     assert body["status"] == "pending"
 
 
+def test_gened_not_counting_reason_accepted(client, professor):
+    """The gen-ed review category (Houda's ask) is a valid reason_code."""
+    login(client, professor)
+    payload = dict(
+        VALID_FLAG,
+        reason_code="gened_not_counting",
+        reason_label="Course does not count for a Gen-Ed it is listed under — needs review",
+    )
+    r = client.post("/api/flags", json=payload)
+    assert r.status_code == 201, r.get_json()
+    assert r.get_json()["reason_code"] == "gened_not_counting"
+
+
 def test_area_head_can_flag(client, area_head):
     login(client, area_head)
     r = client.post("/api/flags", json=VALID_FLAG)

@@ -16,6 +16,7 @@ from .permissions import require_role, FACULTY_OR_ADMIN
 bp = Blueprint("flags", __name__, url_prefix="/api/flags")
 
 VALID_REASON_CODES = {
+    "gened_not_counting",
     "not_offered",
     "campus_wrong",
     "metadata_outdated",

@@ -60,6 +60,29 @@ def _sync_admin_flag(user: User, email: str) -> None:
         user.is_admin = True
 
 
+# Faculty role tier a roster member may self-assign in the one-time popup.
+# The precise sub-role (Area Head vs Associate Area Head, etc.) is the user's
+# to refine — roster membership is the gate, not which faculty role they pick.
+ROSTER_FACULTY_ROLES = {"professor", "area_head", "associate_area_head", "advisor"}
+
+
+def _roster_eligible_roles(email: str) -> set[str]:
+    """Faculty roles this email is allowed to self-assign. Non-empty only for
+    emails present in the faculty roster (seed_users.json). This is the
+    anti-misuse gate: a student not on the roster can never become faculty."""
+    if _load_seed_users().get((email or "").lower()):
+        return set(ROSTER_FACULTY_ROLES)
+    return set()
+
+
+def _public_user(user: User) -> dict:
+    """User's own profile for the client, plus whether they're roster-eligible
+    faculty (drives the one-time role popup branch on the frontend)."""
+    data = user.to_public_dict()
+    data["faculty_eligible"] = bool(_roster_eligible_roles(user.email))
+    return data
+
+
 def _write_session(user: User) -> None:
     session.permanent = True
     session["uid"] = user.id
@@ -145,17 +168,19 @@ def google_signin():
 
     from datetime import datetime, timezone
     user.last_login = datetime.now(timezone.utc)
-    # Seeded faculty and admins arrive with a complete profile — mark them
-    # complete so they skip onboarding entirely (faculty roles aren't
-    # self-selected, so there's nothing for them to fill in). Never un-set a
-    # previously-completed profile.
-    if user.profile_is_complete():
+    # Admins are scoped server-side and have nothing to fill in, so they skip
+    # onboarding. Everyone else — including roster faculty (whose role/program
+    # are pre-filled from the seed) — passes through the one-time role popup
+    # once so they can confirm/refine their role (e.g. declare "associate area
+    # head"). The popup sets profile_completed via PATCH /api/me. We never
+    # un-set a previously-completed profile.
+    if user.role == "admin":
         user.profile_completed = True
 
     db.session.commit()
 
     _write_session(user)
-    return jsonify(user.to_public_dict())
+    return jsonify(_public_user(user))
 
 
 # ── Logout ───────────────────────────────────────────────────
@@ -171,7 +196,7 @@ def me():
     user = current_user()
     if not user:
         return jsonify(error="unauthenticated", message="Not signed in."), 401
-    return jsonify(user.to_public_dict())
+    return jsonify(_public_user(user))
 
 
 # ── PATCH /api/me — profile completion / edit ────────────────
@@ -294,8 +319,12 @@ def update_me():
                     message="Admin role is managed via the ADMIN_EMAILS env var.",
                 ), 400
         else:
-            if new_role not in SELF_SETTABLE_ROLES:
-                return jsonify(error="invalid_role", message=f"You can't set your own role to '{new_role}'. Faculty roles are assigned by an admin."), 400
+            # Students self-assign student; roster faculty may additionally
+            # self-assign a faculty role via the one-time popup. Off-roster
+            # users can never pick a faculty role (privilege-escalation gate).
+            self_settable = SELF_SETTABLE_ROLES | _roster_eligible_roles(user.email)
+            if new_role not in self_settable:
+                return jsonify(error="invalid_role", message=f"You can't set your own role to '{new_role}'. Faculty roles are assigned from the faculty roster or by an admin."), 400
 
     err = _validate_consistent_profile(new_role, new_primary, new_minor, new_advisor_scope)
     if err:
@@ -314,4 +343,4 @@ def update_me():
     user.profile_completed = user.profile_is_complete()
     db.session.commit()
     _write_session(user)
-    return jsonify(user.to_public_dict())
+    return jsonify(_public_user(user))

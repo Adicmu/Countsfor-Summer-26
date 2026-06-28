@@ -256,27 +256,96 @@ def test_admin_skips_onboarding(client):
     assert body["profile_completed"] is True
 
 
-def test_seed_user_recognized_as_faculty_on_signin(tmp_path):
-    """A seeded email is recognized as faculty on first login and lands in the
-    app (profile complete), instead of self-declaring on the onboarding page."""
+def _seed_config(tmp_path, rows):
     seed = tmp_path / "seed_users.json"
-    seed.write_text(json.dumps([
-        {"email": "hbouamor@andrew.cmu.edu", "name": "Houda Bouamor",
-         "role": "professor", "primary_program": "IS", "department": "Information Systems"},
-    ]))
+    seed.write_text(json.dumps(rows))
 
     class SeedConfig(TestConfig):
         SEED_USERS_PATH = str(seed)
 
-    app = create_app(SeedConfig)
+    return SeedConfig
+
+
+_HOUDA_SEED = {
+    "email": "hbouamor@andrew.cmu.edu", "name": "Houda Bouamor",
+    "role": "professor", "primary_program": "IS", "department": "Information Systems",
+}
+
+
+def test_seed_user_recognized_but_sees_onboarding_once(tmp_path):
+    """A seeded email is recognized as faculty (role/program pre-filled) but is
+    NOT auto-completed — they pass through the one-time role popup once so they
+    can confirm/refine their role (e.g. declare 'associate area head')."""
+    app = create_app(_seed_config(tmp_path, [_HOUDA_SEED]))
     with app.test_client() as c:
         with patch("backend.auth.id_token.verify_oauth2_token",
                    return_value=_fake("hbouamor@andrew.cmu.edu", "g-houda")):
             r = c.post("/api/auth/google", json={"credential": "stub"})
     body = r.get_json()
-    assert body["role"] == "professor"
-    assert body["primary_program"] == "IS"
+    assert body["role"] == "professor"          # pre-filled from seed
+    assert body["primary_program"] == "IS"      # pre-filled from seed
+    assert body["profile_completed"] is False   # still sees the popup once
+    assert body["faculty_eligible"] is True
+
+
+def test_faculty_eligible_flag_in_me(tmp_path):
+    """/api/me exposes faculty_eligible: True for a roster email, False otherwise."""
+    app = create_app(_seed_config(tmp_path, [_HOUDA_SEED]))
+    with app.test_client() as c:
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake("hbouamor@andrew.cmu.edu", "g-houda")):
+            c.post("/api/auth/google", json={"credential": "stub"})
+        assert c.get("/api/me").get_json()["faculty_eligible"] is True
+    with app.test_client() as c2:
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake("rando@andrew.cmu.edu", "g-rando")):
+            c2.post("/api/auth/google", json={"credential": "stub"})
+        me = c2.get("/api/me").get_json()
+        assert me["faculty_eligible"] is False
+        assert me["role"] == "student"
+
+
+def test_roster_user_can_self_assign_faculty_role(tmp_path):
+    """A roster email may self-assign a faculty role via the one-time popup —
+    including a role different from the seed default (associate area head)."""
+    app = create_app(_seed_config(tmp_path, [_HOUDA_SEED]))
+    with app.test_client() as c:
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake("hbouamor@andrew.cmu.edu", "g-houda")):
+            c.post("/api/auth/google", json={"credential": "stub"})
+        r = c.patch("/api/me", json={"role": "associate_area_head", "primary_program": "IS"})
+    assert r.status_code == 200, r.get_json()
+    body = r.get_json()
+    assert body["role"] == "associate_area_head"
     assert body["profile_completed"] is True
+
+
+def test_non_roster_cannot_self_assign_faculty(tmp_path):
+    """Even with a roster present, an email NOT on it stays student-only —
+    the anti-misuse gate is roster membership, not the UI."""
+    app = create_app(_seed_config(tmp_path, [_HOUDA_SEED]))
+    with app.test_client() as c:
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake("rando@andrew.cmu.edu", "g-rando")):
+            c.post("/api/auth/google", json={"credential": "stub"})
+        r = c.patch("/api/me", json={"role": "professor", "primary_program": "IS"})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "invalid_role"
+
+
+def test_signin_rejects_non_andrew_domain(tmp_path):
+    """With ALLOWED_EMAIL_DOMAIN set (the launch config), a non-andrew Google
+    account is rejected."""
+    class DomConfig(TestConfig):
+        ALLOWED_EMAIL_DOMAIN = "andrew.cmu.edu"
+
+    app = create_app(DomConfig)
+    with app.test_client() as c:
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake("someone@gmail.com", "g-gmail")):
+            r = c.post("/api/auth/google", json={"credential": "stub"})
+    assert r.status_code == 403
+    assert r.get_json()["error"] == "domain_not_allowed"
 
 
 def test_admin_email_overrides_seed_role(tmp_path):

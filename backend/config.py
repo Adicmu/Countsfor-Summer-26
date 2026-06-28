@@ -40,7 +40,7 @@ class Config:
     SESSION_COOKIE_SECURE = IS_PRODUCTION
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "None" if IS_PRODUCTION else "Lax"
-    PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 30  # 30 days
+    PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 180  # ~6 months ("remember me")
 
     # ── Database ──────────────────────────────────────────────
     # Render gives postgres:// — SQLAlchemy 2 wants postgresql://

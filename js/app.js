@@ -236,42 +236,92 @@ const App = {
     isEdit: false,
   },
 
+  // True only for users whose email is on the faculty roster (server sets
+  // `faculty_eligible`). They get the one-time role popup where they confirm /
+  // refine their role. Off-roster users stay student-only — a student can never
+  // self-claim a faculty role (the backend rejects it too).
+  _facultyEligible() {
+    return !!(this.authMode === 'authed' && this.authedUser && this.authedUser.faculty_eligible);
+  },
+
+  // Map a server user object (role/primary_program/minor_code/advisor_scope)
+  // into onboarding state, so the popup opens pre-filled from the seed.
+  _obStateFromServerUser(u, isEdit) {
+    const st = { role: 'student', roleGroup: 'student', facultyGroup: null,
+                 scope: null, primary: null, secondary: null, isEdit: !!isEdit };
+    if (!u) return st;
+    if (u.role === 'professor') {
+      Object.assign(st, { roleGroup: 'faculty', facultyGroup: 'professor', role: 'professor', primary: u.primary_program || null });
+    } else if (u.role === 'area_head' || u.role === 'associate_area_head') {
+      Object.assign(st, { roleGroup: 'faculty', facultyGroup: 'area_lead', role: u.role, primary: u.primary_program || null });
+    } else if (u.role === 'advisor') {
+      const scope = u.advisor_scope || null;
+      Object.assign(st, { roleGroup: 'faculty', facultyGroup: 'advisor', role: 'advisor', scope,
+                          primary: scope === 'minor' ? (u.minor_code || null) : (u.primary_program || null) });
+    } else if (u.role === 'student') {
+      Object.assign(st, { primary: u.primary_program || null, secondary: u.minor_code || null });
+    }
+    return st;
+  },
+
   renderOnboarding(isEdit) {
-    // Self-service onboarding is STUDENT-ONLY. Faculty/staff roles come from
-    // the seed file or an admin (users.py), never self-selection — so a
-    // student can't claim to be faculty. Rostered/seeded faculty and admins
-    // arrive with a complete profile and skip this screen entirely; editRole()
-    // also blocks them.
-    const p = this.profile;
-    const keepStudent = !!(p && p.role === 'student');
-    this._onboardingState = {
-      role:         'student',
-      roleGroup:    'student',
-      facultyGroup: null,
-      scope:        null,
-      primary:      keepStudent ? p.primary : null,
-      secondary:    keepStudent ? p.secondary : null,
-      isEdit: !!isEdit,
-    };
+    // Roster-gated one-time role popup. Faculty roles are selectable ONLY for
+    // roster-eligible users (server `faculty_eligible`); their server profile
+    // (seed defaults) pre-fills the popup so it reads as a confirmation. They
+    // can switch the precise role (e.g. declare "associate area head") or pick
+    // Student. Off-roster users keep the student-only major/minor flow.
+    if (this._facultyEligible()) {
+      this._onboardingState = this._obStateFromServerUser(this.authedUser, !!isEdit);
+    } else {
+      const p = this.profile;
+      const keepStudent = !!(p && p.role === 'student');
+      this._onboardingState = {
+        role:         'student',
+        roleGroup:    'student',
+        facultyGroup: null,
+        scope:        null,
+        primary:      keepStudent ? p.primary : null,
+        secondary:    keepStudent ? p.secondary : null,
+        isEdit: !!isEdit,
+      };
+    }
     this._renderOnboardingScreen();
   },
 
   _renderOnboardingScreen() {
     const s = this._onboardingState;
+    const eligible = this._facultyEligible();
+    const isStudentMode = s.roleGroup === 'student';
+    const isAdvisor = s.facultyGroup === 'advisor';
 
-    // Self-service onboarding is student-only (see renderOnboarding): always
-    // show the major picker, and the minor picker once a major is chosen.
-    const majorSel       = (m) => s.primary === m ? 'selected' : '';
+    const majorSel = (m) => s.primary === m ? 'selected' : '';
 
-    const showMajorPicker = true;
-    const showASOption    = false;             // students never pick Arts & Sciences
-    const showMinorSelect = !!s.primary;
+    // ── Which pickers to show, by role ────────────────────────
+    let showMajorPicker = false, showASOption = false, showMinorSelect = false;
+    let majorLabel = 'PROGRAM';
+    if (isStudentMode) {
+      showMajorPicker = true;
+      showASOption    = false;             // students never pick Arts & Sciences
+      showMinorSelect = !!s.primary;
+      majorLabel      = 'MAJORING IN';
+    } else if (s.facultyGroup === 'professor' || s.facultyGroup === 'area_lead') {
+      showMajorPicker = !!s.role;          // wait for sub-role before asking program
+      showASOption    = true;              // faculty may oversee/teach Arts & Sciences
+      majorLabel      = this._majorSectionLabel(s.role);
+    } else if (isAdvisor) {
+      if (s.scope === 'major') {
+        showMajorPicker = true; showASOption = false; majorLabel = 'I ADVISE STUDENTS IN';
+      } else if (s.scope === 'minor') {
+        showMinorSelect = true;
+      }
+      // arts_sciences / all_programs scopes need no target picker.
+    }
 
-    // Validation — drives Continue button enablement.
+    // ── Validation drives the Continue button ─────────────────
     const candidate = {
       role: s.role,
       primary: s.primary,
-      secondary: s.roleGroup === 'student' ? s.secondary : null,
+      secondary: isStudentMode ? s.secondary : null,
       scope: s.scope,
     };
     const valid = !!s.role && validateProfile(candidate);
@@ -279,6 +329,42 @@ const App = {
     const cancelHtml = s.isEdit
       ? '<button class="onboarding-cancel" onclick="App._cancelOnboarding()">Cancel</button>'
       : '';
+
+    // ── Role / faculty pickers (roster-eligible users only) ───
+    const section = (label, inner) => `
+      <div class="ob-section">
+        <div class="ob-section-label">${label}</div>
+        <div class="ob-row-majors">${inner}</div>
+      </div>`;
+    const chip = (selected, onclick, label, sub) =>
+      `<button class="ob-pill ${selected ? 'selected' : ''}" onclick="${onclick}">${label}${sub ? `<span class="ob-pill-sub">${sub}</span>` : ''}</button>`;
+
+    let rolePickerHtml = '';
+    if (eligible) {
+      rolePickerHtml += section('I AM A',
+        chip(s.roleGroup === 'student', "App._obPickRoleGroup('student')", 'Student', 'Browse my major &amp; minor') +
+        chip(s.roleGroup === 'faculty', "App._obPickRoleGroup('faculty')", 'Faculty / Staff', 'Professor, area head, advisor'));
+
+      if (s.roleGroup === 'faculty') {
+        rolePickerHtml += section('MY ROLE',
+          chip(s.facultyGroup === 'professor', "App._obPickFacultyGroup('professor')", 'Professor') +
+          chip(s.facultyGroup === 'area_lead', "App._obPickFacultyGroup('area_lead')", 'Area / Associate Area Head') +
+          chip(s.facultyGroup === 'advisor',   "App._obPickFacultyGroup('advisor')", 'Advisor'));
+
+        if (s.facultyGroup === 'area_lead') {
+          rolePickerHtml += section('WHICH ONE',
+            chip(s.role === 'area_head', "App._obPickSubrole('area_head')", 'Area Head') +
+            chip(s.role === 'associate_area_head', "App._obPickSubrole('associate_area_head')", 'Associate Area Head'));
+        }
+        if (isAdvisor) {
+          rolePickerHtml += section('I ADVISE FOR',
+            chip(s.scope === 'major',         "App._obPickScope('major')", 'A major') +
+            chip(s.scope === 'minor',         "App._obPickScope('minor')", 'A minor') +
+            chip(s.scope === 'arts_sciences', "App._obPickScope('arts_sciences')", 'Arts &amp; Sciences') +
+            chip(s.scope === 'all_programs',  "App._obPickScope('all_programs')", 'All programs'));
+        }
+      }
+    }
 
     const majorBtns = MAJOR_LIST.map(p => {
       const pending = isProgramDataPending(p) ? '<span class="ob-pill-pending">data soon</span>' : '';
@@ -294,15 +380,19 @@ const App = {
     // Minor picker — same select used by student and advisor-minor scope
     const minorOptions = MINOR_LIST.map(m => {
       // Only disable matching minor for students (collision rule).
-      const disabled = (s.roleGroup === 'student' && MAJOR_TO_MINOR_CODE[s.primary] === m.code) ? 'disabled' : '';
-      const value = s.roleGroup === 'student' ? s.secondary : s.primary;
+      const disabled = (isStudentMode && MAJOR_TO_MINOR_CODE[s.primary] === m.code) ? 'disabled' : '';
+      const value = isStudentMode ? s.secondary : s.primary;
       const sel = value === m.code ? 'selected' : '';
       return `<option value="${m.code}" ${disabled} ${sel}>${esc(m.label)}</option>`;
     }).join('');
 
     const minorOnChange = 'App._obPickMinor(this.value)';
 
-    const majorLabel = 'MAJORING IN';
+    const facultyConfirm = eligible && s.roleGroup === 'faculty';
+    const heading = facultyConfirm ? 'Confirm your role.' : 'Tell us about your studies.';
+    const sub = eligible
+      ? "You're on the CMU-Q faculty roster. Confirm your role so we can tailor your view — switch to Student if you're taking courses."
+      : "We'll tailor the curriculum view to your major and minor.";
 
     document.getElementById('app').innerHTML = `
       <div class="onboarding-splash">
@@ -311,8 +401,10 @@ const App = {
           <div class="onboarding-brand">CountsFor</div>
           <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
 
-          <div class="ob-heading">Tell us about your studies.</div>
-          <div class="ob-sub">We'll tailor the curriculum view to your major and minor. Faculty &amp; staff are recognized automatically when they sign in.</div>
+          <div class="ob-heading">${heading}</div>
+          <div class="ob-sub">${sub}</div>
+
+          ${rolePickerHtml}
 
           ${showMajorPicker ? `
             <div class="ob-section">
@@ -324,10 +416,10 @@ const App = {
 
           ${showMinorSelect ? `
             <div class="ob-section">
-              <div class="ob-section-label">${s.roleGroup === 'student' ? 'WITH A MINOR IN <span class="ob-optional">— optional</span>' : 'WHICH MINOR'}</div>
+              <div class="ob-section-label">${isStudentMode ? 'WITH A MINOR IN <span class="ob-optional">— optional</span>' : 'WHICH MINOR'}</div>
               <div class="ob-select-wrap">
                 <select class="ob-select" onchange="${minorOnChange}">
-                  <option value="" ${(s.roleGroup === 'student' ? !s.secondary : !s.primary) ? 'selected' : ''}>— ${s.roleGroup === 'student' ? 'No minor' : 'Choose a minor'} —</option>
+                  <option value="" ${(isStudentMode ? !s.secondary : !s.primary) ? 'selected' : ''}>— ${isStudentMode ? 'No minor' : 'Choose a minor'} —</option>
                   ${minorOptions}
                 </select>
               </div>
@@ -512,25 +604,49 @@ const App = {
       ? `<div class="auth-warning">⚠ Could not reach the sign-in server. Wait ~30s and refresh (free tier may be waking up).</div>`
       : '';
     document.getElementById('app').innerHTML = `
-      <div class="onboarding-splash">
-        <div class="onboarding-card auth-card">
-          <img class="onboarding-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" />
-          <div class="onboarding-brand">CountsFor</div>
-          <div class="onboarding-brand-sub">CMU-Q Curriculum Explorer</div>
+      <div class="onboarding-splash cf-landing">
+        <div class="cf-landing-grid">
+          <section class="cf-landing-hero">
+            <div class="cf-landing-brandrow">
+              <img class="cf-landing-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" />
+              <span class="cf-landing-eyebrow">Carnegie Mellon University · Qatar</span>
+            </div>
+            <h1 class="cf-landing-title">CountsFor</h1>
+            <p class="cf-landing-tagline">Navigate the CMU-Q curriculum. Browse courses, understand requirements, and see how every course counts — for students, advisors, and faculty alike.</p>
 
-          <div class="ob-heading">Sign in to continue.</div>
-          <div class="ob-sub">Sign in with your CMU Google account. Your role and major sync across devices, and faculty-only tools stay properly gated.</div>
+            <div class="cf-landing-motif" aria-hidden="true">
+              <span class="cf-motif-course">15-112</span>
+              <span class="cf-motif-arrow"></span>
+              <span class="cf-motif-tags">
+                <span class="cf-motif-tag">CS Core</span>
+                <span class="cf-motif-tag">IS Requirement</span>
+                <span class="cf-motif-tag">BA Elective</span>
+              </span>
+            </div>
 
-          ${missingClient}
-          ${backendWarn}
-          <div id="cfGoogleBtn" class="auth-google-mount"></div>
+            <ul class="cf-landing-features">
+              <li><span class="cf-feat-k">Browse</span> every course across CS, IS, BA, BS and more.</li>
+              <li><span class="cf-feat-k">Understand</span> what each course counts for in your program.</li>
+              <li><span class="cf-feat-k">Flag</span> outdated data — faculty help keep the catalog accurate.</li>
+            </ul>
+          </section>
 
-          <div class="auth-note">Only verified Google accounts are accepted. We never see your password.</div>
+          <section class="cf-landing-panel auth-card">
+            <div class="ob-heading">Sign in to continue.</div>
+            <div class="ob-sub">Use your CMU Google account. Your role and major sync across devices, and faculty tools stay properly gated.</div>
 
-          <div class="onboarding-institutional">
-            <span class="onboarding-institutional-label">An initiative of</span>
-            <img class="onboarding-cmuq" src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University Qatar" />
-          </div>
+            ${missingClient}
+            ${backendWarn}
+            <div id="cfGoogleBtn" class="auth-google-mount"></div>
+            <button class="auth-guest-btn" onclick="App.enterGuest()">Continue as guest</button>
+
+            <div class="auth-note">Only verified <strong>@andrew.cmu.edu</strong> accounts are accepted. We never see your password. You'll stay signed in on this device.</div>
+
+            <div class="onboarding-institutional">
+              <span class="onboarding-institutional-label">An initiative of</span>
+              <img class="onboarding-cmuq" src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University Qatar" />
+            </div>
+          </section>
         </div>
       </div>
     `;
@@ -613,6 +729,32 @@ const App = {
     this.renderLogin();
   },
 
+  // ── Guest / demo mode ─────────────────────────────────────
+  // A read-only browse for stakeholders who won't register (e.g. a Dean
+  // reviewing the work). No backend account, no flagging, no saved courses —
+  // just the curriculum, with a banner inviting them to sign in.
+  _isGuest() {
+    return this.authMode === 'guest';
+  },
+  // Personal "save course" features require a real signed-in student.
+  _canSave() {
+    return !this._isGuest() && isStudent(this.profile);
+  },
+  enterGuest() {
+    this.authMode = 'guest';
+    this.authedUser = null;
+    // A sensible default browse profile; guests can switch majors freely.
+    this.profile = { role: 'student', primary: 'CS', secondary: null, scope: null };
+    this.selectedCourse = null;
+    this._afterAuthed();   // _syncLocalToServer no-ops for non-authed modes
+  },
+  exitGuest() {
+    this.authMode = 'login';
+    this.profile = null;
+    this.selectedCourse = null;
+    this.renderLogin();
+  },
+
   _cancelOnboarding() {
     if (!this._onboardingState.isEdit) return;  // not allowed during first-run
     this.renderShell();
@@ -624,6 +766,10 @@ const App = {
   _roleBadgeHtml() {
     const p = this.profile;
     if (!p) return '';
+    // Guests get a non-editable badge — no role to change.
+    if (this._isGuest()) {
+      return `<span class="role-badge rb-ah" title="Browsing as a guest"><span class="rb-segment rb-primary">Guest <span class="rb-suffix">· read-only</span></span></span>`;
+    }
     const PROGRAM_LABEL = { CS: 'CS', IS: 'IS', BA: 'BA', BS: 'BS', AI: 'AI', GS: 'GS', AS: 'A&S' };
     const meta = ROLE_META[p.role];
     const roleLabel = meta ? meta.label : p.role;
@@ -718,7 +864,10 @@ const App = {
       showToast('Admin role is managed via the ADMIN_EMAILS env var on the server.');
       return;
     }
-    if (isFaculty(this.profile)) {
+    // Roster-eligible faculty may re-open the popup to change their role
+    // (e.g. professor → associate area head). Faculty assigned off-roster by
+    // an admin can't self-edit — show a notice instead of a failing flow.
+    if (isFaculty(this.profile) && !this._facultyEligible()) {
       showToast('Your role is set by the CountsFor admin. Contact them to change it.');
       return;
     }
@@ -790,8 +939,16 @@ const App = {
           ${(this.authedUser && this.authedUser.role === 'admin') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review submitted course flags">Flag review</button>' : ''}
           ${(isFaculty(this.profile) && this.authMode === 'authed' && !(this.authedUser && this.authedUser.role === 'admin')) ? '<button class="nav-admin" onclick="App.showMyFlagsView(\'pending\')" title="See the status of course issues you reported">My flags</button>' : ''}
           ${this.authMode === 'authed' ? '<button class="nav-signout" onclick="App.signOut()" title="Sign out" aria-label="Sign out">Sign out</button>' : ''}
+          ${this._isGuest() ? '<button class="nav-signout" onclick="App.exitGuest()" title="Sign in">Sign in</button>' : ''}
         </div>
       </nav>
+
+      ${this._isGuest() ? `
+        <div class="cf-guest-banner" role="status">
+          <span class="cf-guest-banner-text">You're viewing CountsFor as a guest. Sign in with your <strong>@andrew.cmu.edu</strong> account to save courses and flag issues.</span>
+          <button class="cf-guest-banner-btn" onclick="App.exitGuest()">Sign in</button>
+        </div>
+      ` : ''}
 
       <div class="mobile-lens-toggle ${isSplit?'split-active':''}" id="mobileLensToggle">
         <button class="mobile-lens-btn ${this.mobileLens==='lookup'?'active':''}" onclick="App.setMobileLens('lookup')">🔍 Course Lookup</button>
@@ -1373,7 +1530,7 @@ const App = {
   },
 
   _navbarWishlistHtml() {
-    if (!isStudent(this.profile)) return '';
+    if (!this._canSave()) return '';
     const count = this._getWishlist().length;
     const countChip = count > 0 ? `<span class="nav-wish-count">${count}</span>` : '';
     const label = count > 0 ? 'Saved' : 'Save courses';
@@ -1403,7 +1560,7 @@ const App = {
   },
 
   _renderWishlistEntry() {
-    if (!isStudent(this.profile)) return '';
+    if (!this._canSave()) return '';
     const count = this._getWishlist().length;
     const subtext = count === 0
       ? 'Tap the bookmark on any course to add it here.'
@@ -1994,7 +2151,7 @@ const App = {
   // stays one click away for the relevant audience.
   _renderRowActions(course) {
     const acts = [];
-    if (isStudent(this.profile)) {
+    if (this._canSave()) {
       const saved = this._isInWishlist(course.course_code);
       acts.push(`<button class="tr-leaf-action tr-leaf-wishlist ${saved ? 'is-saved' : ''}" data-action="wishlist" data-course-code="${esc(course.course_code)}" title="${saved ? 'Remove from wishlist' : 'Save for later'}" aria-label="${saved ? 'Remove from wishlist' : 'Save for later'}">${saved ? this._iconBookmarkFilled() : this._iconBookmarkOutline()}</button>`);
     }
@@ -2022,7 +2179,7 @@ const App = {
 
   _renderCardActions(course) {
     const parts = [];
-    if (isStudent(this.profile)) {
+    if (this._canSave()) {
       const saved = this._isInWishlist(course.course_code);
       parts.push(`
         <button class="cc-action cc-action-wishlist ${saved ? 'is-saved' : ''}" data-action="wishlist" data-course-code="${esc(course.course_code)}" aria-label="${saved ? 'Remove from saved courses' : 'Save this course for later'}">
@@ -2122,6 +2279,10 @@ const App = {
   },
 
   async toggleWishlist(code) {
+    if (this._isGuest()) {
+      showToast('Sign in with your @andrew.cmu.edu account to save courses.');
+      return;
+    }
     if (!isStudent(this.profile)) {
       showToast('Wishlist is available to students only.');
       return;
@@ -2223,6 +2384,7 @@ const App = {
   // Reasons are codified so admin review tooling can group/filter later.
 
   FLAG_REASONS: [
+    { code: 'gened_not_counting', label: 'Course does not count for a Gen-Ed it is listed under — needs review', hint: 'e.g. should be approved for the IS Gen-Ed, or no longer counts for any Gen-Ed.' },
     { code: 'not_offered',         label: 'Course is no longer offered' },
     { code: 'campus_wrong',        label: 'Course campus availability is incorrect',         hint: 'Listed for the wrong campus (Doha / Pittsburgh).' },
     { code: 'metadata_outdated',   label: 'Course title, number, or units are outdated' },
