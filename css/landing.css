@@ -66,40 +66,43 @@ body::before{
   min-height: 100vh;
   min-height: 100dvh;
   display: flex;
+  flex-direction: column;
   justify-content: center;
-  align-items: flex-start;
-  padding: 40px 16px 56px;
+  align-items: center;
+  padding-block: clamp(20px, 4vh, 56px);
+  padding-inline: 16px;
 }
 
 .landing-page__inner {
   width: 100%;
   max-width: 560px;
+  flex-shrink: 1;
 }
 
 /* ── Brand block ──────────────────────────────────────────── */
 
 .landing-brand {
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: clamp(16px, 3vh, 30px);
 }
 
 .landing-brand__scotty {
   display: block;
-  width: 96px;
-  height: auto;
-  margin: 0 auto 10px;
+  width: auto;
+  height: clamp(64px, 9vh, 96px);
+  margin: 0 auto 12px;
 }
 
 .landing-brand__rule {
   width: 64px;
   height: 3px;
-  margin: 0 auto 18px;
+  margin: 0 auto 14px;
   border: none;
   background: var(--cf-red);
 }
 
 .landing-brand__eyebrow {
-  margin: 0 0 10px;
+  margin: 0 0 12px;
   font-family: "JetBrains Mono", ui-monospace, monospace;
   font-size: 11px;
   font-weight: 500;
@@ -110,7 +113,7 @@ body::before{
 
 .landing-brand__wordmark {
   margin: 0 0 12px;
-  font-size: 40px;
+  font-size: clamp(40px, 6vh, 72px);
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.05;
@@ -119,10 +122,10 @@ body::before{
 
 .landing-brand__tagline {
   margin: 0 auto;
-  max-width: 42ch;
-  font-size: 15px;
+  max-width: 46ch;
+  font-size: clamp(14px, 2vh, 16px);
   font-weight: 400;
-  line-height: 1.55;
+  line-height: 1.45;
   color: var(--cf-slate);
 }
 
@@ -137,15 +140,15 @@ body::before{
 }
 
 .landing-card__top {
-  padding: 0 24px;
+  padding: 0 20px;
 }
 
 .landing-card__body {
-  padding: 0 24px 8px;
+  padding: 0 20px 6px;
 }
 
 .landing-card__footer {
-  padding: 16px 24px 20px;
+  padding: 12px 20px 16px;
   border-top: 1px solid var(--cf-line);
   text-align: center;
   font-size: 12px;
@@ -158,14 +161,14 @@ body::before{
 .landing-tabs {
   display: flex;
   border-bottom: 1px solid var(--cf-line);
-  margin: 0 -24px;
-  padding: 0 24px;
+  margin: 0 -20px;
+  padding: 0 20px;
 }
 
 .landing-tab {
   flex: 1;
   margin: 0;
-  padding: 14px 8px 11px;
+  padding: 11px 8px 8px;
   border: none;
   border-bottom: 3px solid transparent;
   background: transparent;
@@ -195,16 +198,16 @@ body::before{
 /* ── Panel head ───────────────────────────────────────────── */
 
 .landing-panel-head {
-  padding: 20px 0 4px;
+  padding: 14px 0 2px;
 }
 
 .landing-panel-head--signin {
-  padding-top: 24px;
+  padding-top: 16px;
 }
 
 .landing-panel-title {
   margin: 0;
-  font-size: 26px;
+  font-size: clamp(22px, 3.2vh, 26px);
   font-weight: 800;
   line-height: 1.2;
   color: var(--cf-black);
@@ -283,7 +286,7 @@ body::before{
   flex-direction: column;
   gap: 0;
   margin: 0;
-  padding: 16px 0 0;
+  padding: 12px 0 0;
 }
 
 .landing-form--scrollable .landing-form-fields {
@@ -296,17 +299,17 @@ body::before{
 .landing-form-fields {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 14px;
 }
 
 .landing-form-actions {
-  padding: 20px 0 8px;
+  padding: 14px 0 4px;
 }
 
 .landing-field-group {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 5px;
 }
 
 .landing-label {
@@ -322,7 +325,8 @@ body::before{
 .landing-input {
   width: 100%;
   margin: 0;
-  padding: 11px 14px;
+  min-height: 46px;
+  padding: 10px 14px;
   border: 1px solid var(--cf-line);
   border-radius: 8px;
   background: var(--cf-card);
@@ -401,6 +405,7 @@ body::before{
 
 .landing-field-msg:empty {
   visibility: hidden;
+  min-height: 0;
 }
 
 .landing-field-msg.is-hint {
@@ -419,7 +424,7 @@ body::before{
 .landing-forgot-row {
   display: flex;
   justify-content: flex-end;
-  margin: -4px 0 4px;
+  margin: -2px 0 2px;
 }
 
 .landing-link-btn {
@@ -453,7 +458,8 @@ body::before{
   gap: 8px;
   width: 100%;
   margin: 0;
-  padding: 13px 20px;
+  min-height: 46px;
+  padding: 12px 20px;
   border: none;
   border-radius: 999px;
   background: var(--cf-red);
@@ -560,16 +566,10 @@ body::before{
 
 /* ── Responsive ───────────────────────────────────────────── */
 
-@media (min-width: 1024px) {
-  .landing-page {
-    align-items: center;
-    padding: 56px 24px 72px;
-  }
-}
-
 @media (max-width: 480px) {
   .landing-page {
-    padding: 28px 16px 40px;
+    justify-content: flex-start;
+    padding-block: 28px 40px;
   }
 
   .landing-brand {
@@ -578,6 +578,10 @@ body::before{
 
   .landing-brand__wordmark {
     font-size: 32px;
+  }
+
+  .landing-brand__scotty {
+    height: clamp(64px, 12vw, 96px);
   }
 
   .landing-card__top,
