@@ -44,9 +44,8 @@ const App = {
     const resetTok = params.get('reset') || '';
     const resetEmail = params.get('email') || '';
     if (resetTok && resetEmail) {
-      this.resetToken = resetTok;
-      this.resetEmail = resetEmail;
-      this.authView = 'reset';
+      location.href = `index.html?reset=${encodeURIComponent(resetTok)}&email=${encodeURIComponent(resetEmail)}`;
+      return;
     }
 
     const me = await apiGetMe();
@@ -56,11 +55,8 @@ const App = {
     }
 
     if (me.status === 0) {
-      // Backend URL is set in index.html — require sign-in, don't silently
-      // fall back to a cached localStorage demo profile.
       if (isBackendConfigured()) {
-        this.authMode = 'login';
-        this.renderLogin({ backendUnreachable: true });
+        location.href = 'index.html';
         return;
       }
       // No backend configured — demo mode preserves the public GH-Pages experience.
@@ -74,9 +70,19 @@ const App = {
       return;
     }
 
-    // 401 / 403 / etc. — show login screen.
-    this.authMode = 'login';
-    this.renderLogin();
+    // 401 / 403 / etc. — send to Heritage landing for sign-in.
+    if (isBackendConfigured()) {
+      location.href = 'index.html';
+      return;
+    }
+
+    this.authMode = 'demo';
+    this.profile = loadProfile();
+    if (!this.profile) {
+      this.renderOnboarding(false);
+      return;
+    }
+    this._afterAuthed();
   },
 
   _afterAuthed() {
@@ -999,7 +1005,7 @@ const App = {
     this.authMode = 'login';
     this.profile = null;
     this.selectedCourse = null;
-    this.renderLogin();
+    location.href = 'index.html';
   },
 
   _cancelOnboarding() {

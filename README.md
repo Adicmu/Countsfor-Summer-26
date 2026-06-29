@@ -102,11 +102,14 @@ You'll see a list of all unit tests with pass/fail status. Currently **26 tests*
 
 ```
 .
-├── index.html                  # Single HTML shell
+├── index.html                  # Heritage landing (sign in / register)
+├── app.html                    # Main app shell (after auth)
 ├── .nojekyll                   # Tells GitHub Pages: skip Jekyll, serve as-is
 ├── css/
+│   ├── landing.css             # Heritage Single landing styles
 │   └── styles.css              # Full design system — onboarding, role badge, course card v2, tree v2
 ├── js/
+│   ├── landing.js              # Landing auth (sign in, register, forgot, reset)
 │   ├── utils.js                # Debounce, HTML escaping, localStorage helpers, toast
 │   ├── data.js                 # Tree builder, requirement parser, annotateDoubleCounters, annotateMultiProgram
 │   ├── profile.js              # Profile state, localStorage, view-mode derivation, validation
@@ -126,7 +129,7 @@ You'll see a list of all unit tests with pass/fail status. Currently **26 tests*
     └── superpowers/plans/      # Implementation plans
 ```
 
-Script load order in `index.html` matters:
+Script load order in `app.html` matters:
 ```
 utils.js → data.js → profile.js → api.js → app.js
 ```

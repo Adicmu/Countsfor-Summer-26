@@ -3,36 +3,42 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="CountsFor — Understand what every CMU-Q course counts for across CS, IS, Business, and Biology majors." />
-  <meta name="theme-color" content="#C41230" />
-  <title>CountsFor — CMU-Q Curriculum Explorer</title>
-  <link rel="icon" type="image/png" href="assets/img/scotty-head.png" />
-  <link rel="apple-touch-icon" href="assets/img/scotty-head.png" />
-  <link rel="stylesheet" href="css/styles.css" />
-  <!--
-    Google OAuth web client ID. Create one at
-    https://console.cloud.google.com/apis/credentials and paste the value
-    below. Authorized JavaScript origins must include both the local dev
-    URL (http://localhost:8765) and https://hindjendara.github.io
-  -->
-  <!--
-    After Render deploy, paste your service URL (no trailing slash).
-    Likely: https://countsfor-backend.onrender.com
-  -->
+  <meta name="description" content="CountsFor — See what every CMU-Q course counts for across Computer Science, Information Systems, Business, and Biological Sciences." />
+  <meta name="theme-color" content="#F5F0EA" />
   <meta name="cf-backend-url" content="https://countsfor-summer-26.onrender.com" />
-  <meta name="cf-google-client-id" content="378923997481-bgnvhg3gsgka5ptijjjsb80q4k7kc2vg.apps.googleusercontent.com" />
+  <title>CountsFor — CMU-Q Curriculum Explorer</title>
+  <link rel="icon" type="image/png" href="docs/scotty-standing.png" />
+  <link rel="apple-touch-icon" href="docs/scotty-standing.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/landing.css" />
 </head>
 <body>
-  <div id="app">
-    <div class="empty-state" style="height:100vh">
-      <div class="spinner"></div>
-      <div class="empty-text" style="margin-top:12px">Loading CountsFor…</div>
+  <div class="landing-page wrap">
+    <div class="landing-page__inner">
+      <header class="landing-brand">
+        <img
+          class="landing-brand__scotty"
+          src="docs/scotty-standing.png"
+          alt="Scotty, the Carnegie Mellon University mascot, in profile with a red scarf"
+          width="96"
+          height="96"
+          decoding="async"
+        />
+        <div class="landing-brand__rule" aria-hidden="true"></div>
+        <p class="landing-brand__eyebrow">CMU-Q CURRICULUM EXPLORER</p>
+        <h1 class="landing-brand__wordmark">CountsFor</h1>
+        <p class="landing-brand__tagline">
+          See what every course counts for across Computer Science, Information Systems, Business, and Biological Sciences.
+        </p>
+      </header>
+
+      <main class="landing-card" id="landingCard" aria-live="polite">
+        <!-- Sign in / Create account / Forgot / Reset panels rendered by js/landing.js -->
+      </main>
     </div>
   </div>
-  <script src="js/utils.js"></script>
-  <script src="js/data.js"></script>
-  <script src="js/profile.js"></script>
-  <script src="js/api.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/landing.js"></script>
 </body>
 </html>
