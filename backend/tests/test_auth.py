@@ -128,6 +128,81 @@ def test_patch_me_rejects_student_without_program(client, student):
     assert r.get_json()["error"] == "inconsistent_profile"
 
 
+# ── Multiple minors (students, up to 3) ─────────────────────
+
+def test_patch_me_sets_multiple_minors(client, student):
+    """A student (major CS) can record up to 3 minors; minor_code mirrors the first."""
+    login(client, student)
+    r = client.patch("/api/me", json={"minor_codes": ["math", "history", "writing"]})
+    assert r.status_code == 200, r.get_json()
+    body = r.get_json()
+    assert body["minor_codes"] == ["math", "history", "writing"]
+    assert body["minor_code"] == "math"   # back-compat: first minor
+
+
+def test_me_returns_minor_codes(client, student):
+    login(client, student)
+    client.patch("/api/me", json={"minor_codes": ["history", "math"]})
+    body = client.get("/api/me").get_json()
+    assert body["minor_codes"] == ["history", "math"]
+
+
+def test_patch_me_legacy_single_minor_syncs_list(client, student):
+    """Legacy single minor_code still works and populates minor_codes."""
+    login(client, student)
+    r = client.patch("/api/me", json={"minor_code": "history"})
+    assert r.status_code == 200, r.get_json()
+    body = r.get_json()
+    assert body["minor_code"] == "history"
+    assert body["minor_codes"] == ["history"]
+
+
+def test_patch_me_rejects_too_many_minors(client, student):
+    login(client, student)
+    r = client.patch("/api/me", json={"minor_codes": ["math", "history", "writing", "economics"]})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "invalid_minors"
+
+
+def test_patch_me_rejects_duplicate_minors(client, student):
+    login(client, student)
+    r = client.patch("/api/me", json={"minor_codes": ["math", "math"]})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "invalid_minors"
+
+
+def test_patch_me_rejects_unknown_minor(client, student):
+    login(client, student)
+    r = client.patch("/api/me", json={"minor_codes": ["math", "not_a_minor"]})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "invalid_minors"
+
+
+def test_patch_me_rejects_minor_equal_to_major(client, student):
+    """Student majoring in CS cannot also minor in CS."""
+    login(client, student)  # student fixture is primary_program=CS
+    r = client.patch("/api/me", json={"minor_codes": ["cs", "math"]})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "invalid_minors"
+
+
+def test_patch_me_rejects_minors_for_non_student(client, professor):
+    login(client, professor)
+    r = client.patch("/api/me", json={"minor_codes": ["math"]})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "invalid_minors"
+
+
+def test_patch_me_clearing_minors(client, student):
+    login(client, student)
+    client.patch("/api/me", json={"minor_codes": ["math", "history"]})
+    r = client.patch("/api/me", json={"minor_codes": []})
+    assert r.status_code == 200, r.get_json()
+    body = r.get_json()
+    assert body["minor_codes"] == []
+    assert body["minor_code"] is None
+
+
 def test_patch_me_rejects_advisor_major_scope_without_program(client):
     # Seed a fresh advisor user via session
     from backend.db import db

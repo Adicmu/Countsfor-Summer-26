@@ -207,6 +207,7 @@ ALLOWED_PROFILE_FIELDS = {
     "role",
     "primary_program",
     "minor_code",
+    "minor_codes",
     "advisor_scope",
     "department_scope",
     "department",
@@ -229,6 +230,37 @@ VALID_MINORS_FOR_PATCH = {
     "self_defined", "tech_entre",
 }
 VALID_ADVISOR_SCOPES = {"major", "minor", "arts_sciences", "all_programs"}
+
+# A student may hold several minors, capped to keep the UI / badge sane.
+MAX_MINORS = 3
+# A student can't minor in the same field they major in. Mirrors
+# MAJOR_TO_MINOR_CODE in js/profile.js.
+MAJOR_EQUIVALENT_MINOR = {"CS": "cs", "BS": "biology", "BA": "business"}
+
+
+def _validate_minor_codes(role, primary_program, minor_codes):
+    """Validate a student's list of minors. Returns an error string or None.
+
+    Mirrors the frontend rules: students only, ≤ MAX_MINORS, each a known minor,
+    no duplicates, and none equal to the student's own major field."""
+    if not minor_codes:
+        return None
+    if role != "student":
+        return "Only students can have minors."
+    if not isinstance(minor_codes, list):
+        return "minor_codes must be a list."
+    if len(minor_codes) > MAX_MINORS:
+        return f"At most {MAX_MINORS} minors are allowed."
+    seen = set()
+    for code in minor_codes:
+        if code not in VALID_MINORS_FOR_PATCH:
+            return f"Unknown minor: {code}."
+        if code in seen:
+            return f"Duplicate minor: {code}."
+        seen.add(code)
+        if MAJOR_EQUIVALENT_MINOR.get(primary_program) == code:
+            return f"Cannot minor in '{code}' while majoring in {primary_program}."
+    return None
 
 
 def _validate_consistent_profile(role, primary_program, minor_code, advisor_scope):
@@ -308,8 +340,23 @@ def update_me():
 
     new_role            = _next("role", user.role)
     new_primary         = _next("primary_program", user.primary_program)
-    new_minor           = _next("minor_code", user.minor_code)
     new_advisor_scope   = _next("advisor_scope", user.advisor_scope)
+
+    # Minors. For students, `minor_codes` (a list, ≤ MAX_MINORS) is canonical
+    # and `minor_code` mirrors the first. For non-students the list is empty;
+    # advisor-minor scope still uses the single `minor_code` for its target.
+    if new_role == "student":
+        if "minor_codes" in data:
+            new_minor_codes = data.get("minor_codes") or []
+        elif "minor_code" in data:
+            single = _next("minor_code", None)
+            new_minor_codes = [single] if single else []
+        else:
+            new_minor_codes = user.get_minor_codes()
+        new_minor = new_minor_codes[0] if new_minor_codes else None
+    else:
+        new_minor_codes = []
+        new_minor = _next("minor_code", user.minor_code)
 
     if "role" in data:
         if is_admin:
@@ -326,6 +373,13 @@ def update_me():
             if new_role not in self_settable:
                 return jsonify(error="invalid_role", message=f"You can't set your own role to '{new_role}'. Faculty roles are assigned from the faculty roster or by an admin."), 400
 
+    # Validate what the client actually requested (so a non-student sending
+    # minor_codes is rejected, not silently dropped).
+    minors_to_check = data["minor_codes"] if "minor_codes" in data else new_minor_codes
+    mc_err = _validate_minor_codes(new_role, new_primary, minors_to_check)
+    if mc_err:
+        return jsonify(error="invalid_minors", message=mc_err), 400
+
     err = _validate_consistent_profile(new_role, new_primary, new_minor, new_advisor_scope)
     if err:
         return jsonify(error="inconsistent_profile", message=err), 400
@@ -333,12 +387,21 @@ def update_me():
     # All checks passed — apply the patch.
     if "role" in data and not is_admin:
         user.role = new_role
-    for field in ("name", "primary_program", "minor_code", "advisor_scope", "department_scope", "department"):
+    for field in ("name", "primary_program", "advisor_scope", "department_scope", "department"):
         if field in data:
             value = data[field]
             if value == "":
                 value = None
             setattr(user, field, value)
+
+    # Minors: students store the full list (minor_code mirrors the first);
+    # non-students hold no list but may set the single minor_code (advisor scope).
+    if new_role == "student":
+        user.set_minor_codes(new_minor_codes)
+    else:
+        user.minor_codes = None
+        if "minor_code" in data:
+            user.minor_code = new_minor
 
     user.profile_completed = user.profile_is_complete()
     db.session.commit()

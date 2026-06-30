@@ -78,4 +78,15 @@ def run_migrations() -> list[str]:
         db.session.commit()
         log.append("Backfilled users.profile_completed for existing complete profiles")
 
+    if _add_column_if_missing("users", "minor_codes", "minor_codes TEXT"):
+        log.append("Added users.minor_codes")
+        # Backfill the JSON list from the existing single minor for students who
+        # already have one, so their minor survives the upgrade.
+        db.session.execute(text("""
+            UPDATE users SET minor_codes = '["' || minor_code || '"]'
+            WHERE role = 'student' AND minor_code IS NOT NULL AND minor_code != ''
+        """))
+        db.session.commit()
+        log.append("Backfilled users.minor_codes from existing minor_code")
+
     return log

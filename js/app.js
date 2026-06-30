@@ -146,16 +146,23 @@ const App = {
     if (!u) { this.profile = null; return; }
     const scope = u.advisor_scope || null;
     let primary = u.primary_program || null;
-    let secondary = u.minor_code || null;
+    // Students may have several minors; `secondaries` is canonical, `secondary`
+    // is the first (back-compat). Non-students hold no minor list.
+    let secondaries = (u.role === 'student' && Array.isArray(u.minor_codes))
+      ? u.minor_codes.filter(Boolean)
+      : [];
+    let secondary = secondaries[0] || null;
     // Advisor-minor scope stores the minor code in `primary` (per profile.js).
     if (u.role === 'advisor' && scope === 'minor' && u.minor_code) {
       primary = u.minor_code;
       secondary = null;
+      secondaries = [];
     }
     this.profile = {
       role: u.role,
       primary,
       secondary,
+      secondaries,
       scope,
     };
     // Server is source of truth in authed mode — keep localStorage aligned.
@@ -232,7 +239,7 @@ const App = {
     facultyGroup: null, // 'professor' | 'area_lead' | 'advisor' — under faculty
     scope: null,        // advisor scope: 'major'|'minor'|'arts_sciences'|'all_programs'
     primary: null,
-    secondary: null,
+    secondaries: [],    // student minors (up to MAX_MINORS); advisor-minor uses `primary`
     isEdit: false,
   },
 
@@ -248,7 +255,7 @@ const App = {
   // into onboarding state, so the popup opens pre-filled from the seed.
   _obStateFromServerUser(u, isEdit) {
     const st = { role: 'student', roleGroup: 'student', facultyGroup: null,
-                 scope: null, primary: null, secondary: null, isEdit: !!isEdit };
+                 scope: null, primary: null, secondaries: [], isEdit: !!isEdit };
     if (!u) return st;
     if (u.role === 'professor') {
       Object.assign(st, { roleGroup: 'faculty', facultyGroup: 'professor', role: 'professor', primary: u.primary_program || null });
@@ -259,7 +266,8 @@ const App = {
       Object.assign(st, { roleGroup: 'faculty', facultyGroup: 'advisor', role: 'advisor', scope,
                           primary: scope === 'minor' ? (u.minor_code || null) : (u.primary_program || null) });
     } else if (u.role === 'student') {
-      Object.assign(st, { primary: u.primary_program || null, secondary: u.minor_code || null });
+      const minors = Array.isArray(u.minor_codes) ? u.minor_codes.filter(Boolean) : [];
+      Object.assign(st, { primary: u.primary_program || null, secondaries: minors });
     }
     return st;
   },
@@ -281,7 +289,7 @@ const App = {
         facultyGroup: null,
         scope:        null,
         primary:      keepStudent ? p.primary : null,
-        secondary:    keepStudent ? p.secondary : null,
+        secondaries:  keepStudent ? getProfileMinors(p) : [],
         isEdit: !!isEdit,
       };
     }
@@ -297,13 +305,15 @@ const App = {
     const majorSel = (m) => s.primary === m ? 'selected' : '';
 
     // ── Which pickers to show, by role ────────────────────────
-    let showMajorPicker = false, showASOption = false, showMinorSelect = false;
+    // showMinorSelect = single advisor-minor select; showStudentMinors = the
+    // multi-minor chips UI (students may hold up to MAX_MINORS).
+    let showMajorPicker = false, showASOption = false, showMinorSelect = false, showStudentMinors = false;
     let majorLabel = 'PROGRAM';
     if (isStudentMode) {
-      showMajorPicker = true;
-      showASOption    = false;             // students never pick Arts & Sciences
-      showMinorSelect = !!s.primary;
-      majorLabel      = 'MAJORING IN';
+      showMajorPicker   = true;
+      showASOption      = false;           // students never pick Arts & Sciences
+      showStudentMinors = !!s.primary;
+      majorLabel        = 'MAJORING IN';
     } else if (s.facultyGroup === 'professor' || s.facultyGroup === 'area_lead') {
       showMajorPicker = !!s.role;          // wait for sub-role before asking program
       showASOption    = true;              // faculty may oversee/teach Arts & Sciences
@@ -321,7 +331,7 @@ const App = {
     const candidate = {
       role: s.role,
       primary: s.primary,
-      secondary: isStudentMode ? s.secondary : null,
+      secondaries: isStudentMode ? (s.secondaries || []) : [],
       scope: s.scope,
     };
     const valid = !!s.role && validateProfile(candidate);
@@ -377,16 +387,40 @@ const App = {
       asOptionHtml = `<button class="ob-pill ob-pill-wide ${isASSelected ? 'selected' : ''}" onclick="App._obPickMajor('AS')">Arts &amp; Sciences<span class="ob-pill-sub">Cross-program grouping</span></button>`;
     }
 
-    // Minor picker — same select used by student and advisor-minor scope
+    // Single minor select — advisor-minor scope only.
     const minorOptions = MINOR_LIST.map(m => {
-      // Only disable matching minor for students (collision rule).
-      const disabled = (isStudentMode && MAJOR_TO_MINOR_CODE[s.primary] === m.code) ? 'disabled' : '';
-      const value = isStudentMode ? s.secondary : s.primary;
-      const sel = value === m.code ? 'selected' : '';
-      return `<option value="${m.code}" ${disabled} ${sel}>${esc(m.label)}</option>`;
+      const sel = s.primary === m.code ? 'selected' : '';
+      return `<option value="${m.code}" ${sel}>${esc(m.label)}</option>`;
     }).join('');
-
     const minorOnChange = 'App._obPickMinor(this.value)';
+
+    // Student multi-minor UI: chosen minors as removable chips + an add dropdown.
+    let studentMinorsHtml = '';
+    if (showStudentMinors) {
+      const chosen = s.secondaries || [];
+      const chipsHtml = chosen.map(code => `
+        <span class="ob-minor-chip">
+          ${esc(getMinorLabel(code))}
+          <button type="button" class="ob-minor-remove" aria-label="Remove ${esc(getMinorLabel(code))} minor" onclick="App._obRemoveMinor('${code}')">×</button>
+        </span>`).join('');
+      const remaining = MINOR_LIST.filter(m =>
+        !chosen.includes(m.code) && MAJOR_TO_MINOR_CODE[s.primary] !== m.code);
+      const atMax = chosen.length >= MAX_MINORS;
+      const addHtml = atMax
+        ? `<div class="ob-minor-hint">Up to ${MAX_MINORS} minors — remove one to swap.</div>`
+        : `<div class="ob-select-wrap">
+             <select class="ob-select" onchange="App._obAddMinor(this.value); this.value='';">
+               <option value="" selected>${chosen.length ? '+ Add another minor' : '+ Add a minor'}</option>
+               ${remaining.map(m => `<option value="${m.code}">${esc(m.label)}</option>`).join('')}
+             </select>
+           </div>`;
+      studentMinorsHtml = `
+        <div class="ob-section">
+          <div class="ob-section-label">MINORS <span class="ob-optional">— optional, up to ${MAX_MINORS}</span></div>
+          ${chosen.length ? `<div class="ob-minor-chips">${chipsHtml}</div>` : ''}
+          ${addHtml}
+        </div>`;
+    }
 
     const facultyConfirm = eligible && s.roleGroup === 'faculty';
     const heading = facultyConfirm ? 'Confirm your role.' : 'Tell us about your studies.';
@@ -414,12 +448,14 @@ const App = {
             </div>
           ` : ''}
 
+          ${studentMinorsHtml}
+
           ${showMinorSelect ? `
             <div class="ob-section">
-              <div class="ob-section-label">${isStudentMode ? 'WITH A MINOR IN <span class="ob-optional">— optional</span>' : 'WHICH MINOR'}</div>
+              <div class="ob-section-label">WHICH MINOR</div>
               <div class="ob-select-wrap">
                 <select class="ob-select" onchange="${minorOnChange}">
-                  <option value="" ${(isStudentMode ? !s.secondary : !s.primary) ? 'selected' : ''}>— ${isStudentMode ? 'No minor' : 'Choose a minor'} —</option>
+                  <option value="" ${!s.primary ? 'selected' : ''}>— Choose a minor —</option>
                   ${minorOptions}
                 </select>
               </div>
@@ -466,7 +502,7 @@ const App = {
     }
     if (group !== prev) {
       s.primary = null;
-      s.secondary = null;
+      s.secondaries = [];
     }
     this._renderOnboardingScreen();
   },
@@ -477,7 +513,7 @@ const App = {
     s.facultyGroup = group;
     if (group !== prev) {
       s.primary = null;
-      s.secondary = null;
+      s.secondaries = [];
       s.scope = null;
       // Set the precise role for groups that don't need a sub-pick.
       if (group === 'professor')      s.role = 'professor';
@@ -498,39 +534,55 @@ const App = {
     s.scope = scope;
     // Reset target since the picker shape changed.
     s.primary = null;
-    s.secondary = null;
+    s.secondaries = [];
     this._renderOnboardingScreen();
   },
 
   _obPickMajor(program) {
     const s = this._onboardingState;
     s.primary = program;
-    // Drop colliding minor for students.
-    if (s.roleGroup === 'student' && s.secondary && MAJOR_TO_MINOR_CODE[s.primary] === s.secondary) {
-      s.secondary = null;
+    // Drop any chosen minor that collides with the new major.
+    if (s.roleGroup === 'student') {
+      s.secondaries = (s.secondaries || []).filter(c => MAJOR_TO_MINOR_CODE[s.primary] !== c);
     }
     this._renderOnboardingScreen();
   },
 
+  // Advisor-minor scope: single minor stored in `primary` (schema reuse).
   _obPickMinor(value) {
     const s = this._onboardingState;
-    const v = value || null;
-    if (s.roleGroup === 'student') {
-      s.secondary = v;
-    } else if (s.facultyGroup === 'advisor' && s.scope === 'minor') {
-      // For advisor-minor scope, the minor code lives in `primary` (schema reuse).
-      s.primary = v;
+    if (s.facultyGroup === 'advisor' && s.scope === 'minor') {
+      s.primary = value || null;
     }
+    this._renderOnboardingScreen();
+  },
+
+  // Student multi-minor add/remove (capped at MAX_MINORS, no duplicates).
+  _obAddMinor(code) {
+    if (!code) return;
+    const s = this._onboardingState;
+    s.secondaries = s.secondaries || [];
+    if (s.secondaries.length >= MAX_MINORS || s.secondaries.includes(code)) return;
+    if (MAJOR_TO_MINOR_CODE[s.primary] === code) return;  // can't minor in own major
+    s.secondaries.push(code);
+    this._renderOnboardingScreen();
+  },
+
+  _obRemoveMinor(code) {
+    const s = this._onboardingState;
+    s.secondaries = (s.secondaries || []).filter(c => c !== code);
     this._renderOnboardingScreen();
   },
 
   async _finishOnboarding() {
     const s = this._onboardingState;
+    const minors = s.roleGroup === 'student' ? (s.secondaries || []) : [];
     const profile = {
-      role:      s.role,
-      primary:   s.primary,
-      secondary: s.roleGroup === 'student' ? s.secondary : null,
-      scope:     s.role === 'advisor' ? s.scope : null,
+      role:        s.role,
+      primary:     s.primary,
+      secondaries: minors,
+      secondary:   minors[0] || null,   // derived alias for single-minor readers
+      scope:       s.role === 'advisor' ? s.scope : null,
     };
     if (!validateProfile(profile)) {
       console.error('invalid profile, refusing to save', profile);
@@ -553,7 +605,7 @@ const App = {
         serverPatch.minor_code = null;
       } else if (profile.role === 'student') {
         serverPatch.primary_program = profile.primary;
-        serverPatch.minor_code = profile.secondary;
+        serverPatch.minor_codes = profile.secondaries;  // full list (server mirrors minor_code = first)
         serverPatch.advisor_scope = null;
       } else {
         serverPatch.primary_program = profile.primary;
@@ -804,17 +856,21 @@ const App = {
     const primaryLower = (p.primary || '').toLowerCase();
     const secondaryLower = (p.secondary || '').toLowerCase();
 
-    // Student with minor: two-segment badge (major + minor)
-    if (p.role === 'student' && p.secondary) {
-      const cls = 'rb-' + primaryLower + '-' + secondaryLower;
-      const minorLabel = getMinorLabel(p.secondary);
-      return `
-        <button class="role-badge rb-${primaryLower} ${cls}" onclick="App.editRole()" title="Click to change role">
-          <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">major</span></span>
+    // Student with one or more minors: major segment + a segment per minor.
+    if (p.role === 'student') {
+      const minors = getProfileMinors(p);
+      if (minors.length) {
+        const cls = 'rb-' + primaryLower + '-' + secondaryLower;
+        const minorSegs = minors.map(code => `
           <span class="rb-divider"></span>
-          <span class="rb-segment rb-secondary">${esc(minorLabel)} <span class="rb-suffix">minor</span></span>
-          <span class="rb-edit-hint">Edit</span>
-        </button>`;
+          <span class="rb-segment rb-secondary">${esc(getMinorLabel(code))} <span class="rb-suffix">minor</span></span>`).join('');
+        return `
+          <button class="role-badge rb-${primaryLower} ${cls}" onclick="App.editRole()" title="Click to change role">
+            <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">major</span></span>
+            ${minorSegs}
+            <span class="rb-edit-hint">Edit</span>
+          </button>`;
+      }
     }
 
     // Advisor — scope-aware badge
@@ -1420,12 +1476,13 @@ const App = {
     const vm = computeViewMode(this.profile);
     const p = this.profile && this.profile.primary;
     const minorMajor = getMinorAsMajorCode(this.profile);
-    const minorLabel = (this.profile && this.profile.secondary) ? getMinorLabel(this.profile.secondary) : null;
+    const profileMinors = getProfileMinors(this.profile);
+    const minorLabel = profileMinors.length ? profileMinors.map(getMinorLabel).join(' & ') : null;
 
     // Lead sentence per spec § 4.3
     let lead;
     if (vm === 'focused-dual') {
-      lead = `See what it counts for in your ${p} major and ${esc(minorLabel)} minor.`;
+      lead = `See what it counts for in your ${p} major and ${esc(minorLabel)} minor${profileMinors.length > 1 ? 's' : ''}.`;
     } else if (vm === 'focused-single' && this.profile.role === 'professor') {
       lead = `See what it counts for in the program you teach.`;
     } else if (vm === 'focused-single' && isFaculty(this.profile) && p) {
