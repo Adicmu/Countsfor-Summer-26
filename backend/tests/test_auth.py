@@ -503,6 +503,40 @@ def test_forgot_password_emails_link_when_smtp_configured(monkeypatch):
     assert "adicmu.github.io" in (captured.get("text") or "")
 
 
+def test_set_password_when_authenticated(client):
+    """Google-recovery path: an authenticated user can set a new password
+    without any reset token, then sign in with it."""
+    client.post("/api/auth/register", json={
+        "email": "recover@andrew.cmu.edu",
+        "password": "origpass1",
+        "confirm_password": "origpass1",
+    })  # register leaves the user signed in (stands in for the Google sign-in)
+    r = client.post("/api/auth/set-password", json={"password": "brandnew99"})
+    assert r.status_code == 200, r.get_json()
+    client.post("/api/auth/logout")
+    ok = client.post("/api/auth/login", json={
+        "email": "recover@andrew.cmu.edu",
+        "password": "brandnew99",
+    })
+    assert ok.status_code == 200
+
+
+def test_set_password_requires_login(client):
+    r = client.post("/api/auth/set-password", json={"password": "whatever123"})
+    assert r.status_code == 401
+
+
+def test_set_password_rejects_weak(client):
+    client.post("/api/auth/register", json={
+        "email": "weak@andrew.cmu.edu",
+        "password": "origpass1",
+        "confirm_password": "origpass1",
+    })
+    r = client.post("/api/auth/set-password", json={"password": "short"})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "weak_password"
+
+
 def test_forgot_password_unavailable_in_prod_without_smtp():
     """In production with no SMTP configured, be honest — don't claim a mail
     was sent. Same response regardless of account existence (no enumeration)."""

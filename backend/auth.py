@@ -356,6 +356,30 @@ def forgot_password():
     return jsonify(ok=True, message=dev_msg, reset_token=raw_token, email=email)
 
 
+@bp.route("/auth/set-password", methods=["POST"])
+@require_login
+def set_password():
+    """Set/replace the signed-in user's password. Used by the Google-based
+    recovery flow: Google sign-in has already proven the user owns this
+    @andrew.cmu.edu address (the same proof an emailed reset link provides),
+    so no reset token is needed."""
+    from flask import g
+
+    data = request.get_json(silent=True) or {}
+    password = data.get("password") or ""
+    err = _validate_password(password)
+    if err:
+        return jsonify(error="weak_password", message=err), 400
+
+    user = g.user
+    user.password_hash = _hash_password(password)
+    # Any outstanding email-reset token is now moot.
+    user.reset_token_hash = None
+    user.reset_token_expires = None
+    db.session.commit()
+    return jsonify(ok=True, message="Password set. You can now sign in with your email and password too.")
+
+
 @bp.route("/auth/reset-password", methods=["POST"])
 def reset_password():
     """Set a new password using the token from forgot-password."""

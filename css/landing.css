@@ -635,3 +635,18 @@ body::before{
     border-top-color: rgba(255, 255, 255, 0.85);
   }
 }
+
+/* Google-based password recovery (forgot view) */
+.landing-google-mount {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  margin: 8px 0 4px;
+}
+.landing-recover-note {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--cf-muted);
+  text-align: center;
+}

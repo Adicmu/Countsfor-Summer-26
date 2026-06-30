@@ -19,6 +19,11 @@
 
   const BACKEND_URL = getBackendUrl();
 
+  function getGoogleClientId() {
+    const meta = document.querySelector('meta[name="cf-google-client-id"]');
+    return (meta && meta.getAttribute('content') || '').trim();
+  }
+
   async function apiFetch(path, opts) {
     const url = BACKEND_URL + path;
     const init = {
@@ -66,6 +71,12 @@
   function apiResetPassword(body) {
     return apiFetch('/api/auth/reset-password', { method: 'POST', body });
   }
+  function apiGoogle(credential) {
+    return apiFetch('/api/auth/google', { method: 'POST', body: { credential } });
+  }
+  function apiSetPassword(password) {
+    return apiFetch('/api/auth/set-password', { method: 'POST', body: { password } });
+  }
 
   function esc(str) {
     return String(str || '')
@@ -79,6 +90,7 @@
     view: 'signin',
     resetEmail: '',
     resetToken: '',
+    recovered: false,       // true after Google verified the user in the recovery flow
     backendUnreachable: false,
   };
 
@@ -427,30 +439,26 @@
         '<div class="landing-panel-head">' +
         '<button type="button" class="landing-back" data-view="signin">← Back to sign in</button>' +
         '<h2 class="landing-panel-title" id="panel-title-forgot">Forgot password</h2>' +
-        '<p class="landing-panel-lead">Enter your <strong>@andrew.cmu.edu</strong> email and we\'ll send you a reset link.</p>' +
+        '<p class="landing-panel-lead">No problem — sign in with your <strong>@andrew.cmu.edu</strong> Google account to verify it\'s you, then set a new password.</p>' +
         '</div>' +
         backendWarnHtml() +
         '</div>' +
         '<div class="landing-card__body">' +
-        '<form class="landing-form" id="cfAuthForm" novalidate>' +
         formErrorHtml() +
-        emailField('cfForgotEmail', 'Andrew email') +
-        '<div class="landing-form-actions">' +
-        '<button type="submit" class="landing-submit" id="cfAuthSubmit" disabled>Send reset link →</button>' +
-        '</div>' +
-        '</form>' +
-        '<div id="cfResetLinkBox" class="landing-reset-box" hidden></div>' +
+        '<div id="cfGoogleRecover" class="landing-google-mount"></div>' +
+        '<p class="landing-recover-note">We use your CMU Google sign-in to confirm you own the account — no reset email needed.</p>' +
         '</div>',
         'forgot'
       );
     } else if (v === 'reset') {
+      const resetLead = state.recovered
+        ? 'You\'re verified. Choose a new password for <strong>' + esc(state.resetEmail || 'your account') + '</strong>.'
+        : 'Choose a new password for <strong>' + esc(state.resetEmail || 'your account') + '</strong>.';
       inner = panelWrap(
         '<div class="landing-card__top">' +
         '<div class="landing-panel-head">' +
         '<h2 class="landing-panel-title" id="panel-title-reset">Set a new password</h2>' +
-        '<p class="landing-panel-lead">Choose a new password for <strong>' +
-        esc(state.resetEmail || 'your account') +
-        '</strong>.</p>' +
+        '<p class="landing-panel-lead">' + resetLead + '</p>' +
         '</div>' +
         '</div>' +
         '<div class="landing-card__body">' +
@@ -508,6 +516,8 @@
     }
 
     bindForm(v);
+
+    if (v === 'forgot') mountGoogleRecover();
 
     if (opts.focus !== false) {
       const focusIds = {
@@ -608,6 +618,58 @@
     goToApp();
   }
 
+  function mountGoogleRecover() {
+    const slot = document.getElementById('cfGoogleRecover');
+    if (!slot) return;
+    const clientId = getGoogleClientId();
+    if (!clientId) {
+      setFormError('Google sign-in isn\'t configured, so password recovery is unavailable. Contact an admin.');
+      return;
+    }
+    let tries = 0;
+    const mount = function () {
+      if (!(window.google && window.google.accounts && window.google.accounts.id)) {
+        if (tries++ > 40) {  // ~6s
+          setFormError('Couldn\'t load Google sign-in. Check your connection and refresh.');
+          return;
+        }
+        return setTimeout(mount, 150);
+      }
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: onGoogleRecover,
+        ux_mode: 'popup',
+        auto_select: false,
+      });
+      slot.innerHTML = '';
+      window.google.accounts.id.renderButton(slot, {
+        theme: 'filled_blue',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'pill',
+        width: 300,
+      });
+    };
+    mount();
+  }
+
+  async function onGoogleRecover(response) {
+    if (!response || !response.credential) {
+      setFormError('Google sign-in was cancelled.');
+      return;
+    }
+    setFormError('');
+    const r = await apiGoogle(response.credential);
+    if (!r.ok) {
+      setFormError((r.data && r.data.message) || 'Google sign-in failed. Use your @andrew.cmu.edu account.');
+      return;
+    }
+    // Verified — move to the set-a-new-password step (now authenticated).
+    state.recovered = true;
+    state.resetEmail = (r.data && r.data.email) || '';
+    switchView('reset');
+  }
+
   async function onForgotPassword(event) {
     event.preventDefault();
     setFormError('');
@@ -660,15 +722,21 @@
     }
     if (!validatePasswordMatch('cfResetPass', 'cfResetPass2', 'cfResetPass2Msg')) return;
     setLoading(true, 'Update password →');
-    const r = await apiResetPassword({
-      email: state.resetEmail,
-      token: state.resetToken,
-      password,
-    });
+    // Recovery via Google: the user is already authenticated, so set the
+    // password directly. Legacy email-link path still uses the token.
+    const r = state.recovered
+      ? await apiSetPassword(password)
+      : await apiResetPassword({ email: state.resetEmail, token: state.resetToken, password });
     setLoading(false, 'Update password →');
     if (!r.ok) {
       setFormError((r.data && r.data.message) || 'Reset failed.');
       updateSubmitState('reset');
+      return;
+    }
+    if (state.recovered) {
+      // Already signed in via Google — go straight into the app.
+      showToast('Password set. Taking you in…');
+      goToApp();
       return;
     }
     showToast('Password updated — sign in with your new password.');
