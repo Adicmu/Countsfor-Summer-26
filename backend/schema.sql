@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS users (
   -- Precise sub-role: 'student' | 'professor' | 'area_head'
   -- | 'associate_area_head' | 'advisor' | 'admin'
   primary_program     TEXT,                          -- 'CS','IS','BA','BS','AI','GS','AS', or NULL
-  minor_code          TEXT,                          -- student's minor code (see frontend MINOR_LIST)
+  minor_code          TEXT,                          -- student's PRIMARY minor (= first of minor_codes); advisor-minor scope reuses this
+  minor_codes         TEXT,                          -- student's minors as a JSON list (up to 3); NULL for non-students
   advisor_scope       TEXT,                          -- 'major'|'minor'|'arts_sciences'|'all_programs'
   department_scope    TEXT,                          -- free text for faculty assignment notes
   created_at          DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,

@@ -1982,6 +1982,65 @@ body {
 }
 .ob-select option:disabled { color: rgba(255,255,255,0.4); }
 
+/* ── Multi-minor chips (student onboarding) ───────────────── */
+.ob-minor-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.ob-minor-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 8px 9px 14px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1.5px solid rgba(255, 255, 255, 0.34);
+  color: #fff;
+  font-size: 13.5px;
+  font-weight: 600;
+  animation: ob-chip-in 140ms ease;
+}
+.ob-minor-chip::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #fff;
+  opacity: 0.9;
+  flex: none;
+}
+.ob-minor-remove {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: none;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.18);
+  color: #fff;
+  font-size: 15px;
+  line-height: 1;
+  transition: background 120ms;
+}
+.ob-minor-remove:hover { background: rgba(255, 255, 255, 0.40); }
+.ob-minor-remove:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.ob-minor-hint {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.72);
+  padding: 4px 2px;
+}
+@keyframes ob-chip-in {
+  from { opacity: 0; transform: translateY(-3px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .ob-minor-chip { animation: none; }
+}
+
 @media (max-width: 600px) {
   .ob-row2 { grid-template-columns: 1fr; }
 }

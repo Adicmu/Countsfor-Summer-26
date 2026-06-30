@@ -63,9 +63,23 @@ function getMinorLabel(code) {
   return m ? m.label : code;
 }
 
+// Students may hold several minors. `secondaries` (array) is canonical;
+// `secondary` is kept as a derived alias (= first) for single-minor readers.
+const MAX_MINORS = 3;
+
+function getProfileMinors(profile) {
+  if (!profile) return [];
+  if (Array.isArray(profile.secondaries)) return profile.secondaries.filter(Boolean);
+  return profile.secondary ? [profile.secondary] : [];
+}
+
 function getMinorAsMajorCode(profile) {
-  if (!profile || profile.role !== 'student' || !profile.secondary) return null;
-  return MINOR_CODE_TO_MAJOR[profile.secondary] || null;
+  if (!profile || profile.role !== 'student') return null;
+  // Highlight the first minor that maps to a major we have a requirement tree for.
+  for (const code of getProfileMinors(profile)) {
+    if (MINOR_CODE_TO_MAJOR[code]) return MINOR_CODE_TO_MAJOR[code];
+  }
+  return null;
 }
 
 // ── Roles ──────────────────────────────────────────────────
@@ -166,9 +180,14 @@ function validateProfile(profile) {
 
   if (profile.role === 'student') {
     if (!STUDENT_PROGRAMS.includes(profile.primary)) return false;
-    if (profile.secondary) {
-      if (!MINOR_LIST.some(m => m.code === profile.secondary)) return false;
-      if (MAJOR_TO_MINOR_CODE[profile.primary] === profile.secondary) return false;
+    const minors = getProfileMinors(profile);
+    if (minors.length > MAX_MINORS) return false;
+    const seen = new Set();
+    for (const code of minors) {
+      if (!MINOR_LIST.some(m => m.code === code)) return false;       // unknown minor
+      if (MAJOR_TO_MINOR_CODE[profile.primary] === code) return false; // can't minor in own major
+      if (seen.has(code)) return false;                                // no duplicates
+      seen.add(code);
     }
     return true;
   }
@@ -207,18 +226,21 @@ function validateProfile(profile) {
 
 // ── Persistence ────────────────────────────────────────────
 // Storage keys:
-//   cf_role       — role identity (precise — area_head, associate_area_head…)
-//   cf_primary    — major code, minor code, 'AS', or empty (for area_head all-programs)
-//   cf_secondary  — student minor code only
-//   cf_scope      — advisor scope ('major' | 'minor' | 'arts_sciences' | 'all_programs')
+//   cf_role        — role identity (precise — area_head, associate_area_head…)
+//   cf_primary     — major code, minor code, 'AS', or empty (for area_head all-programs)
+//   cf_secondaries — student minors as a JSON array (canonical)
+//   cf_secondary   — first minor only (kept for back-compat / legacy readers)
+//   cf_scope       — advisor scope ('major' | 'minor' | 'arts_sciences' | 'all_programs')
 
 function saveProfile(profile) {
   if (!validateProfile(profile)) {
     throw new Error('saveProfile: profile failed validation');
   }
+  const minors = getProfileMinors(profile);
   localStorage.setItem('cf_role', profile.role);
   localStorage.setItem('cf_primary', profile.primary || '');
-  localStorage.setItem('cf_secondary', profile.secondary || '');
+  localStorage.setItem('cf_secondaries', JSON.stringify(minors));
+  localStorage.setItem('cf_secondary', minors[0] || '');  // back-compat
   localStorage.setItem('cf_scope', profile.scope || '');
 }
 
@@ -226,26 +248,37 @@ function loadProfile() {
   const role = localStorage.getItem('cf_role');
   if (!role) return null;
   const primary = localStorage.getItem('cf_primary') || null;
-  let secondary = localStorage.getItem('cf_secondary') || null;
   const scope   = localStorage.getItem('cf_scope') || null;
 
-  // Migration: pre-2026-05-26 builds stored minor as a major code (CS/BA/BS).
-  if (secondary && role === 'student') {
+  // Read the minors list; fall back to the legacy single cf_secondary key.
+  let minors = [];
+  const rawList = localStorage.getItem('cf_secondaries');
+  if (rawList) {
+    try { const arr = JSON.parse(rawList); if (Array.isArray(arr)) minors = arr.filter(Boolean); } catch {}
+  } else {
+    const single = localStorage.getItem('cf_secondary');
+    if (single) minors = [single];
+  }
+
+  if (role === 'student' && minors.length) {
+    // Migration: pre-2026-05-26 builds stored a minor as a major code (CS/BA/BS).
     const LEGACY_MAJOR_MINOR = { CS: 'cs', BA: 'business', BS: 'biology' };
-    if (LEGACY_MAJOR_MINOR[secondary]) {
-      secondary = LEGACY_MAJOR_MINOR[secondary];
-      try { localStorage.setItem('cf_secondary', secondary); } catch {}
-    } else if (!MINOR_LIST.some(m => m.code === secondary)) {
-      secondary = null;
-      try { localStorage.setItem('cf_secondary', ''); } catch {}
-    }
+    minors = minors
+      .map(c => LEGACY_MAJOR_MINOR[c] || c)
+      .filter(c => MINOR_LIST.some(m => m.code === c));
+    minors = [...new Set(minors)].slice(0, MAX_MINORS);  // de-dupe + cap
+    try {
+      localStorage.setItem('cf_secondaries', JSON.stringify(minors));
+      localStorage.setItem('cf_secondary', minors[0] || '');
+    } catch {}
   }
 
   const profile = {
     role,
-    primary:   primary || null,
-    secondary: secondary || null,
-    scope:     scope || null,
+    primary:     primary || null,
+    secondaries: role === 'student' ? minors : [],
+    secondary:   minors[0] || null,
+    scope:       scope || null,
   };
   if (!validateProfile(profile)) return null;
   return profile;
@@ -254,6 +287,7 @@ function loadProfile() {
 function clearProfile() {
   localStorage.removeItem('cf_role');
   localStorage.removeItem('cf_primary');
+  localStorage.removeItem('cf_secondaries');
   localStorage.removeItem('cf_secondary');
   localStorage.removeItem('cf_scope');
 }

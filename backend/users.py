@@ -1,7 +1,7 @@
 """User management — list and update roles for admins and area heads."""
 from flask import Blueprint, g, jsonify, request
 
-from .auth import USER_SETTABLE_ROLES, _validate_consistent_profile
+from .auth import USER_SETTABLE_ROLES, _validate_consistent_profile, _validate_minor_codes
 from .db import db
 from .models import User
 from .permissions import require_role, FACULTY_OR_ADMIN
@@ -15,6 +15,7 @@ ALLOWED_PATCH_FIELDS = {
     "role",
     "primary_program",
     "minor_code",
+    "minor_codes",
     "advisor_scope",
     "department",
     "department_scope",
@@ -66,8 +67,21 @@ def update_user(user_id: int):
 
     new_role = _next("role", target.role)
     new_primary = _next("primary_program", target.primary_program)
-    new_minor = _next("minor_code", target.minor_code)
     new_advisor_scope = _next("advisor_scope", target.advisor_scope)
+
+    # Minors (students only); see update_me for the same rules.
+    if new_role == "student":
+        if "minor_codes" in data:
+            new_minor_codes = data.get("minor_codes") or []
+        elif "minor_code" in data:
+            single = _next("minor_code", None)
+            new_minor_codes = [single] if single else []
+        else:
+            new_minor_codes = target.get_minor_codes()
+        new_minor = new_minor_codes[0] if new_minor_codes else None
+    else:
+        new_minor_codes = []
+        new_minor = _next("minor_code", target.minor_code)
 
     if "role" in data:
         if actor.role != "admin" and new_role == "admin":
@@ -76,6 +90,11 @@ def update_user(user_id: int):
             return jsonify(error="invalid_role", message=f"Role must be one of {sorted(USER_SETTABLE_ROLES | {'admin'})}."), 400
         if target.role == "admin" and new_role != "admin" and actor.role != "admin":
             return jsonify(error="forbidden", message="Only admins can change an admin's role."), 403
+
+    minors_to_check = data["minor_codes"] if "minor_codes" in data else new_minor_codes
+    mc_err = _validate_minor_codes(new_role, new_primary, minors_to_check)
+    if mc_err:
+        return jsonify(error="invalid_minors", message=mc_err), 400
 
     err = _validate_consistent_profile(new_role, new_primary, new_minor, new_advisor_scope)
     if err:
@@ -86,7 +105,7 @@ def update_user(user_id: int):
     if "role" in data and (actor.role == "admin" or new_role != "admin"):
         target.role = new_role
         target.is_admin = new_role == "admin"
-    for field in ("primary_program", "minor_code", "advisor_scope", "department", "department_scope"):
+    for field in ("primary_program", "advisor_scope", "department", "department_scope"):
         if field in data:
             value = data[field]
             if value == "":
@@ -94,6 +113,14 @@ def update_user(user_id: int):
             setattr(target, field, value)
             if field == "department_scope" and value and not target.department:
                 target.department = value
+
+    # Minors: students store the full list; non-students hold no list.
+    if new_role == "student":
+        target.set_minor_codes(new_minor_codes)
+    else:
+        target.minor_codes = None
+        if "minor_code" in data:
+            target.minor_code = new_minor
 
     target.profile_completed = target.profile_is_complete()
     db.session.commit()

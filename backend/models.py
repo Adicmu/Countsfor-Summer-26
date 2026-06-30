@@ -3,6 +3,7 @@
 Field meanings live in `schema.sql`. Keep this file thin — business logic
 belongs in route modules or permissions.py.
 """
+import json
 from datetime import datetime, timezone
 from sqlalchemy import (
     Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint, Index
@@ -38,7 +39,13 @@ class User(db.Model):
     google_sub: Mapped[str | None] = mapped_column(String(255), nullable=True, unique=True, index=True)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="student", index=True)
     primary_program: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    # Single minor — kept as the "primary" minor (= first of minor_codes) for
+    # back-compat with flag snapshots and advisor-minor scope (which reuses this
+    # column for the advised minor). Students' full list lives in minor_codes.
     minor_code: Mapped[str | None] = mapped_column(String(32), nullable=True)
+    # Students may hold up to 3 minors, stored as a JSON list of codes. NULL/empty
+    # for non-students. Canonical source for a student's minors.
+    minor_codes: Mapped[str | None] = mapped_column(Text, nullable=True)
     advisor_scope: Mapped[str | None] = mapped_column(String(32), nullable=True)
     department_scope: Mapped[str | None] = mapped_column(String(200), nullable=True)
     department: Mapped[str | None] = mapped_column(String(200), nullable=True)
@@ -50,6 +57,23 @@ class User(db.Model):
 
     flags: Mapped[list["Flag"]] = relationship(back_populates="submitter", foreign_keys="Flag.submitted_by_id")
     wishlist: Mapped[list["WishlistItem"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+
+    def get_minor_codes(self) -> list[str]:
+        """Parsed list of the student's minors (empty if none/invalid JSON)."""
+        if not self.minor_codes:
+            return []
+        try:
+            value = json.loads(self.minor_codes)
+        except (ValueError, TypeError):
+            return []
+        return [c for c in value if isinstance(c, str)] if isinstance(value, list) else []
+
+    def set_minor_codes(self, codes: list[str] | None) -> None:
+        """Store the minor list (canonical) and keep minor_code = first, for
+        back-compat with single-minor readers."""
+        clean = [c for c in (codes or []) if c]
+        self.minor_codes = json.dumps(clean) if clean else None
+        self.minor_code = clean[0] if clean else None
 
     def profile_is_complete(self) -> bool:
         """True when the user has enough profile data to skip onboarding."""
@@ -75,6 +99,7 @@ class User(db.Model):
             "role": self.role,
             "primary_program": self.primary_program,
             "minor_code": self.minor_code,
+            "minor_codes": self.get_minor_codes(),
             "advisor_scope": self.advisor_scope,
             "department_scope": self.department_scope,
             "department": self.department,

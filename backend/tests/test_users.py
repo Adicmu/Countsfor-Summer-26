@@ -41,6 +41,30 @@ def test_area_head_can_patch_user_role(client, area_head):
     assert r.get_json()["profile_completed"] is True
 
 
+def test_admin_can_set_student_multiple_minors(client, admin):
+    from backend.db import db
+    from backend.models import User
+
+    with client.application.app_context():
+        u = User(email="stu2@andrew.cmu.edu", name="Stu", role="student",
+                 primary_program="IS", google_sub="g-stu2")
+        db.session.add(u)
+        db.session.commit()
+        uid = u.id
+
+    login(client, admin)
+    r = client.patch(f"/api/users/{uid}", json={"minor_codes": ["cs", "history"]})
+    assert r.status_code == 200, r.get_json()
+    body = r.get_json()
+    assert body["minor_codes"] == ["cs", "history"]
+    assert body["minor_code"] == "cs"
+
+    # Too many is rejected here too.
+    r2 = client.patch(f"/api/users/{uid}", json={"minor_codes": ["cs", "history", "math", "writing"]})
+    assert r2.status_code == 400
+    assert r2.get_json()["error"] == "invalid_minors"
+
+
 def test_seeded_professor_skips_incomplete_on_login(client):
     from unittest.mock import patch
     from backend.db import db
