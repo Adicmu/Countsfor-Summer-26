@@ -49,6 +49,23 @@ services:
       - key: SEED_USERS_PATH
         value: ../data/faculty_directory.json
 
+      # Password-reset email (SMTP). Set these in the Render dashboard to enable
+      # real reset emails. Leave SMTP_HOST empty and password reset reports as
+      # unavailable instead of silently failing.
+      - key: SMTP_HOST
+        sync: false           # e.g. smtp.gmail.com  /  smtp.sendgrid.net
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false           # SMTP username (full email, or "apikey" for SendGrid)
+      - key: SMTP_PASSWORD
+        sync: false           # SMTP password / app password / API key
+      - key: SMTP_FROM
+        sync: false           # From address shown to recipients (defaults to SMTP_USER)
+      # Public URL of the deployed frontend, used to build the reset link:
+      - key: PUBLIC_APP_URL
+        value: https://adicmu.github.io/Countsfor-Summer-26/
+
 databases:
   - name: countsfor-db
     plan: free

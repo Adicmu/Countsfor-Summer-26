@@ -79,6 +79,22 @@ class Config:
         "http://localhost:8765,https://adicmu.github.io"
     ))
 
+    # ── Email (password reset) ────────────────────────────────
+    # Provider-agnostic SMTP. Set these on the host to enable real reset
+    # emails; leave SMTP_HOST empty to disable email sending. Examples:
+    #   Gmail:    SMTP_HOST=smtp.gmail.com  SMTP_PORT=587  SMTP_USER=<addr>  SMTP_PASSWORD=<app password>
+    #   SendGrid: SMTP_HOST=smtp.sendgrid.net SMTP_PORT=587 SMTP_USER=apikey SMTP_PASSWORD=<api key>
+    SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587") or "587")
+    SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
+    SMTP_FROM = os.environ.get("SMTP_FROM", "").strip()
+    SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
+    # Public URL of the deployed frontend, used to build the reset link in the
+    # email (e.g. "https://adicmu.github.io/Countsfor-Summer-26/"). Falls back
+    # to the first CORS origin if unset.
+    PUBLIC_APP_URL = os.environ.get("PUBLIC_APP_URL", "").strip()
+
 
 class TestConfig(Config):
     TESTING = True
@@ -91,3 +107,7 @@ class TestConfig(Config):
     SESSION_COOKIE_SAMESITE = "Lax"
     FRONTEND_ORIGINS = ["http://localhost:8765"]
     SEED_USERS_PATH = ""
+    # SMTP off by default in tests; the email path is tested by overriding these.
+    SMTP_HOST = ""
+    SMTP_USER = ""
+    PUBLIC_APP_URL = "https://countsfor.test/app"

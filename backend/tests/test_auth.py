@@ -465,3 +465,54 @@ def test_forgot_and_reset_password(client):
         "password": "newpass456",
     })
     assert ok.status_code == 200
+
+
+def test_forgot_password_emails_link_when_smtp_configured(monkeypatch):
+    """With SMTP configured, the reset link is emailed and NOT returned in the
+    response body (no token leak)."""
+    class SmtpConfig(TestConfig):
+        SMTP_HOST = "smtp.example.com"
+        SMTP_USER = "noreply@andrew.cmu.edu"
+        PUBLIC_APP_URL = "https://adicmu.github.io/Countsfor-Summer-26/"
+
+    app = create_app(SmtpConfig)
+    captured = {}
+
+    import backend.auth as auth_mod
+
+    def fake_send(config, to_addr, subject, text_body, html_body=None):
+        captured.update(to=to_addr, subject=subject, text=text_body, html=html_body)
+        return True
+
+    monkeypatch.setattr(auth_mod, "send_email", fake_send)
+
+    with app.test_client() as c:
+        c.post("/api/auth/register", json={
+            "email": "mailme@andrew.cmu.edu",
+            "password": "oldpass123",
+            "confirm_password": "oldpass123",
+        })
+        c.post("/api/auth/logout")
+        r = c.post("/api/auth/forgot-password", json={"email": "mailme@andrew.cmu.edu"})
+
+    assert r.status_code == 200, r.get_json()
+    body = r.get_json()
+    assert "reset_token" not in body                       # token not leaked to the client
+    assert captured.get("to") == "mailme@andrew.cmu.edu"   # email was sent to the user
+    assert "reset=" in (captured.get("text") or "")        # link carries the token
+    assert "adicmu.github.io" in (captured.get("text") or "")
+
+
+def test_forgot_password_unavailable_in_prod_without_smtp():
+    """In production with no SMTP configured, be honest — don't claim a mail
+    was sent. Same response regardless of account existence (no enumeration)."""
+    class ProdNoSmtp(TestConfig):
+        IS_PRODUCTION = True
+        SMTP_HOST = ""
+        SMTP_USER = ""
+
+    app = create_app(ProdNoSmtp)
+    with app.test_client() as c:
+        r = c.post("/api/auth/forgot-password", json={"email": "nobody@andrew.cmu.edu"})
+    assert r.status_code == 503
+    assert r.get_json()["error"] == "email_unavailable"

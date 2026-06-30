@@ -785,7 +785,7 @@ const App = {
           <div class="auth-panel-head">
             <button type="button" class="auth-back" onclick="App._switchAuthView('signin')">← Back to sign in</button>
             <h2 class="auth-panel-title">Forgot password</h2>
-            <p class="auth-panel-lead">Enter your <strong>@andrew.cmu.edu</strong> email. We'll give you a reset link you can use below.</p>
+            <p class="auth-panel-lead">Enter your <strong>@andrew.cmu.edu</strong> email and we'll send you a reset link.</p>
           </div>
           ${backendWarn}
         </div>

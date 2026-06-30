@@ -427,7 +427,7 @@
         '<div class="landing-panel-head">' +
         '<button type="button" class="landing-back" data-view="signin">← Back to sign in</button>' +
         '<h2 class="landing-panel-title" id="panel-title-forgot">Forgot password</h2>' +
-        '<p class="landing-panel-lead">Enter your <strong>@andrew.cmu.edu</strong> email. We\'ll give you a reset link you can use below.</p>' +
+        '<p class="landing-panel-lead">Enter your <strong>@andrew.cmu.edu</strong> email and we\'ll send you a reset link.</p>' +
         '</div>' +
         backendWarnHtml() +
         '</div>' +

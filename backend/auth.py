@@ -18,6 +18,7 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 from .db import db
+from .email_utils import email_configured, send_email
 from .models import User
 from .permissions import require_login, current_user
 
@@ -32,6 +33,33 @@ RESET_TOKEN_HOURS = 24
 
 def _hash_password(password: str) -> str:
     return generate_password_hash(password)
+
+
+def _build_reset_url(config, token: str, email: str) -> str:
+    """Full link the user clicks to reset, e.g.
+    https://adicmu.github.io/Countsfor-Summer-26/?reset=<token>&email=<email>"""
+    from urllib.parse import quote
+    base = (config.get("PUBLIC_APP_URL") or (config.get("FRONTEND_ORIGINS") or [""])[0] or "").rstrip("/")
+    sep = "&" if "?" in base else "?"
+    return f"{base}{sep}reset={quote(token)}&email={quote(email)}"
+
+
+def _reset_email_text(reset_url: str) -> str:
+    return (
+        "We received a request to reset your CountsFor password.\n\n"
+        f"Use this link to choose a new password (valid for {RESET_TOKEN_HOURS} hours):\n"
+        f"{reset_url}\n\n"
+        "If you didn't request this, you can safely ignore this email."
+    )
+
+
+def _reset_email_html(reset_url: str) -> str:
+    return (
+        "<p>We received a request to reset your CountsFor password.</p>"
+        f"<p><a href=\"{reset_url}\">Choose a new password</a> "
+        f"(valid for {RESET_TOKEN_HOURS} hours).</p>"
+        "<p>If you didn't request this, you can safely ignore this email.</p>"
+    )
 
 
 def _password_ok(user: User, password: str) -> bool:
@@ -284,25 +312,48 @@ def forgot_password():
     if not email:
         return jsonify(error="invalid_email", message="Enter your @andrew.cmu.edu email."), 400
 
+    cfg = current_app.config
+    is_prod = cfg.get("IS_PRODUCTION", False)
+    can_email = email_configured(cfg)
+
+    # No email service and we're in production → be honest instead of claiming a
+    # mail was sent. Returned for ANY email (existing or not) so it never reveals
+    # whether an account exists.
+    if not can_email and is_prod:
+        return jsonify(
+            error="email_unavailable",
+            message="Password reset by email isn't available yet. Please contact an administrator.",
+        ), 503
+
+    sent_msg = "If an account exists for that email, we've emailed a reset link. Check your inbox."
+    dev_msg = "If an account exists for that email, use the reset link below."
+
     user = db.session.query(User).filter_by(email=email).one_or_none()
-    payload = {
-        "ok": True,
-        "message": "If an account exists for that email, you can reset your password with the link below.",
-    }
     if user is None:
-        return jsonify(payload)
+        # Don't reveal non-existence — same shape as the success path.
+        return jsonify(ok=True, message=sent_msg if can_email else dev_msg)
 
     raw_token = secrets.token_urlsafe(32)
     user.reset_token_hash = generate_password_hash(raw_token)
     user.reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=RESET_TOKEN_HOURS)
     db.session.commit()
 
-    expose = os.environ.get("EXPOSE_RESET_TOKEN", "").lower() in ("1", "true", "yes")
-    expose = expose or not current_app.config.get("IS_PRODUCTION", False)
-    if expose:
-        payload["reset_token"] = raw_token
-        payload["email"] = email
-    return jsonify(payload)
+    reset_url = _build_reset_url(cfg, raw_token, email)
+
+    if can_email:
+        ok = send_email(
+            cfg, email, "Reset your CountsFor password",
+            _reset_email_text(reset_url), _reset_email_html(reset_url),
+        )
+        if not ok:
+            return jsonify(
+                error="email_failed",
+                message="We couldn't send the reset email right now. Please try again in a few minutes.",
+            ), 502
+        return jsonify(ok=True, message=sent_msg)
+
+    # No email service, non-production → expose the token inline for local dev.
+    return jsonify(ok=True, message=dev_msg, reset_token=raw_token, email=email)
 
 
 @bp.route("/auth/reset-password", methods=["POST"])
@@ -319,11 +370,16 @@ def reset_password():
         return jsonify(error="weak_password", message=err), 400
 
     user = db.session.query(User).filter_by(email=email).one_or_none()
+    # SQLite returns naive datetimes for timezone=True columns; coerce to UTC so
+    # the comparison with an aware now() doesn't raise (works on Postgres too).
+    expires = user.reset_token_expires if user else None
+    if expires is not None and expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
     if (
         user is None
         or not user.reset_token_hash
-        or not user.reset_token_expires
-        or user.reset_token_expires < datetime.now(timezone.utc)
+        or not expires
+        or expires < datetime.now(timezone.utc)
         or not check_password_hash(user.reset_token_hash, token)
     ):
         return jsonify(error="invalid_token", message="This reset link is invalid or has expired."), 400
