@@ -998,6 +998,8 @@ const App = {
     }
 
     await apiLogout();
+    if (typeof clearAuthToken === 'function') clearAuthToken();
+    try { sessionStorage.removeItem('cf_auth_token'); } catch {}
     clearProfile();
     // Clear per-user local caches so a different account on the same browser
     // doesn't inherit them. The cf_synced flag must reset for next sign-in.

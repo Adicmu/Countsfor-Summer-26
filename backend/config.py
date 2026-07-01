@@ -35,11 +35,15 @@ class Config:
 
     # Cookie / session settings — cross-origin (GH Pages → Render) needs
     # SameSite=None + Secure=True over HTTPS.
-    IS_PRODUCTION = os.environ.get("FLASK_ENV", "development") == "production"
+    ON_RENDER = os.environ.get("RENDER", "").lower() == "true"
+    IS_PRODUCTION = (
+        os.environ.get("FLASK_ENV", "development") == "production" or ON_RENDER
+    )
     SESSION_COOKIE_NAME = "cf_session"
     SESSION_COOKIE_SECURE = IS_PRODUCTION
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "None" if IS_PRODUCTION else "Lax"
+    SESSION_COOKIE_PATH = "/"
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 30  # 30 days
 
     # ── Database ──────────────────────────────────────────────

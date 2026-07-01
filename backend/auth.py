@@ -22,6 +22,7 @@ from .db import db
 from .email_util import send_password_reset_email
 from .models import PasswordResetToken, User
 from .permissions import require_login, current_user
+from .tokens import make_auth_token
 
 
 bp = Blueprint("auth", __name__, url_prefix="/api")
@@ -249,6 +250,14 @@ def _write_session(user: User) -> None:
     session["primary_program"] = user.primary_program
     session["minor_code"] = user.minor_code
     session["is_admin"] = user.is_admin
+    session.modified = True
+
+
+def _auth_payload(user: User) -> dict:
+    """Public user dict plus bearer token for cross-origin clients."""
+    body = user.to_public_dict()
+    body["auth_token"] = make_auth_token(user.id)
+    return body
 
 
 def _email_allowed(email: str) -> bool:
@@ -332,7 +341,7 @@ def register():
         return jsonify(error="server_error", message="Account could not be created. Try again."), 500
 
     _write_session(user)
-    return jsonify(user.to_public_dict()), 201
+    return jsonify(_auth_payload(user)), 201
 
 
 @bp.route("/auth/login", methods=["POST"])
@@ -352,7 +361,7 @@ def login():
 
     user = _finalize_user(user, email)
     _write_session(user)
-    return jsonify(user.to_public_dict())
+    return jsonify(_auth_payload(user))
 
 
 @bp.route("/auth/forgot-password", methods=["POST"])
@@ -428,7 +437,7 @@ def email_signin():
     name = (data.get("name") or "").strip() or email.split("@", 1)[0].replace(".", " ").title()
     user = _upsert_user_from_login(email, name)
     _write_session(user)
-    return jsonify(user.to_public_dict())
+    return jsonify(_auth_payload(user))
 
 
 # ── Google Sign-In ───────────────────────────────────────────
@@ -470,7 +479,7 @@ def google_signin():
     name = info.get("name") or info.get("given_name") or email.split("@", 1)[0]
     user = _upsert_user_from_login(email, name, google_sub=google_sub)
     _write_session(user)
-    return jsonify(user.to_public_dict())
+    return jsonify(_auth_payload(user))
 
 
 # ── Logout ───────────────────────────────────────────────────
@@ -486,7 +495,7 @@ def me():
     user = current_user()
     if not user:
         return jsonify(error="unauthenticated", message="Not signed in."), 401
-    return jsonify(user.to_public_dict())
+    return jsonify(_auth_payload(user))
 
 
 # ── PATCH /api/me — profile completion / edit ────────────────
@@ -629,4 +638,4 @@ def update_me():
     user.profile_completed = user.profile_is_complete()
     db.session.commit()
     _write_session(user)
-    return jsonify(user.to_public_dict())
+    return jsonify(_auth_payload(user))

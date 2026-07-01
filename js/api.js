@@ -125,6 +125,21 @@ const CF_BACKEND_URL = (() => {
   return getBackendUrl();
 })();
 
+const CF_AUTH_TOKEN_KEY = 'cf_auth_token';
+
+function getAuthToken() {
+  try { return sessionStorage.getItem(CF_AUTH_TOKEN_KEY) || ''; } catch { return ''; }
+}
+
+function saveAuthToken(token) {
+  if (!token) return;
+  try { sessionStorage.setItem(CF_AUTH_TOKEN_KEY, token); } catch {}
+}
+
+function clearAuthToken() {
+  try { sessionStorage.removeItem(CF_AUTH_TOKEN_KEY); } catch {}
+}
+
 // Public Google OAuth client ID. Set this in index.html via
 // `<meta name="cf-google-client-id" content="…">` so it can ship to the
 // browser without a build step. Falls back to the empty string (which
@@ -148,6 +163,8 @@ async function apiFetch(path, opts = {}) {
     credentials: 'include',
     headers: { 'Accept': 'application/json' },
   };
+  const authToken = getAuthToken();
+  if (authToken) init.headers['Authorization'] = 'Bearer ' + authToken;
   if (opts.body !== undefined) {
     init.headers['Content-Type'] = 'application/json';
     init.body = typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body);
@@ -162,6 +179,7 @@ async function apiFetch(path, opts = {}) {
   if (res.status !== 204) {
     try { data = await res.json(); } catch { data = null; }
   }
+  if (data && data.auth_token) saveAuthToken(data.auth_token);
   return {
     ok: res.ok,
     status: res.status,
@@ -191,7 +209,11 @@ async function apiResetPassword(body) {
 async function apiSignInWithEmail(email, name) {
   return apiFetch('/api/auth/email', { method: 'POST', body: { email, name: name || undefined } });
 }
-async function apiLogout()  { return apiFetch('/api/auth/logout', { method: 'POST' }); }
+async function apiLogout()  {
+  const r = await apiFetch('/api/auth/logout', { method: 'POST' });
+  clearAuthToken();
+  return r;
+}
 async function apiGetMe()   { return apiFetch('/api/me'); }
 async function apiPatchMe(patch) {
   return apiFetch('/api/me', { method: 'PATCH', body: patch });

@@ -7,10 +7,11 @@ not sufficient — a student could otherwise inspect the DOM and POST a flag.
 from functools import wraps
 from typing import Iterable
 
-from flask import jsonify, session, g
+from flask import jsonify, request, session, g
 
 from .db import db
 from .models import User
+from .tokens import verify_auth_token
 
 
 FACULTY_ROLES = {"professor", "area_head", "associate_area_head", "advisor"}
@@ -18,12 +19,19 @@ FACULTY_OR_ADMIN = FACULTY_ROLES | {"admin"}
 
 
 def _load_user() -> User | None:
-    """Resolve the current user from the signed session cookie. Cached on
-    `g` so multiple decorators in one request don't re-query the DB."""
+    """Resolve the current user from session cookie or Authorization bearer token."""
     if hasattr(g, "_current_user"):
         return g._current_user
+    user = None
     uid = session.get("uid")
-    user = db.session.get(User, uid) if uid else None
+    if uid:
+        user = db.session.get(User, uid)
+    if user is None:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token_uid = verify_auth_token(auth[7:])
+            if token_uid:
+                user = db.session.get(User, token_uid)
     g._current_user = user
     return user
 

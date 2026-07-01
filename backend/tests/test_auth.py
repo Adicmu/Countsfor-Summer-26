@@ -521,6 +521,25 @@ def test_register_login_normalizes_cmu_domain(client, tmp_path):
     assert body["role_group"] == "faculty"
 
 
+def test_login_with_bearer_token_without_session_cookie(client):
+    client.post("/api/auth/register", json={
+        "email": "bearer@andrew.cmu.edu",
+        "password": "testpass12",
+        "confirm_password": "testpass12",
+    })
+    login = client.post("/api/auth/login", json={
+        "email": "bearer@andrew.cmu.edu",
+        "password": "testpass12",
+    })
+    token = login.get_json().get("auth_token")
+    assert token
+
+    client.post("/api/auth/logout")
+    me = client.get("/api/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.get_json()["email"] == "bearer@andrew.cmu.edu"
+
+
 def test_faculty_directory_reapplied_on_login(client, tmp_path):
     seed = tmp_path / "seed.json"
     seed.write_text(json.dumps([

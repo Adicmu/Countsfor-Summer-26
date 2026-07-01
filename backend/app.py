@@ -42,11 +42,14 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
     if bootstrap_db:
         init_database(app)
 
-    # CORS — cookies need explicit allow-list + credentials=True
+    # CORS — cookies + bearer token auth from GitHub Pages
     CORS(
         app,
-        resources={r"/api/*": {"origins": app.config["FRONTEND_ORIGINS"]}},
-        supports_credentials=True,
+        resources={r"/api/*": {
+            "origins": app.config["FRONTEND_ORIGINS"],
+            "supports_credentials": True,
+            "allow_headers": ["Content-Type", "Authorization"],
+        }},
     )
 
     # Blueprints

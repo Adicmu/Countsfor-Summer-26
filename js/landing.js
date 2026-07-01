@@ -18,6 +18,20 @@
   }
 
   const BACKEND_URL = getBackendUrl();
+  const AUTH_TOKEN_KEY = 'cf_auth_token';
+
+  function getAuthToken() {
+    try { return sessionStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; }
+  }
+
+  function saveAuthToken(token) {
+    if (!token) return;
+    try { sessionStorage.setItem(AUTH_TOKEN_KEY, token); } catch {}
+  }
+
+  function clearAuthToken() {
+    try { sessionStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+  }
 
   async function apiFetch(path, opts) {
     const url = BACKEND_URL + path;
@@ -26,6 +40,8 @@
       credentials: 'include',
       headers: { Accept: 'application/json' },
     };
+    const authToken = getAuthToken();
+    if (authToken) init.headers['Authorization'] = 'Bearer ' + authToken;
     if (opts && opts.body !== undefined) {
       init.headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(opts.body);
@@ -40,6 +56,7 @@
           data = null;
         }
       }
+      if (data && data.auth_token) saveAuthToken(data.auth_token);
       return {
         ok: res.ok,
         status: res.status,
@@ -585,6 +602,13 @@
       updateSubmitState('signin');
       return;
     }
+    if (r.data && r.data.auth_token) saveAuthToken(r.data.auth_token);
+    const me = await apiGetMe();
+    if (!me.ok) {
+      clearAuthToken();
+      setFormError('Sign-in succeeded but could not start a session. Try again.');
+      return;
+    }
     goToApp();
   }
 
@@ -617,6 +641,15 @@
         setFormError(msg);
       }
       updateSubmitState('register');
+      return;
+    }
+    if (r.data && r.data.auth_token) saveAuthToken(r.data.auth_token);
+    const me = await apiGetMe();
+    if (!me.ok) {
+      clearAuthToken();
+      setFormError('Account created but sign-in could not be verified. Try signing in.');
+      state.view = 'signin';
+      renderPanel({ focus: false });
       return;
     }
     goToApp();
