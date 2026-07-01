@@ -41,9 +41,9 @@ services:
       - key: ALLOWED_EMAIL_DOMAIN
         value: andrew.cmu.edu
 
-      # CORS — browser origin is https://hindjendara.github.io (no path)
+      # CORS — include every GitHub Pages origin that serves the frontend
       - key: FRONTEND_ORIGIN
-        value: https://hindjendara.github.io,http://localhost:8765
+        value: https://adicmu.github.io,https://hindjendara.github.io,http://localhost:8765
 
       # Optional: commit backend/seed_users.json with faculty emails
       - key: SEED_USERS_PATH
