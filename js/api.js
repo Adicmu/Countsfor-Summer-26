@@ -228,10 +228,22 @@ async function apiPatchUser(id, patch) {
 }
 
 async function apiListStaffDirectory() {
-  return apiFetch('/api/directory/staff');
+  return apiFetch('/api/directory/entries');
 }
 async function apiAddStaffMember(body) {
-  return apiFetch('/api/directory/staff', { method: 'POST', body });
+  return apiFetch('/api/directory/entries', { method: 'POST', body });
+}
+async function apiUpdateDirectoryEntry(id, body) {
+  return apiFetch('/api/directory/entries/' + encodeURIComponent(id), { method: 'PATCH', body });
+}
+async function apiUpsertDirectoryByEmail(body) {
+  return apiFetch('/api/directory/entries/by-email', { method: 'PATCH', body });
+}
+async function apiRevokeDirectoryAccess(body) {
+  return apiFetch('/api/directory/entries/revoke', { method: 'POST', body });
+}
+async function apiDeleteDirectoryEntry(id) {
+  return apiFetch('/api/directory/entries/' + encodeURIComponent(id), { method: 'DELETE' });
 }
 
 async function fetchMinorCourses() {

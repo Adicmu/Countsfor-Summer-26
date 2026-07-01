@@ -24,10 +24,22 @@ VALID_ROLES = (
     "admin",
 )
 
-# Roles that map to the frontend "faculty" experience (flags, full course lens).
-FACULTY_ROLE_GROUP = frozenset({"professor", "area_head", "associate_area_head", "advisor", "admin"})
+# Faculty job titles (permission group "faculty"). Admin is separate.
+FACULTY_ROLES = frozenset({"professor", "area_head", "associate_area_head", "advisor"})
+
+# UI bucket for faculty-style app chrome (flags, directory tab). Includes admin.
+FACULTY_UI_ROLES = FACULTY_ROLES | {"admin"}
 
 FLAG_STATUSES = ("pending", "reviewed", "resolved", "dismissed")
+
+VALID_DEPARTMENTS = (
+    "Business Administration",
+    "Arts and Sciences",
+    "Biological Sciences",
+    "Computer Science",
+    "Information Systems",
+    "Dean's Office",
+)
 
 
 class User(db.Model):
@@ -48,6 +60,7 @@ class User(db.Model):
     advisor_scope: Mapped[str | None] = mapped_column(String(32), nullable=True)
     department_scope: Mapped[str | None] = mapped_column(String(200), nullable=True)
     department: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    picture_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     is_admin: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     profile_completed: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
     last_login: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -72,21 +85,20 @@ class User(db.Model):
         self.minor_code = codes[0] if len(codes) == 1 else None
 
     def role_group(self) -> str:
-        """Coarse UI bucket: student vs faculty. Precise role stays in `role`."""
-        return "faculty" if self.role in FACULTY_ROLE_GROUP else "student"
+        """Permission bucket: student | faculty | admin."""
+        if self.role == "admin":
+            return "admin"
+        if self.role in FACULTY_ROLES:
+            return "faculty"
+        return "student"
 
     def profile_is_complete(self) -> bool:
-        """True when the user has enough profile data to skip onboarding."""
-        if self.role == "admin":
-            return True  # admins are scoped server-side; no major needed → never onboard
+        if self.role_group() == "admin":
+            return bool(self.department and self.primary_program)
         if self.role == "student":
             return bool(self.primary_program)
-        if self.role == "professor":
-            return bool(self.primary_program)
-        if self.role in ("area_head", "associate_area_head"):
-            return bool(self.primary_program)
-        if self.role == "advisor":
-            return bool(self.advisor_scope)
+        if self.role_group() == "faculty":
+            return bool(self.department and self.primary_program)
         return False
 
     def to_public_dict(self) -> dict:
@@ -105,6 +117,7 @@ class User(db.Model):
             "advisor_scope": self.advisor_scope,
             "department_scope": self.department_scope,
             "department": self.department,
+            "picture_url": self.picture_url,
             "is_admin": self.is_admin,
             "profile_completed": self.profile_completed,
             "last_login": self.last_login.isoformat() if self.last_login else None,
@@ -125,34 +138,53 @@ class UserMinor(db.Model):
     user: Mapped[User] = relationship(back_populates="minors")
 
 
-class StaffDirectoryEntry(db.Model):
-    __tablename__ = "staff_directory_entries"
+class DirectoryEntry(db.Model):
+    """Editable directory layer (Postgres). JSON seed is static; DB wins on clash."""
+    __tablename__ = "directory_entries"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
     name: Mapped[str] = mapped_column(String(200), nullable=False)
     role: Mapped[str] = mapped_column(String(32), nullable=False, default="professor")
+    department: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    primary_program: Mapped[str | None] = mapped_column(String(8), nullable=True)
+    picture_url: Mapped[str | None] = mapped_column(String(512), nullable=True)
     added_by_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
 
-    def to_seed_dict(self) -> dict:
+    def to_merged_dict(self) -> dict:
         return {
             "email": self.email,
             "name": self.name,
             "role": self.role,
+            "department": self.department,
+            "primary_program": self.primary_program,
+            "picture_url": self.picture_url,
         }
 
-    def to_public_dict(self) -> dict:
+    def to_public_dict(self, *, source: str = "db") -> dict:
         return {
             "id": self.id,
             "email": self.email,
             "name": self.name,
             "role": self.role,
-            "source": "db",
+            "department": self.department,
+            "primary_program": self.primary_program,
+            "picture_url": self.picture_url,
+            "source": source,
+            "editable": True,
             "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+# Legacy alias — prefer DirectoryEntry
+StaffDirectoryEntry = DirectoryEntry
 
 
 class PasswordResetToken(db.Model):

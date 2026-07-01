@@ -152,10 +152,80 @@ def run_migrations() -> list[str]:
         db.session.commit()
         log.append("Backfilled user_minors from users.minor_code")
 
-    if _ensure_staff_directory_table():
-        log.append("Created staff_directory_entries table")
+    if _ensure_directory_entries_table():
+        log.append("Created directory_entries table")
+
+    if _add_column_if_missing("users", "picture_url", "picture_url VARCHAR(512)"):
+        log.append("Added users.picture_url")
+
+    if _migrate_staff_to_directory_entries():
+        log.append("Migrated staff_directory_entries → directory_entries")
 
     return log
+
+
+def _migrate_staff_to_directory_entries() -> bool:
+    if not _table_exists("staff_directory_entries") or not _table_exists("directory_entries"):
+        return False
+    existing = db.session.execute(text("SELECT COUNT(*) FROM directory_entries")).scalar() or 0
+    if existing > 0:
+        return False
+    dialect = db.engine.dialect.name
+    if dialect == "postgresql":
+        db.session.execute(text("""
+            INSERT INTO directory_entries (email, name, role, added_by_id, created_at, updated_at)
+            SELECT email, name, role, added_by_id, created_at, created_at
+            FROM staff_directory_entries
+            ON CONFLICT (email) DO NOTHING
+        """))
+    else:
+        db.session.execute(text("""
+            INSERT OR IGNORE INTO directory_entries (email, name, role, added_by_id, created_at, updated_at)
+            SELECT email, name, role, added_by_id, created_at, created_at
+            FROM staff_directory_entries
+        """))
+    db.session.commit()
+    return True
+
+
+def _ensure_directory_entries_table() -> bool:
+    if _table_exists("directory_entries"):
+        return False
+    dialect = db.engine.dialect.name
+    if dialect == "postgresql":
+        ddl = """
+            CREATE TABLE directory_entries (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                name VARCHAR(200) NOT NULL,
+                role VARCHAR(32) NOT NULL DEFAULT 'professor',
+                department VARCHAR(200),
+                primary_program VARCHAR(8),
+                picture_url VARCHAR(512),
+                added_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """
+    else:
+        ddl = """
+            CREATE TABLE directory_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                name VARCHAR(200) NOT NULL,
+                role VARCHAR(32) NOT NULL DEFAULT 'professor',
+                department VARCHAR(200),
+                primary_program VARCHAR(8),
+                picture_url VARCHAR(512),
+                added_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """
+    db.session.execute(text(ddl))
+    db.session.execute(text("CREATE INDEX ix_directory_entries_email ON directory_entries (email)"))
+    db.session.commit()
+    return True
 
 
 def _ensure_user_minors_table() -> bool:

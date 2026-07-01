@@ -26,6 +26,48 @@ const STUDENT_PROGRAMS  = MAJOR_LIST.slice();  // students never pick AS
 
 const PROGRAM_FULL_NAME = PROGRAM_GROUPS.reduce((acc, p) => { acc[p.id] = p.label; return acc; }, {});
 
+/** CMU-Q departments for faculty/admin profiles (not student majors). */
+const DEPARTMENT_LIST = [
+  'Business Administration',
+  'Arts and Sciences',
+  'Biological Sciences',
+  'Computer Science',
+  'Information Systems',
+  "Dean's Office",
+];
+
+const FACULTY_ROLE_TITLES = ['professor', 'area_head', 'associate_area_head', 'advisor'];
+
+function getProgramLabel(code) {
+  if (!code) return null;
+  return PROGRAM_FULL_NAME[code] || code;
+}
+
+/** Permission group: student | faculty | admin */
+function getRoleGroup(profileOrRole) {
+  if (!profileOrRole) return 'student';
+  if (typeof profileOrRole === 'object') {
+    if (profileOrRole.role_group) return profileOrRole.role_group;
+    profileOrRole = profileOrRole.role;
+  }
+  if (profileOrRole === 'admin') return 'admin';
+  if (FACULTY_ROLE_TITLES.includes(profileOrRole)) return 'faculty';
+  return 'student';
+}
+
+function isStudentRole(profile) {
+  return getRoleGroup(profile) === 'student';
+}
+
+function canManageDirectory(profile) {
+  const g = getRoleGroup(profile);
+  return g === 'faculty' || g === 'admin';
+}
+
+function canManageUsers(profile) {
+  return getRoleGroup(profile) === 'admin';
+}
+
 function isProgramDataPending(programId) {
   const meta = PROGRAM_GROUPS.find(p => p.id === programId);
   return !!(meta && meta.dataPending);
@@ -99,8 +141,12 @@ const ROLE_META = {
   admin:               { label: 'Admin',                      faculty: true,  needsMajor: false, allowsMinor: false, allowsAllPrograms: true,  group: 'admin'     },
 };
 
-// Display groups for the onboarding UI. Single source of truth — adding a
-// new sub-role only needs an entry in ROLE_META + this map.
+function isFaculty(profile) {
+  const g = getRoleGroup(profile);
+  return g === 'faculty' || g === 'admin';
+}
+
+// Display groups for the onboarding UI.
 const ROLE_GROUPS = {
   student:   { label: 'Student',                       roles: ['student'] },
   professor: { label: 'Professor',                     roles: ['professor'] },
@@ -110,7 +156,7 @@ const ROLE_GROUPS = {
 
 const FACULTY_GROUPS = ['professor', 'area_lead', 'advisor'];
 
-function getRoleGroup(role) {
+function getOnboardingUiGroup(role) {
   if (!role) return null;
   return (ROLE_META[role] && ROLE_META[role].group) || null;
 }
@@ -120,12 +166,8 @@ function getRoleLabel(profile) {
   return (ROLE_META[profile.role] && ROLE_META[profile.role].label) || profile.role;
 }
 
-function isFaculty(profile) {
-  return !!(profile && ROLE_META[profile.role] && ROLE_META[profile.role].faculty);
-}
-
 function isStudent(profile) {
-  return !!(profile && profile.role === 'student');
+  return getRoleGroup(profile) === 'student';
 }
 
 // ── Advisor scope ──────────────────────────────────────────

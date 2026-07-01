@@ -140,12 +140,8 @@ const App = {
   _needsOnboarding(u) {
     if (!u || !u.role) return true;
     if (!u.profile_completed) return true;
-    // Recover rows that were auto-marked complete without program data.
-    if (u.role === 'student' && !u.primary_program) return true;
-    if (u.role === 'professor' && !u.primary_program) return true;
-    if (u.role === 'advisor' && !u.advisor_scope) return true;
-    if ((u.role === 'area_head' || u.role === 'associate_area_head') && !u.primary_program) return true;
-    if (u.role === 'admin' && !u.primary_program) return true;
+    if (getRoleGroup(u) === 'student' && !u.primary_program) return true;
+    if (getRoleGroup(u) !== 'student' && (!u.department || !u.primary_program)) return true;
     return false;
   },
 
@@ -1157,11 +1153,12 @@ const App = {
         </button>`;
     }
 
-    // Faculty-with-assigned-major (professor/area_head/associate_area_head)
-    if (isFaculty(p) && p.primary) {
+    // Faculty-with-assigned-program (not "major")
+    if (isFaculty(p) && p.primary && getRoleGroup(p) !== 'student') {
+      const progLabel = getProgramLabel(p.primary) || p.primary;
       return `
         <button class="role-badge rb-${primaryLower}" onclick="App.editRole()" title="Click to change role">
-          <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">${esc(roleLabel)}</span></span>
+          <span class="rb-segment rb-primary">${esc(progLabel)} <span class="rb-suffix">${esc(roleLabel)}</span></span>
           <span class="rb-edit-hint">Edit</span>
         </button>`;
     }
@@ -1251,10 +1248,9 @@ const App = {
             ${MODALITY_OPTIONS.map(m => `<button class="mod-btn ${this.modalityFilter===m.id?'active':''}" onclick="App.setModalityFilter('${m.id}')">${esc(m.label)}</button>`).join('')}
           </div>
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
-          ${(isFaculty(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showStaffDirectory()" title="Faculty and staff directory">Staff</button>' : ''}
-          ${(this.authedUser && (this.authedUser.role === 'admin' || this.authedUser.role === 'area_head' || this.authedUser.role === 'associate_area_head')) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
-          ${(this.authedUser && this.authedUser.role === 'admin') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review submitted course flags">Flag review</button>' : ''}
-          ${(isFaculty(this.profile) && this.authMode === 'authed' && !(this.authedUser && this.authedUser.role === 'admin')) ? '<button class="nav-admin" onclick="App.showMyFlagsView(\'pending\')" title="See the status of course issues you reported">My flags</button>' : ''}
+          ${canManageUsers(this.authedUser) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
+          ${(this.authedUser && getRoleGroup(this.authedUser) === 'admin') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review submitted course flags">Flag review</button>' : ''}
+          ${(isFaculty(this.profile) && this.authMode === 'authed' && getRoleGroup(this.authedUser) !== 'admin') ? '<button class="nav-admin" onclick="App.showMyFlagsView(\'pending\')" title="See the status of course issues you reported">My flags</button>' : ''}
           ${this.authMode === 'authed' ? '<button class="nav-signout" onclick="App.signOut()" title="Sign out" aria-label="Sign out">Sign out</button>' : ''}
         </div>
       </nav>
@@ -1283,6 +1279,10 @@ const App = {
           <div class="panel-body" id="rightBody"></div>
         </div>
       </div>
+      ${(canManageDirectory(this.profile) && this.authMode === 'authed') ? `
+        <button type="button" class="directory-fab" onclick="App.toggleDirectoryPanel()" title="Directory — grant faculty access">Directory</button>
+        <div id="directoryPanelRoot" class="directory-panel-root" hidden></div>
+      ` : ''}
     `;
     this.applyTheme();
   },
@@ -2464,7 +2464,7 @@ const App = {
       const saved = this._isInWishlist(course.course_code);
       acts.push(`<button class="tr-leaf-action tr-leaf-wishlist ${saved ? 'is-saved' : ''}" data-action="wishlist" data-course-code="${esc(course.course_code)}" title="${saved ? 'Remove from wishlist' : 'Save for later'}" aria-label="${saved ? 'Remove from wishlist' : 'Save for later'}">${saved ? this._iconBookmarkFilled() : this._iconBookmarkOutline()}</button>`);
     }
-    if (isFaculty(this.profile) && this.authMode === 'authed') {
+    if (this.authMode === 'authed') {
       acts.push(`<button class="tr-leaf-action tr-leaf-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Flag course data issue" aria-label="Flag course data issue">${this._iconFlag()}</button>`);
     }
     if (!acts.length) return '';
@@ -2496,7 +2496,7 @@ const App = {
           <span>${saved ? 'Saved ✓' : 'Save course'}</span>
         </button>`);
     }
-    if (isFaculty(this.profile) && this.authMode === 'authed') {
+    if (this.authMode === 'authed') {
       parts.push(`
         <button class="cc-action cc-action-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Report a data issue with this course" aria-label="Flag course issue">
           ${this._iconFlag()}
@@ -2717,8 +2717,8 @@ const App = {
   },
 
   openFlagModal(courseCode) {
-    if (!isFaculty(this.profile) || this.authMode !== 'authed') {
-      showToast('Course flagging is available to signed-in faculty only.');
+    if (this.authMode !== 'authed') {
+      showToast('Sign in to flag a course.');
       return;
     }
     const course = this.courseIndex[courseCode];
@@ -2841,7 +2841,7 @@ const App = {
   // ══════════════════════════════════════════════════════════
   // FACULTY — Staff directory (Postgres + JSON merge)
   // ══════════════════════════════════════════════════════════
-  _staffDirState: { items: [], form: { name: '', email: '', role: 'professor' } },
+  _staffDirState: { items: [], form: { name: '', email: '', role: 'professor', department: '', primary_program: '' } },
 
   _staffInitials(name, email) {
     const src = (name || email || '?').trim();
@@ -2850,103 +2850,154 @@ const App = {
     return src.slice(0, 2).toUpperCase();
   },
 
-  _staffAvatarHtml(name, email) {
+  _avatarHtml(name, email, pictureUrl) {
     const initials = this._staffInitials(name, email);
+    if (pictureUrl) {
+      return `<div class="person-avatar" aria-hidden="true">
+        <img class="person-avatar-img" src="${esc(pictureUrl)}" alt="" loading="lazy" decoding="async"
+          onerror="this.classList.add('person-avatar-img--hidden'); this.nextElementSibling.classList.add('person-avatar-fallback--show');">
+        <span class="person-avatar-fallback">${esc(initials)}</span>
+      </div>`;
+    }
     const imgSrc = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(name || email) + '&background=C41230&color=fff&size=80&bold=true';
-    return `<div class="staff-avatar" aria-hidden="true">
-      <img class="staff-avatar-img" src="${esc(imgSrc)}" alt="" loading="lazy" decoding="async"
-        onerror="this.classList.add('staff-avatar-img--hidden'); this.nextElementSibling.classList.add('staff-avatar-fallback--show');">
-      <span class="staff-avatar-fallback">${esc(initials)}</span>
+    return `<div class="person-avatar" aria-hidden="true">
+      <img class="person-avatar-img" src="${esc(imgSrc)}" alt="" loading="lazy" decoding="async"
+        onerror="this.classList.add('person-avatar-img--hidden'); this.nextElementSibling.classList.add('person-avatar-fallback--show');">
+      <span class="person-avatar-fallback">${esc(initials)}</span>
     </div>`;
   },
 
-  async showStaffDirectory() {
-    if (!isFaculty(this.profile) || this.authMode !== 'authed') {
-      showToast('Staff directory is available to faculty and advisors only.');
-      return;
-    }
-    this._homeView = 'staff';
-    const el = document.getElementById('leftBody');
-    if (!el) return;
-    el.innerHTML = '<div class="empty-state"><div class="spinner"></div><div class="empty-text" style="margin-top:12px">Loading directory…</div></div>';
-    await this._loadStaffDirectory();
+  _staffAvatarHtml(name, email, pictureUrl) {
+    return this._avatarHtml(name, email, pictureUrl);
   },
 
-  async _loadStaffDirectory() {
+  _directoryPanelOpen: false,
+
+  toggleDirectoryPanel() {
+    if (!canManageDirectory(this.profile) || this.authMode !== 'authed') return;
+    this._directoryPanelOpen = !this._directoryPanelOpen;
+    const root = document.getElementById('directoryPanelRoot');
+    if (!root) return;
+    if (!this._directoryPanelOpen) {
+      root.hidden = true;
+      root.innerHTML = '';
+      return;
+    }
+    root.hidden = false;
+    root.innerHTML = '<div class="directory-panel"><div class="empty-state"><div class="spinner"></div></div></div>';
+    this._loadDirectoryPanel();
+  },
+
+  async _loadDirectoryPanel() {
     const r = await apiListStaffDirectory();
-    const el = document.getElementById('leftBody');
+    const root = document.getElementById('directoryPanelRoot');
+    if (!root || !this._directoryPanelOpen) return;
     if (!r.ok) {
-      if (el) el.innerHTML = `<div class="empty-state"><div class="empty-text">Could not load directory: ${esc((r.data && r.data.message) || r.error || 'error')}</div></div>`;
+      root.innerHTML = `<div class="directory-panel"><p class="empty-text">${esc((r.data && r.data.message) || 'Could not load directory.')}</p></div>`;
       return;
     }
     this._staffDirState.items = r.data.items || [];
-    this._renderStaffDirectory();
+    this._renderDirectoryPanel();
   },
 
-  _renderStaffDirectory() {
-    const el = document.getElementById('leftBody');
-    if (!el) return;
+  _renderDirectoryPanel() {
+    const root = document.getElementById('directoryPanelRoot');
+    if (!root) return;
     const items = this._staffDirState.items;
     const f = this._staffDirState.form;
-    const roleOpts = [
-      { v: 'professor', l: 'Professor' },
-      { v: 'area_head', l: 'Area head' },
-      { v: 'advisor', l: 'Advisor' },
-    ].map(o => `<option value="${o.v}" ${f.role === o.v ? 'selected' : ''}>${o.l}</option>`).join('');
-    const rows = items.length
-      ? items.map(row => `
-        <div class="staff-row">
-          ${this._staffAvatarHtml(row.name, row.email)}
-          <div class="staff-row-body">
-            <div class="staff-row-name">${esc(row.name)}</div>
-            <div class="staff-row-meta">${esc(row.email)} · ${esc((ROLE_META[row.role] && ROLE_META[row.role].label) || row.role)}${row.source ? ' · ' + esc(row.source) : ''}</div>
-          </div>
-        </div>`).join('')
-      : '<div class="empty-state"><div class="empty-text">No staff listed yet.</div></div>';
-
-    el.innerHTML = `
-      <div class="adm-view staff-view">
-        <div class="adm-header">
-          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
-          <div class="adm-title">Staff directory <span class="adm-count">· ${items.length}</span></div>
+    const roleOpts = ['advisor', 'professor', 'area_head', 'associate_area_head', 'admin']
+      .map(r => `<option value="${r}" ${f.role === r ? 'selected' : ''}>${esc((ROLE_META[r] && ROLE_META[r].label) || r)}</option>`).join('');
+    const deptOpts = DEPARTMENT_LIST.map(d => `<option value="${esc(d)}" ${f.department === d ? 'selected' : ''}>${esc(d)}</option>`).join('');
+    const progOpts = VALID_PROGRAMS.map(p => `<option value="${p}" ${f.primary_program === p ? 'selected' : ''}>${esc(getProgramLabel(p))}</option>`).join('');
+    const rows = items.map(row => `
+      <div class="staff-row">
+        ${this._staffAvatarHtml(row.name, row.email, row.picture_url)}
+        <div class="staff-row-body">
+          <div class="staff-row-name">${esc(row.name)}</div>
+          <div class="staff-row-meta">${esc(row.email)} · ${esc((ROLE_META[row.role] && ROLE_META[row.role].label) || row.role)} · ${esc(row.department || '')}${row.primary_program ? ' · ' + esc(getProgramLabel(row.primary_program)) : ''}</div>
         </div>
+        <div class="staff-row-actions">
+          <button type="button" class="adm-btn" onclick="App._editDirectoryRow('${esc(row.email)}')">Edit</button>
+          <button type="button" class="adm-btn" onclick="App._revokeDirectoryRow('${esc(row.email)}', '${esc(row.name)}')">Remove</button>
+        </div>
+      </div>`).join('') || '<p class="empty-text">No elevated access entries yet.</p>';
+
+    root.innerHTML = `
+      <div class="directory-panel" role="dialog" aria-label="Directory management">
+        <header class="directory-panel-head">
+          <h3>Directory</h3>
+          <button type="button" class="directory-panel-close" onclick="App.toggleDirectoryPanel()" aria-label="Close">×</button>
+        </header>
         <div class="staff-add-card">
-          <div class="staff-add-title">Add staff member</div>
+          <div class="staff-add-title">${f.editEmail ? 'Edit person' : 'Add person'}</div>
           <div class="staff-add-fields">
             <label>Name<input class="adm-search" id="staffAddName" value="${esc(f.name)}" placeholder="Full name" /></label>
-            <label>Email<input class="adm-search" id="staffAddEmail" value="${esc(f.email)}" placeholder="name@andrew.cmu.edu" /></label>
+            <label>Email<input class="adm-search" id="staffAddEmail" value="${esc(f.email)}" placeholder="name@andrew.cmu.edu" ${f.editEmail ? 'readonly' : ''} /></label>
             <label>Role<select class="adm-select" id="staffAddRole">${roleOpts}</select></label>
+            <label>Department<select class="adm-select" id="staffAddDept"><option value="">—</option>${deptOpts}</select></label>
+            <label>Program<select class="adm-select" id="staffAddProgram"><option value="">—</option>${progOpts}</select></label>
           </div>
-          <button class="adm-btn adm-btn-resolve" onclick="App._submitStaffAdd()">Add to directory</button>
+          <button class="adm-btn adm-btn-resolve" onclick="App._submitDirectoryForm()">${f.editEmail ? 'Save changes' : 'Add to directory'}</button>
+          ${f.editEmail ? '<button type="button" class="adm-btn" onclick="App._staffDirState.form={name:\'\',email:\'\',role:\'professor\',department:\'\',primary_program:\'\'};App._renderDirectoryPanel()">Cancel edit</button>' : ''}
         </div>
         <div class="staff-list">${rows}</div>
       </div>`;
   },
 
-  async _submitStaffAdd() {
-    const name = (document.getElementById('staffAddName')?.value || '').trim();
-    const email = (document.getElementById('staffAddEmail')?.value || '').trim();
-    const role = document.getElementById('staffAddRole')?.value || 'professor';
-    this._staffDirState.form = { name, email, role };
-    const r = await apiAddStaffMember({ name, email, role });
+  _editDirectoryRow(email) {
+    const row = (this._staffDirState.items || []).find(r => r.email === email);
+    if (!row) return;
+    this._staffDirState.form = {
+      name: row.name,
+      email: row.email,
+      editEmail: row.email,
+      role: row.role,
+      department: row.department || '',
+      primary_program: row.primary_program || '',
+    };
+    this._renderDirectoryPanel();
+  },
+
+  async _revokeDirectoryRow(email, name) {
+    if (!confirm('Remove elevated access for ' + email + '?')) return;
+    const r = await apiRevokeDirectoryAccess({ email, name });
     if (!r.ok) {
-      showToast((r.data && r.data.message) || 'Could not add staff member.');
+      showToast((r.data && r.data.message) || 'Could not remove.');
       return;
     }
-    showToast('Staff member added.');
-    this._staffDirState.form = { name: '', email: '', role: 'professor' };
-    await this._loadStaffDirectory();
+    showToast('Access updated.');
+    await this._loadDirectoryPanel();
+  },
+
+  async _submitDirectoryForm() {
+    const f = this._staffDirState.form;
+    const body = {
+      name: (document.getElementById('staffAddName')?.value || '').trim(),
+      email: (document.getElementById('staffAddEmail')?.value || '').trim(),
+      role: document.getElementById('staffAddRole')?.value || 'professor',
+      department: document.getElementById('staffAddDept')?.value || '',
+      primary_program: document.getElementById('staffAddProgram')?.value || '',
+    };
+    const r = f.editEmail
+      ? await apiUpsertDirectoryByEmail(body)
+      : await apiAddStaffMember(body);
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Could not save.');
+      return;
+    }
+    showToast(f.editEmail ? 'Directory updated.' : 'Person added — they get faculty access on next login.');
+    this._staffDirState.form = { name: '', email: '', role: 'professor', department: '', primary_program: '' };
+    await this._loadDirectoryPanel();
   },
 
   // ══════════════════════════════════════════════════════════
-  // ADMIN / AREA HEAD — User role management
+  // ADMIN — User role management
   // ══════════════════════════════════════════════════════════
   _userAdminState: { items: [], search: '' },
 
   async showUserManagement() {
-    const role = this.authedUser && this.authedUser.role;
-    if (!role || !['admin', 'area_head', 'associate_area_head'].includes(role)) {
-      showToast('Admin or area head access required.');
+    if (!canManageUsers(this.authedUser)) {
+      showToast('Admin access required.');
       return;
     }
     this._homeView = 'users';
@@ -2993,37 +3044,46 @@ const App = {
   },
 
   _renderUserAdminRow(u) {
-    const prog = u.primary_program || '—';
+    const rg = getRoleGroup(u);
+    const isStudent = rg === 'student';
+    const progLabel = getProgramLabel(u.primary_program) || u.primary_program || '—';
     const minors = Array.isArray(u.minor_codes) ? u.minor_codes : (u.minor_code ? [u.minor_code] : []);
-    const minorSummary = minors.length
-      ? minors.map(mc => getMinorLabel(mc)).join(', ')
-      : '—';
-    const roleOpts = ['student', 'professor', 'area_head', 'associate_area_head', 'advisor']
-      .concat(this.authedUser.role === 'admin' ? ['admin'] : [])
+    const minorSummary = minors.length ? minors.map(mc => getMinorLabel(mc)).join(', ') : '';
+    const summary = isStudent
+      ? `${esc(u.name)} · student · ${esc(u.primary_program || '—')}${minorSummary ? ' · minors ' + esc(minorSummary) : ''}`
+      : `${esc(u.name)} · ${esc(u.role)} · ${esc(progLabel)}`;
+    const roleOpts = ['student', 'professor', 'area_head', 'associate_area_head', 'advisor', 'admin']
       .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${esc((ROLE_META[r] && ROLE_META[r].label) || r)}</option>`)
       .join('');
     const majorOpts = MAJOR_LIST.map(m => `<option value="${m}" ${u.primary_program === m ? 'selected' : ''}>${m}</option>`).join('');
+    const programOpts = VALID_PROGRAMS.map(p => `<option value="${p}" ${u.primary_program === p ? 'selected' : ''}>${esc(getProgramLabel(p))}</option>`).join('');
+    const deptOpts = DEPARTMENT_LIST.map(d => `<option value="${esc(d)}" ${u.department === d ? 'selected' : ''}>${esc(d)}</option>`).join('');
     const minorChips = minors.map(mc => `
       <span class="adm-minor-chip" data-code="${esc(mc)}">${esc(getMinorLabel(mc))}
         <button type="button" class="adm-minor-chip-x" onclick="App._adminRemoveMinor(${u.id}, '${esc(mc)}')">×</button>
       </span>`).join('');
     const minorAddOpts = MINOR_LIST.filter(m => !minors.includes(m.code))
       .map(m => `<option value="${m.code}">${esc(m.label)}</option>`).join('');
+    const studentFields = `
+          <label>Major<select class="adm-select" id="major-${u.id}"><option value="">—</option>${majorOpts}</select></label>
+          <label>Minor(s)<div class="adm-minor-chips" id="minors-${u.id}">${minorChips || '<span class="adm-minor-empty">—</span>'}</div>
+            <select class="adm-select adm-minor-add" id="minor-add-${u.id}" onchange="App._adminAddMinor(${u.id}, this.value); this.value='';">
+              <option value="">Add minor…</option>${minorAddOpts}
+            </select></label>`;
+    const facultyFields = `
+          <label>Department<select class="adm-select" id="dept-${u.id}"><option value="">—</option>${deptOpts}</select></label>
+          <label>Program<select class="adm-select" id="program-${u.id}"><option value="">—</option>${programOpts}</select></label>`;
     return `
       <div class="adm-row adm-user-row" data-user-id="${u.id}">
         <div class="adm-row-head">
           <div>
             <div class="adm-course-code">${esc(u.email)}</div>
-            <div class="adm-course-name">${esc(u.name)} · ${esc(u.role)} · ${esc(prog)}${minors.length ? ' · minor' + (minors.length > 1 ? 's' : '') + ' ' + esc(minorSummary) : ''}</div>
+            <div class="adm-course-name">${summary}</div>
           </div>
         </div>
         <div class="adm-user-fields">
           <label>Role<select class="adm-select" id="role-${u.id}">${roleOpts}</select></label>
-          <label>Major<select class="adm-select" id="major-${u.id}"><option value="">—</option>${majorOpts}</select></label>
-          <label>Minor(s)<div class="adm-minor-chips" id="minors-${u.id}">${minorChips || '<span class="adm-minor-empty">—</span>'}</div>
-            <select class="adm-select adm-minor-add" id="minor-add-${u.id}" onchange="App._adminAddMinor(${u.id}, this.value); this.value='';">
-              <option value="">Add minor…</option>${minorAddOpts}
-            </select></label>
+          <div id="role-fields-${u.id}">${isStudent ? studentFields : facultyFields}</div>
         </div>
         <div class="adm-actions">
           <button class="adm-btn adm-btn-resolve" onclick="App._saveUserAdmin(${u.id})">Save</button>
@@ -3066,12 +3126,20 @@ const App = {
 
   async _saveUserAdmin(userId) {
     const roleEl = document.getElementById('role-' + userId);
-    const majorEl = document.getElementById('major-' + userId);
-    const patch = {
-      role: roleEl ? roleEl.value : undefined,
-      primary_program: majorEl ? majorEl.value : undefined,
-      minor_codes: this._adminMinorCodes(userId),
-    };
+    const role = roleEl ? roleEl.value : 'student';
+    const patch = { role };
+    if (getRoleGroup(role) === 'student') {
+      const majorEl = document.getElementById('major-' + userId);
+      patch.primary_program = majorEl ? majorEl.value : undefined;
+      patch.minor_codes = this._adminMinorCodes(userId);
+      patch.department = null;
+    } else {
+      const deptEl = document.getElementById('dept-' + userId);
+      const progEl = document.getElementById('program-' + userId);
+      patch.department = deptEl ? deptEl.value : undefined;
+      patch.primary_program = progEl ? progEl.value : undefined;
+      patch.minor_codes = [];
+    }
     const r = await apiPatchUser(userId, patch);
     if (!r.ok) {
       showToast((r.data && r.data.message) || 'Could not save user.');
@@ -3087,7 +3155,7 @@ const App = {
   _adminState: { status: 'pending', items: [], total: 0 },
 
   async showFlagReview() {
-    if (!(this.authedUser && this.authedUser.role === 'admin')) {
+    if (!(this.authedUser && getRoleGroup(this.authedUser) === 'admin')) {
       showToast('Admin access required.');
       return;
     }

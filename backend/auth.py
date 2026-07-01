@@ -17,10 +17,10 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 from .cmu import normalize_cmu_email
-from .directory import load_merged_directory
+from .directory import resolve_directory_entry
 from .db import db
 from .email_util import send_password_reset_email
-from .models import PasswordResetToken, User, UserMinor
+from .models import PasswordResetToken, User, UserMinor, VALID_DEPARTMENTS, FACULTY_ROLES
 from .permissions import require_login, current_user
 from .tokens import make_auth_token
 
@@ -120,19 +120,20 @@ def _finalize_user(user: User, email: str) -> User:
 
 
 def _sync_directory_profile(user: User, email: str) -> None:
-    """Apply directory roles on every login/register. Admin only via ADMIN_EMAILS env."""
-    admin_emails = current_app.config.get("ADMIN_EMAILS") or set()
-    if email in admin_emails:
-        user.role = "admin"
-        user.is_admin = True
-        return
+    """Resolve role from directory_entries (DB first), then JSON seed, else student.
 
-    user.is_admin = False
-    seed = load_merged_directory().get(email)
-    if seed:
-        _apply_seed(user, seed)
+    Admin is granted ONLY by directory role=admin (not ADMIN_EMAILS env).
+    """
+    entry = resolve_directory_entry(email)
+    if entry:
+        _apply_seed(user, entry)
     else:
         user.role = "student"
+        user.is_admin = False
+        user.advisor_scope = None
+        user.minors.clear()
+        user.minor_code = None
+        user.sync_minor_code_legacy()
 
 
 def _create_user_with_password(email: str, name: str, password: str) -> User:
@@ -197,16 +198,24 @@ def _minor_codes_for_validation(data: dict, user: User) -> list[str]:
 
 
 def _apply_seed(user: User, seed: dict) -> None:
-    """Merge directory row into user. Admin is env-only, never from directory JSON."""
+    """Merge directory row into user. Admin only when directory role is admin."""
     role = (seed.get("role") or "professor").strip().lower()
-    if role == "admin":
-        role = "professor"
+    if role == "student":
+        user.role = "student"
+        user.is_admin = False
+        return
     user.role = role
-    for field in ("name", "primary_program", "advisor_scope", "department", "department_scope"):
-        if field in seed and seed[field]:
+    user.is_admin = role == "admin"
+    for field in ("name", "primary_program", "department", "department_scope"):
+        if seed.get(field):
             setattr(user, field, seed[field])
-    if seed.get("minor_code"):
-        user.minor_code = seed["minor_code"]
+    user.advisor_scope = None
+    user.minors.clear()
+    user.minor_code = None
+    user.sync_minor_code_legacy()
+    pic = seed.get("picture_url")
+    if pic:
+        user.picture_url = pic
 
 
 def _write_session(user: User) -> None:
@@ -236,7 +245,12 @@ def _email_allowed(email: str) -> bool:
     return True
 
 
-def _upsert_user_from_login(email: str, name: str, google_sub: str | None = None) -> User:
+def _upsert_user_from_login(
+    email: str,
+    name: str,
+    google_sub: str | None = None,
+    picture_url: str | None = None,
+) -> User:
     """Find or create a user, apply seed/admin rules, mark profile complete when ready."""
     user = (
         db.session.query(User).filter_by(google_sub=google_sub).one_or_none()
@@ -259,6 +273,8 @@ def _upsert_user_from_login(email: str, name: str, google_sub: str | None = None
             user.google_sub = google_sub
         if not user.name and name:
             user.name = name
+    if picture_url:
+        user.picture_url = picture_url
 
     _sync_directory_profile(user, email)
 
@@ -433,7 +449,7 @@ def google_signin():
     except ValueError as e:
         return jsonify(error="invalid_token", message=str(e)), 401
 
-    email = _normalize_cmu_email(info.get("email") or "")
+    email = normalize_cmu_email(info.get("email") or "")
     if not email or not info.get("email_verified"):
         return jsonify(error="email_unverified", message="Google account email is not verified."), 401
 
@@ -446,7 +462,8 @@ def google_signin():
 
     google_sub = info.get("sub")
     name = info.get("name") or info.get("given_name") or email.split("@", 1)[0]
-    user = _upsert_user_from_login(email, name, google_sub=google_sub)
+    picture = info.get("picture")
+    user = _upsert_user_from_login(email, name, google_sub=google_sub, picture_url=picture)
     _write_session(user)
     return jsonify(_auth_payload(user))
 
@@ -468,8 +485,7 @@ def me():
 
 
 # ── PATCH /api/me — profile completion / edit ────────────────
-# Used after first signup to capture role + program. Admins cannot change
-# their own role to non-admin via this endpoint (admin status is env-driven).
+# Used after first signup to capture role + program. Admin role is directory-driven.
 ALLOWED_PROFILE_FIELDS = {
     "name",
     "role",
@@ -500,7 +516,7 @@ VALID_MINORS_FOR_PATCH = {
 VALID_ADVISOR_SCOPES = {"major", "minor", "arts_sciences", "all_programs"}
 
 
-def _validate_consistent_profile(role, primary_program, minor_codes, advisor_scope):
+def _validate_consistent_profile(role, primary_program, minor_codes, advisor_scope, department):
     """Return None if the combination is internally consistent, else an error message."""
     minor_codes = minor_codes or []
     if role == "student":
@@ -513,44 +529,18 @@ def _validate_consistent_profile(role, primary_program, minor_codes, advisor_sco
                 return "Minor cannot match your major field."
         if advisor_scope:
             return "Students cannot have an advisor_scope."
+        if department:
+            return "Students do not use department."
         return None
-    if role == "professor":
-        if primary_program not in VALID_PROGRAMS_FOR_PATCH:
-            return "Professors must have a primary_program."
+    if role in FACULTY_ROLES or role == "admin":
         if minor_codes:
-            return "Professors cannot have minors."
+            return "Faculty cannot have minors."
         if advisor_scope:
-            return "Professors cannot have an advisor_scope."
-        return None
-    if role in ("area_head", "associate_area_head"):
-        if primary_program is not None and primary_program not in VALID_PROGRAMS_FOR_PATCH:
-            return "Invalid primary_program for area lead."
-        if minor_codes:
-            return "Area leads cannot have minors."
-        if advisor_scope:
-            return "Area leads cannot have an advisor_scope."
-        return None
-    if role == "advisor":
-        if advisor_scope not in VALID_ADVISOR_SCOPES:
-            return f"Advisor must have advisor_scope ∈ {sorted(VALID_ADVISOR_SCOPES)}."
-        advisor_minor = minor_codes[0] if minor_codes else None
-        if advisor_scope == "major":
-            if primary_program not in (VALID_PROGRAMS_FOR_PATCH - {"AS"}):
-                return "Advisor with scope=major needs a primary_program (CS/IS/BA/BS/AI/GS)."
-            if advisor_minor:
-                return "Advisor with scope=major cannot also have a minor_code."
-        elif advisor_scope == "minor":
-            if not advisor_minor or advisor_minor not in VALID_MINORS_FOR_PATCH:
-                return "Advisor with scope=minor needs a valid minor_code."
-            if primary_program:
-                return "Advisor with scope=minor cannot also have a primary_program."
-        else:
-            if primary_program:
-                return f"Advisor with scope={advisor_scope} cannot have a primary_program."
-            if advisor_minor:
-                return f"Advisor with scope={advisor_scope} cannot have a minor_code."
-        return None
-    if role == "admin":
+            return "Faculty roles do not use advisor_scope."
+        if not department or department not in VALID_DEPARTMENTS:
+            return "Faculty must have a valid department."
+        if not primary_program or primary_program not in VALID_PROGRAMS_FOR_PATCH:
+            return "Faculty must have a valid program (primary_program)."
         return None
     return f"Unknown role: {role}."
 
@@ -579,6 +569,7 @@ def update_me():
     new_role            = _next("role", user.role)
     new_primary         = _next("primary_program", user.primary_program)
     new_advisor_scope   = _next("advisor_scope", user.advisor_scope)
+    new_department      = _next("department", user.department)
     new_minor_codes     = _minor_codes_for_validation(data, user)
     if "minor_codes" in data and not isinstance(data["minor_codes"], list):
         return jsonify(error="invalid_minor_codes", message="minor_codes must be a list."), 400
@@ -589,19 +580,15 @@ def update_me():
             if new_role != "admin":
                 return jsonify(
                     error="cannot_change_admin_role",
-                    message="Admin role is managed via the ADMIN_EMAILS env var.",
+                    message="Admin role is managed via the directory panel.",
                 ), 400
         else:
             if new_role not in SELF_SETTABLE_ROLES:
                 return jsonify(error="invalid_role", message=f"You can't set your own role to '{new_role}'. Faculty roles are assigned by an admin."), 400
 
-    validation_minors = new_minor_codes
-    if new_role == "advisor" and new_advisor_scope == "minor":
-        validation_minors = [new_minor_single] if new_minor_single else []
-    elif new_role != "student":
-        validation_minors = []
+    validation_minors = new_minor_codes if new_role == "student" else []
 
-    err = _validate_consistent_profile(new_role, new_primary, validation_minors, new_advisor_scope)
+    err = _validate_consistent_profile(new_role, new_primary, validation_minors, new_advisor_scope, new_department)
     if err:
         return jsonify(error="inconsistent_profile", message=err), 400
 

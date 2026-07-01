@@ -9,8 +9,8 @@ import time
 from flask import Blueprint, g, jsonify, request
 
 from .db import db
-from .models import Flag, FLAG_STATUSES
-from .permissions import require_role, FACULTY_OR_ADMIN
+from .models import Flag, FLAG_STATUSES, FACULTY_ROLES
+from .permissions import require_role_group, require_role, ROLE_GROUP_STUDENT, ROLE_GROUP_FACULTY, ROLE_GROUP_ADMIN
 
 
 bp = Blueprint("flags", __name__, url_prefix="/api/flags")
@@ -40,9 +40,9 @@ def _new_flag_id() -> str:
     return f"flg-{ts}-{rnd}"
 
 
-# ── POST /api/flags — faculty submit ──────────────────────────
+# ── POST /api/flags — students + faculty + admin ─────────────
 @bp.route("", methods=["POST"])
-@require_role(FACULTY_OR_ADMIN)
+@require_role_group(ROLE_GROUP_STUDENT, ROLE_GROUP_FACULTY, ROLE_GROUP_ADMIN)
 def create_flag():
     data = request.get_json(silent=True) or {}
     missing = REQUIRED_POST_FIELDS - set(data.keys())
@@ -85,7 +85,7 @@ def create_flag():
 
 # ── GET /api/flags — admin sees all; faculty see only their own ───
 @bp.route("", methods=["GET"])
-@require_role(FACULTY_OR_ADMIN)
+@require_role_group(ROLE_GROUP_FACULTY, ROLE_GROUP_ADMIN)
 def list_flags():
     """Admins get every flag (the review queue). Non-admin faculty get ONLY
     the flags they submitted (their "My flags" view) — the owner filter is
@@ -98,7 +98,7 @@ def list_flags():
 
     q = db.session.query(Flag)
     # Non-admin faculty are scoped to their own submissions.
-    if g.user.role != "admin":
+    if g.user.role_group() != ROLE_GROUP_ADMIN:
         q = q.filter(Flag.submitted_by_id == g.user.id)
     if status:
         if status not in FLAG_STATUSES:
@@ -124,7 +124,7 @@ def list_flags():
 
 # ── PATCH /api/flags/<id> — admin updates status/notes ────────
 @bp.route("/<flag_id>", methods=["PATCH"])
-@require_role("admin")
+@require_role_group(ROLE_GROUP_ADMIN)
 def update_flag(flag_id: str):
     data = request.get_json(silent=True) or {}
     flag = db.session.get(Flag, flag_id)

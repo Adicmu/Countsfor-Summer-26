@@ -51,13 +51,23 @@ def test_google_signin_reuses_existing_user(client):
         assert db.session.query(User).count() == 1
 
 
-def test_google_signin_promotes_admin_via_env(client):
-    with patch("backend.auth.id_token.verify_oauth2_token",
-               return_value=_fake_google_payload(email="admin@andrew.cmu.edu", sub="g-admin")):
-        r = client.post("/api/auth/google", json={"credential": "stub"})
+def test_google_signin_promotes_admin_via_directory(client):
+    directory = {
+        "admin@andrew.cmu.edu": {
+            "email": "admin@andrew.cmu.edu",
+            "name": "Admin",
+            "role": "admin",
+            "department": "Dean's Office",
+            "primary_program": "IS",
+        }
+    }
+    with patch("backend.auth.resolve_directory_entry", side_effect=lambda e: directory.get(e)):
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake_google_payload(email="admin@andrew.cmu.edu", sub="g-admin")):
+            r = client.post("/api/auth/google", json={"credential": "stub"})
     body = r.get_json()
     assert body["role"] == "admin"
-    assert body["profile_completed"] is True
+    assert body["is_admin"] is True
 
 
 def test_google_signin_marks_seeded_faculty_complete(client):
@@ -286,11 +296,20 @@ def test_patch_me_rejects_self_assign_faculty(client, student):
 
 
 def test_admin_skips_onboarding(client):
-    """An admin (via ADMIN_EMAILS) is profile-complete on login and never gets
-    bounced to onboarding — even without a primary_program."""
-    with patch("backend.auth.id_token.verify_oauth2_token",
-               return_value=_fake("admin@andrew.cmu.edu", "g-admin")):
-        r = client.post("/api/auth/google", json={"credential": "stub"})
+    """Admin from directory with department + program is profile-complete on login."""
+    directory = {
+        "admin@andrew.cmu.edu": {
+            "email": "admin@andrew.cmu.edu",
+            "name": "Admin",
+            "role": "admin",
+            "department": "Dean's Office",
+            "primary_program": "IS",
+        }
+    }
+    with patch("backend.auth.resolve_directory_entry", side_effect=lambda e: directory.get(e)):
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake("admin@andrew.cmu.edu", "g-admin")):
+            r = client.post("/api/auth/google", json={"credential": "stub"})
     body = r.get_json()
     assert body["role"] == "admin"
     assert body["is_admin"] is True
@@ -303,7 +322,7 @@ def test_seed_user_recognized_as_faculty_on_signin(tmp_path):
     seed = tmp_path / "seed_users.json"
     seed.write_text(json.dumps([
         {"email": "hbouamor@andrew.cmu.edu", "name": "Houda Bouamor",
-         "role": "professor", "primary_program": "IS", "department": "Information Systems"},
+         "role": "associate_area_head", "primary_program": "IS", "department": "Information Systems"},
     ]))
 
     class SeedConfig(TestConfig):
@@ -315,22 +334,35 @@ def test_seed_user_recognized_as_faculty_on_signin(tmp_path):
                    return_value=_fake("hbouamor@andrew.cmu.edu", "g-houda")):
             r = c.post("/api/auth/google", json={"credential": "stub"})
     body = r.get_json()
-    assert body["role"] == "professor"
+    assert body["role"] == "associate_area_head"
     assert body["primary_program"] == "IS"
     assert body["profile_completed"] is True
 
 
-def test_admin_email_overrides_seed_role(tmp_path):
-    """If an email is both seeded as faculty AND in ADMIN_EMAILS, admin wins."""
+def test_admin_directory_overrides_json_seed_role(tmp_path):
+    """Postgres directory entry (role=admin) overrides JSON seed (role=professor)."""
+    from backend.db import db
+    from backend.models import DirectoryEntry
+
     seed = tmp_path / "seed_users.json"
     seed.write_text(json.dumps([
-        {"email": "admin@andrew.cmu.edu", "role": "professor", "primary_program": "IS"},
+        {"email": "admin@andrew.cmu.edu", "role": "professor", "primary_program": "IS",
+         "department": "Information Systems", "name": "Admin"},
     ]))
 
     class SeedConfig(TestConfig):
         SEED_USERS_PATH = str(seed)
 
     app = create_app(SeedConfig)
+    with app.app_context():
+        db.session.add(DirectoryEntry(
+            email="admin@andrew.cmu.edu",
+            name="Admin",
+            role="admin",
+            department="Dean's Office",
+            primary_program="IS",
+        ))
+        db.session.commit()
     with app.test_client() as c:
         with patch("backend.auth.id_token.verify_oauth2_token",
                    return_value=_fake("admin@andrew.cmu.edu", "g-admin")):

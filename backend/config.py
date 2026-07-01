@@ -62,8 +62,8 @@ class Config:
     # ── Auth ──────────────────────────────────────────────────
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
     ALLOWED_EMAIL_DOMAIN = os.environ.get("ALLOWED_EMAIL_DOMAIN", "").strip().lower()
-    # Admin emails come ONLY from the ADMIN_EMAILS env var (comma-separated).
-    # Faculty/advisor roles come from the directory JSON + Postgres staff table.
+    # Admin emails come ONLY from the directory panel (role=admin).
+    # ADMIN_EMAILS is legacy and ignored by auth sync — kept for backwards-compatible deploy configs.
     ADMIN_EMAILS = {e.lower() for e in _csv(os.environ.get("ADMIN_EMAILS"))}
     SEED_USERS_PATH = os.environ.get(
         "SEED_USERS_PATH",

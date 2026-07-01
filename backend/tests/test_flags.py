@@ -47,6 +47,12 @@ def test_advisor_can_flag(client, advisor):
     assert r.status_code == 201
 
 
+def test_student_can_flag(client, student):
+    login(client, student)
+    r = client.post("/api/flags", json=VALID_FLAG)
+    assert r.status_code == 201
+
+
 def test_admin_can_flag(client, admin):
     login(client, admin)
     r = client.post("/api/flags", json=VALID_FLAG)
