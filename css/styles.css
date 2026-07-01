@@ -3752,6 +3752,49 @@ body {
 }
 .adm-btn:hover { border-color: var(--text-secondary); color: var(--text-primary); }
 .adm-btn-resolve { color: var(--major-bs-text); border-color: var(--major-bs-border); }
+
+/* ── Multi-minor chips (onboarding + admin) ─────────────── */
+.ob-minor-chips, .adm-minor-chips { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 10px; }
+.ob-minor-chip, .adm-minor-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 10px; border-radius: 999px;
+  background: var(--bg-card); border: 1px solid var(--border-light);
+  font-size: 12px; font-weight: 600;
+}
+.ob-minor-chip-x, .adm-minor-chip-x {
+  border: none; background: transparent; cursor: pointer; font-size: 14px; line-height: 1; opacity: 0.7;
+}
+.ob-minor-chip-x:hover, .adm-minor-chip-x:hover { opacity: 1; color: var(--accent-red, #c41230); }
+.adm-minor-add { margin-top: 8px; }
+.adm-minor-empty { opacity: 0.5; font-size: 12px; }
+.rb-secondary-compact { font-size: 11px; }
+.rb-minor-sep { opacity: 0.55; }
+
+/* ── Staff directory ─────────────────────────────────────── */
+.staff-view .staff-add-card {
+  margin: 16px 0 20px; padding: 16px; border: 1px solid var(--border-light);
+  border-radius: 10px; background: var(--bg-card);
+}
+.staff-add-title { font-weight: 700; margin-bottom: 12px; }
+.staff-add-fields { display: grid; gap: 10px; margin-bottom: 12px; }
+.staff-add-fields label { display: grid; gap: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.78; }
+.staff-list { display: grid; gap: 10px; }
+.staff-row {
+  display: flex; gap: 12px; align-items: center;
+  padding: 12px 14px; border: 1px solid var(--border-light); border-radius: 10px; background: var(--bg-card);
+}
+.staff-avatar { width: 44px; height: 44px; flex-shrink: 0; position: relative; }
+.staff-avatar-img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block; }
+.staff-avatar-img--hidden { display: none !important; }
+.staff-avatar-fallback {
+  display: none; width: 44px; height: 44px; border-radius: 50%;
+  background: #c41230; color: #fff; font-size: 13px; font-weight: 700;
+  align-items: center; justify-content: center;
+}
+.staff-avatar-fallback--show { display: flex !important; }
+.staff-row-name { font-weight: 700; font-size: 14px; }
+.staff-row-meta { font-size: 12px; opacity: 0.75; margin-top: 2px; }
+.staff-src { font-size: 11px; opacity: 0.85; }
 .adm-btn-resolve:hover { background: var(--major-bs-bg); }
 .adm-btn-dismiss { color: var(--text-tertiary); }
 .adm-btn-note { color: var(--major-ba-text); border-color: var(--major-ba-border); }

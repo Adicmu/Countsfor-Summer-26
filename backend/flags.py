@@ -21,6 +21,7 @@ VALID_REASON_CODES = {
     "metadata_outdated",
     "prereq_wrong",
     "requirement_mismatch",
+    "requirement_newly_counts",
     "should_be_equivalent",
     "wrong_semester",
     "restrictions_missing",

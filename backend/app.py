@@ -57,11 +57,13 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
     from .flags import bp as flags_bp
     from .wishlist import bp as wishlist_bp
     from .users import bp as users_bp
+    from .directory_routes import bp as directory_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(flags_bp)
     app.register_blueprint(wishlist_bp)
     app.register_blueprint(users_bp)
+    app.register_blueprint(directory_bp)
 
     # Health check (Render pings this)
     @app.route("/health")

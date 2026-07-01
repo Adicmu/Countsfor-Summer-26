@@ -159,16 +159,21 @@ const App = {
     if (!u) { this.profile = null; return; }
     const scope = u.advisor_scope || null;
     let primary = u.primary_program || null;
-    let secondary = u.minor_code || null;
+    let secondary = null;
+    let secondaries = Array.isArray(u.minor_codes) ? u.minor_codes.filter(Boolean) : [];
+    if (!secondaries.length && u.minor_code) secondaries = [u.minor_code];
+    secondary = secondaries[0] || null;
     // Advisor-minor scope stores the minor code in `primary` (per profile.js).
     if (u.role === 'advisor' && scope === 'minor' && u.minor_code) {
       primary = u.minor_code;
       secondary = null;
+      secondaries = [];
     }
     this.profile = {
       role: u.role,
       primary,
       secondary,
+      secondaries,
       scope,
     };
     // Server is source of truth in authed mode — keep localStorage aligned.
@@ -240,12 +245,13 @@ const App = {
   // ══════════════════════════════════════════════════════════
 
   _onboardingState: {
-    role: null,         // precise role (area_head vs associate_area_head distinct)
-    roleGroup: null,    // 'student' | 'faculty' — top-level toggle
-    facultyGroup: null, // 'professor' | 'area_lead' | 'advisor' — under faculty
-    scope: null,        // advisor scope: 'major'|'minor'|'arts_sciences'|'all_programs'
+    role: null,
+    roleGroup: null,
+    facultyGroup: null,
+    scope: null,
     primary: null,
     secondary: null,
+    secondaries: [],
     isEdit: false,
   },
 
@@ -263,7 +269,8 @@ const App = {
       facultyGroup: null,
       scope:        null,
       primary:      keepStudent ? p.primary : null,
-      secondary:    keepStudent ? p.secondary : null,
+      secondary:    keepStudent ? (getProfileMinors(p)[0] || null) : null,
+      secondaries:  keepStudent ? getProfileMinors(p) : [],
       isEdit: !!isEdit,
     };
     this._renderOnboardingScreen();
@@ -284,7 +291,8 @@ const App = {
     const candidate = {
       role: s.role,
       primary: s.primary,
-      secondary: s.roleGroup === 'student' ? s.secondary : null,
+      secondary: s.secondaries[0] || null,
+      secondaries: s.roleGroup === 'student' ? s.secondaries : [],
       scope: s.scope,
     };
     const valid = !!s.role && validateProfile(candidate);
@@ -304,16 +312,23 @@ const App = {
       asOptionHtml = `<button class="ob-pill ob-pill-wide ${isASSelected ? 'selected' : ''}" onclick="App._obPickMajor('AS')">Arts &amp; Sciences<span class="ob-pill-sub">Cross-program grouping</span></button>`;
     }
 
-    // Minor picker — same select used by student and advisor-minor scope
-    const minorOptions = MINOR_LIST.map(m => {
-      // Only disable matching minor for students (collision rule).
-      const disabled = (s.roleGroup === 'student' && MAJOR_TO_MINOR_CODE[s.primary] === m.code) ? 'disabled' : '';
-      const value = s.roleGroup === 'student' ? s.secondary : s.primary;
-      const sel = value === m.code ? 'selected' : '';
-      return `<option value="${m.code}" ${disabled} ${sel}>${esc(m.label)}</option>`;
-    }).join('');
+    // Minor(s) — multi-add for students; single select for advisor-minor scope
+    const studentMinors = s.secondaries || [];
+    const minorPickOptions = MINOR_LIST.filter(m => {
+      if (s.roleGroup !== 'student') return true;
+      if (MAJOR_TO_MINOR_CODE[s.primary] === m.code) return false;
+      return !studentMinors.includes(m.code);
+    }).map(m => `<option value="${m.code}">${esc(m.label)}</option>`).join('');
 
-    const minorOnChange = 'App._obPickMinor(this.value)';
+    const minorChips = studentMinors.map(mc => `
+      <span class="ob-minor-chip">${esc(getMinorLabel(mc))}
+        <button type="button" class="ob-minor-chip-x" aria-label="Remove minor" onclick="App._obRemoveMinor('${mc}')">×</button>
+      </span>`).join('');
+
+    const advisorMinorOptions = MINOR_LIST.map(m => {
+      const sel = s.primary === m.code ? 'selected' : '';
+      return `<option value="${m.code}" ${sel}>${esc(m.label)}</option>`;
+    }).join('');
 
     const majorLabel = 'MAJORING IN';
 
@@ -335,13 +350,26 @@ const App = {
         </div>
       ` : ''}
 
-      ${showMinorSelect ? `
+      ${showMinorSelect && s.roleGroup === 'student' ? `
         <div class="ob-section">
-          <div class="ob-section-label">${s.roleGroup === 'student' ? 'WITH A MINOR IN <span class="ob-optional">— optional</span>' : 'WHICH MINOR'}</div>
+          <div class="ob-section-label">MINOR(S) <span class="ob-optional">— optional</span></div>
+          ${minorChips ? `<div class="ob-minor-chips">${minorChips}</div>` : ''}
+          <div class="ob-select-wrap ob-minor-add-row">
+            <select class="ob-select" id="obMinorPick" onchange="App._obAddMinor(this.value); this.value='';">
+              <option value="">Add a minor…</option>
+              ${minorPickOptions}
+            </select>
+          </div>
+        </div>
+      ` : ''}
+
+      ${showMinorSelect && s.roleGroup !== 'student' ? `
+        <div class="ob-section">
+          <div class="ob-section-label">WHICH MINOR</div>
           <div class="ob-select-wrap">
-            <select class="ob-select" onchange="${minorOnChange}">
-              <option value="" ${(s.roleGroup === 'student' ? !s.secondary : !s.primary) ? 'selected' : ''}>— ${s.roleGroup === 'student' ? 'No minor' : 'Choose a minor'} —</option>
-              ${minorOptions}
+            <select class="ob-select" onchange="App._obPickMinor(this.value)">
+              <option value="" ${!s.primary ? 'selected' : ''}>— Choose a minor —</option>
+              ${advisorMinorOptions}
             </select>
           </div>
         </div>
@@ -383,6 +411,7 @@ const App = {
     if (group !== prev) {
       s.primary = null;
       s.secondary = null;
+      s.secondaries = [];
     }
     this._renderOnboardingScreen();
   },
@@ -394,6 +423,7 @@ const App = {
     if (group !== prev) {
       s.primary = null;
       s.secondary = null;
+      s.secondaries = [];
       s.scope = null;
       // Set the precise role for groups that don't need a sub-pick.
       if (group === 'professor')      s.role = 'professor';
@@ -412,19 +442,38 @@ const App = {
   _obPickScope(scope) {
     const s = this._onboardingState;
     s.scope = scope;
-    // Reset target since the picker shape changed.
     s.primary = null;
     s.secondary = null;
+    s.secondaries = [];
     this._renderOnboardingScreen();
   },
 
   _obPickMajor(program) {
     const s = this._onboardingState;
     s.primary = program;
-    // Drop colliding minor for students.
-    if (s.roleGroup === 'student' && s.secondary && MAJOR_TO_MINOR_CODE[s.primary] === s.secondary) {
-      s.secondary = null;
+    if (s.roleGroup === 'student') {
+      const blocked = MAJOR_TO_MINOR_CODE[s.primary];
+      s.secondaries = (s.secondaries || []).filter(mc => mc !== blocked);
+      s.secondary = s.secondaries[0] || null;
     }
+    this._renderOnboardingScreen();
+  },
+
+  _obAddMinor(code) {
+    const s = this._onboardingState;
+    if (!code || s.roleGroup !== 'student') return;
+    if (MAJOR_TO_MINOR_CODE[s.primary] === code) return;
+    s.secondaries = s.secondaries || [];
+    if (s.secondaries.includes(code)) return;
+    s.secondaries.push(code);
+    s.secondary = s.secondaries[0] || null;
+    this._renderOnboardingScreen();
+  },
+
+  _obRemoveMinor(code) {
+    const s = this._onboardingState;
+    s.secondaries = (s.secondaries || []).filter(mc => mc !== code);
+    s.secondary = s.secondaries[0] || null;
     this._renderOnboardingScreen();
   },
 
@@ -442,10 +491,12 @@ const App = {
 
   async _finishOnboarding() {
     const s = this._onboardingState;
+    const minors = s.roleGroup === 'student' ? (s.secondaries || []) : [];
     const profile = {
       role:      s.role,
       primary:   s.primary,
-      secondary: s.roleGroup === 'student' ? s.secondary : null,
+      secondary: minors[0] || null,
+      secondaries: minors,
       scope:     s.role === 'advisor' ? s.scope : null,
     };
     if (!validateProfile(profile)) {
@@ -469,7 +520,8 @@ const App = {
         serverPatch.minor_code = null;
       } else if (profile.role === 'student') {
         serverPatch.primary_program = profile.primary;
-        serverPatch.minor_code = profile.secondary;
+        serverPatch.minor_codes = getProfileMinors(profile);
+        serverPatch.minor_code = null;
         serverPatch.advisor_scope = null;
       } else {
         serverPatch.primary_program = profile.primary;
@@ -789,17 +841,15 @@ const App = {
           <div class="auth-panel-head">
             <button type="button" class="auth-back" onclick="App._switchAuthView('signin')">← Back to sign in</button>
             <h2 class="auth-panel-title">Forgot password</h2>
-            <p class="auth-panel-lead">Enter your <strong>@andrew.cmu.edu</strong> email. We'll give you a reset link you can use below.</p>
           </div>
           ${backendWarn}
         </div>
-        <div class="auth-form-body">
+        <div class="auth-form-body" id="cfForgotBody">
           <form class="auth-form" onsubmit="App._onForgotPassword(event)">
             ${formError}
             ${this._authEmailField('cfForgotEmail', 'Andrew email')}
             <button type="submit" class="auth-submit" id="cfAuthSubmit" disabled>Send reset link →</button>
           </form>
-          <div id="cfResetLinkBox" class="auth-reset-box" hidden></div>
         </div>`;
     } else if (v === 'reset') {
       panel = `
@@ -914,18 +964,20 @@ const App = {
       this._updateAuthSubmitState('forgot');
       return;
     }
-    const box = document.getElementById('cfResetLinkBox');
-    if (box && r.data && r.data.reset_token) {
-      const url = `${location.origin}${location.pathname}?reset=${encodeURIComponent(r.data.reset_token)}&email=${encodeURIComponent(r.data.email)}`;
-      box.hidden = false;
-      box.innerHTML = `
-        <p class="auth-reset-msg">${esc(r.data.message || 'Use this link to reset your password:')}</p>
-        <a class="auth-reset-link" href="${esc(url)}">Reset my password →</a>`;
-      this.resetToken = r.data.reset_token;
-      this.resetEmail = r.data.email;
-    } else if (box) {
-      box.hidden = false;
-      box.innerHTML = `<p class="auth-reset-msg">${esc(r.data.message || 'If that email is registered, check for a reset link.')}</p>`;
+    const msg = (r.data && r.data.message) || 'If an account exists for that email, a reset link has been sent.';
+    const body = document.getElementById('cfForgotBody');
+    if (body) {
+      let extra = '';
+      if (r.data && r.data.reset_token) {
+        const url = `${location.origin}${location.pathname}?reset=${encodeURIComponent(r.data.reset_token)}&email=${encodeURIComponent(r.data.email || email)}`;
+        extra = `<a class="auth-reset-link" href="${esc(url)}">Reset my password →</a>`;
+        this.resetToken = r.data.reset_token;
+        this.resetEmail = r.data.email || email;
+      } else if (r.data && r.data.reset_url) {
+        extra = `<a class="auth-reset-link" href="${esc(r.data.reset_url)}">Reset my password →</a>`;
+        this.resetToken = r.data.reset_token || '';
+      }
+      body.innerHTML = `<p class="auth-reset-msg">${esc(msg)}</p>${extra}`;
     }
   },
 
@@ -1060,15 +1112,26 @@ const App = {
     const primaryLower = (p.primary || '').toLowerCase();
     const secondaryLower = (p.secondary || '').toLowerCase();
 
-    // Student with minor: two-segment badge (major + minor)
-    if (p.role === 'student' && p.secondary) {
-      const cls = 'rb-' + primaryLower + '-' + secondaryLower;
-      const minorLabel = getMinorLabel(p.secondary);
-      return `
+    // Student with one or more minors
+    const studentMinors = getProfileMinors(p);
+    if (p.role === 'student' && studentMinors.length) {
+      const cls = 'rb-' + primaryLower + (studentMinors.length === 1 ? '-' + studentMinors[0] : '-multi');
+      if (studentMinors.length === 1) {
+        const minorLabel = getMinorLabel(studentMinors[0]);
+        return `
         <button class="role-badge rb-${primaryLower} ${cls}" onclick="App.editRole()" title="Click to change role">
           <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">major</span></span>
           <span class="rb-divider"></span>
           <span class="rb-segment rb-secondary">${esc(minorLabel)} <span class="rb-suffix">minor</span></span>
+          <span class="rb-edit-hint">Edit</span>
+        </button>`;
+      }
+      const minorLabels = studentMinors.map(mc => esc(getMinorLabel(mc))).join('<span class="rb-minor-sep"> · </span>');
+      return `
+        <button class="role-badge rb-${primaryLower} ${cls}" onclick="App.editRole()" title="Click to change role">
+          <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">major</span></span>
+          <span class="rb-divider"></span>
+          <span class="rb-segment rb-secondary rb-secondary-compact">${minorLabels} <span class="rb-suffix">minors</span></span>
           <span class="rb-edit-hint">Edit</span>
         </button>`;
     }
@@ -1188,6 +1251,7 @@ const App = {
             ${MODALITY_OPTIONS.map(m => `<button class="mod-btn ${this.modalityFilter===m.id?'active':''}" onclick="App.setModalityFilter('${m.id}')">${esc(m.label)}</button>`).join('')}
           </div>
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
+          ${(isFaculty(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showStaffDirectory()" title="Faculty and staff directory">Staff</button>' : ''}
           ${(this.authedUser && (this.authedUser.role === 'admin' || this.authedUser.role === 'area_head' || this.authedUser.role === 'associate_area_head')) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
           ${(this.authedUser && this.authedUser.role === 'admin') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review submitted course flags">Flag review</button>' : ''}
           ${(isFaculty(this.profile) && this.authMode === 'authed' && !(this.authedUser && this.authedUser.role === 'admin')) ? '<button class="nav-admin" onclick="App.showMyFlagsView(\'pending\')" title="See the status of course issues you reported">My flags</button>' : ''}
@@ -2630,6 +2694,7 @@ const App = {
     { code: 'metadata_outdated',   label: 'Course title, number, or units are outdated' },
     { code: 'prereq_wrong',        label: 'Prerequisites or corequisites are incorrect/missing' },
     { code: 'requirement_mismatch',label: 'Course is mapped to the wrong requirement/category', hint: 'Counting under the wrong major/minor requirement.' },
+    { code: 'requirement_newly_counts', label: 'This course now counts toward a requirement it did not count for previously.' },
     { code: 'should_be_equivalent',label: 'Course should be added as an equivalent/substitute option' },
     { code: 'wrong_semester',      label: 'Course is listed as available in the wrong semester/year' },
     { code: 'restrictions_missing',label: 'Course restrictions are missing or incorrect',     hint: 'Permission required, major-only, class-year restriction, etc.' },
@@ -2774,6 +2839,106 @@ const App = {
   },
 
   // ══════════════════════════════════════════════════════════
+  // FACULTY — Staff directory (Postgres + JSON merge)
+  // ══════════════════════════════════════════════════════════
+  _staffDirState: { items: [], form: { name: '', email: '', role: 'professor' } },
+
+  _staffInitials(name, email) {
+    const src = (name || email || '?').trim();
+    const parts = src.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return src.slice(0, 2).toUpperCase();
+  },
+
+  _staffAvatarHtml(name, email) {
+    const initials = this._staffInitials(name, email);
+    const imgSrc = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(name || email) + '&background=C41230&color=fff&size=80&bold=true';
+    return `<div class="staff-avatar" aria-hidden="true">
+      <img class="staff-avatar-img" src="${esc(imgSrc)}" alt="" loading="lazy" decoding="async"
+        onerror="this.classList.add('staff-avatar-img--hidden'); this.nextElementSibling.classList.add('staff-avatar-fallback--show');">
+      <span class="staff-avatar-fallback">${esc(initials)}</span>
+    </div>`;
+  },
+
+  async showStaffDirectory() {
+    if (!isFaculty(this.profile) || this.authMode !== 'authed') {
+      showToast('Staff directory is available to faculty and advisors only.');
+      return;
+    }
+    this._homeView = 'staff';
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="spinner"></div><div class="empty-text" style="margin-top:12px">Loading directory…</div></div>';
+    await this._loadStaffDirectory();
+  },
+
+  async _loadStaffDirectory() {
+    const r = await apiListStaffDirectory();
+    const el = document.getElementById('leftBody');
+    if (!r.ok) {
+      if (el) el.innerHTML = `<div class="empty-state"><div class="empty-text">Could not load directory: ${esc((r.data && r.data.message) || r.error || 'error')}</div></div>`;
+      return;
+    }
+    this._staffDirState.items = r.data.items || [];
+    this._renderStaffDirectory();
+  },
+
+  _renderStaffDirectory() {
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    const items = this._staffDirState.items;
+    const f = this._staffDirState.form;
+    const roleOpts = [
+      { v: 'professor', l: 'Professor' },
+      { v: 'area_head', l: 'Area head' },
+      { v: 'advisor', l: 'Advisor' },
+    ].map(o => `<option value="${o.v}" ${f.role === o.v ? 'selected' : ''}>${o.l}</option>`).join('');
+    const rows = items.length
+      ? items.map(row => `
+        <div class="staff-row">
+          ${this._staffAvatarHtml(row.name, row.email)}
+          <div class="staff-row-body">
+            <div class="staff-row-name">${esc(row.name)}</div>
+            <div class="staff-row-meta">${esc(row.email)} · ${esc((ROLE_META[row.role] && ROLE_META[row.role].label) || row.role)}${row.source ? ' · ' + esc(row.source) : ''}</div>
+          </div>
+        </div>`).join('')
+      : '<div class="empty-state"><div class="empty-text">No staff listed yet.</div></div>';
+
+    el.innerHTML = `
+      <div class="adm-view staff-view">
+        <div class="adm-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <div class="adm-title">Staff directory <span class="adm-count">· ${items.length}</span></div>
+        </div>
+        <div class="staff-add-card">
+          <div class="staff-add-title">Add staff member</div>
+          <div class="staff-add-fields">
+            <label>Name<input class="adm-search" id="staffAddName" value="${esc(f.name)}" placeholder="Full name" /></label>
+            <label>Email<input class="adm-search" id="staffAddEmail" value="${esc(f.email)}" placeholder="name@andrew.cmu.edu" /></label>
+            <label>Role<select class="adm-select" id="staffAddRole">${roleOpts}</select></label>
+          </div>
+          <button class="adm-btn adm-btn-resolve" onclick="App._submitStaffAdd()">Add to directory</button>
+        </div>
+        <div class="staff-list">${rows}</div>
+      </div>`;
+  },
+
+  async _submitStaffAdd() {
+    const name = (document.getElementById('staffAddName')?.value || '').trim();
+    const email = (document.getElementById('staffAddEmail')?.value || '').trim();
+    const role = document.getElementById('staffAddRole')?.value || 'professor';
+    this._staffDirState.form = { name, email, role };
+    const r = await apiAddStaffMember({ name, email, role });
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Could not add staff member.');
+      return;
+    }
+    showToast('Staff member added.');
+    this._staffDirState.form = { name: '', email: '', role: 'professor' };
+    await this._loadStaffDirectory();
+  },
+
+  // ══════════════════════════════════════════════════════════
   // ADMIN / AREA HEAD — User role management
   // ══════════════════════════════════════════════════════════
   _userAdminState: { items: [], search: '' },
@@ -2829,24 +2994,36 @@ const App = {
 
   _renderUserAdminRow(u) {
     const prog = u.primary_program || '—';
-    const minor = u.minor_code ? getMinorLabel(u.minor_code) : '—';
+    const minors = Array.isArray(u.minor_codes) ? u.minor_codes : (u.minor_code ? [u.minor_code] : []);
+    const minorSummary = minors.length
+      ? minors.map(mc => getMinorLabel(mc)).join(', ')
+      : '—';
     const roleOpts = ['student', 'professor', 'area_head', 'associate_area_head', 'advisor']
       .concat(this.authedUser.role === 'admin' ? ['admin'] : [])
       .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${esc((ROLE_META[r] && ROLE_META[r].label) || r)}</option>`)
       .join('');
     const majorOpts = MAJOR_LIST.map(m => `<option value="${m}" ${u.primary_program === m ? 'selected' : ''}>${m}</option>`).join('');
+    const minorChips = minors.map(mc => `
+      <span class="adm-minor-chip" data-code="${esc(mc)}">${esc(getMinorLabel(mc))}
+        <button type="button" class="adm-minor-chip-x" onclick="App._adminRemoveMinor(${u.id}, '${esc(mc)}')">×</button>
+      </span>`).join('');
+    const minorAddOpts = MINOR_LIST.filter(m => !minors.includes(m.code))
+      .map(m => `<option value="${m.code}">${esc(m.label)}</option>`).join('');
     return `
       <div class="adm-row adm-user-row" data-user-id="${u.id}">
         <div class="adm-row-head">
           <div>
             <div class="adm-course-code">${esc(u.email)}</div>
-            <div class="adm-course-name">${esc(u.name)} · ${esc(u.role)} · ${esc(prog)}${u.minor_code ? ' · minor ' + esc(minor) : ''}</div>
+            <div class="adm-course-name">${esc(u.name)} · ${esc(u.role)} · ${esc(prog)}${minors.length ? ' · minor' + (minors.length > 1 ? 's' : '') + ' ' + esc(minorSummary) : ''}</div>
           </div>
         </div>
         <div class="adm-user-fields">
           <label>Role<select class="adm-select" id="role-${u.id}">${roleOpts}</select></label>
           <label>Major<select class="adm-select" id="major-${u.id}"><option value="">—</option>${majorOpts}</select></label>
-          <label>Minor<select class="adm-select" id="minor-${u.id}"><option value="">—</option>${MINOR_LIST.map(m => `<option value="${m.code}" ${u.minor_code === m.code ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}</select></label>
+          <label>Minor(s)<div class="adm-minor-chips" id="minors-${u.id}">${minorChips || '<span class="adm-minor-empty">—</span>'}</div>
+            <select class="adm-select adm-minor-add" id="minor-add-${u.id}" onchange="App._adminAddMinor(${u.id}, this.value); this.value='';">
+              <option value="">Add minor…</option>${minorAddOpts}
+            </select></label>
         </div>
         <div class="adm-actions">
           <button class="adm-btn adm-btn-resolve" onclick="App._saveUserAdmin(${u.id})">Save</button>
@@ -2854,14 +3031,46 @@ const App = {
       </div>`;
   },
 
+  _adminMinorCodes(userId) {
+    const chipRoot = document.getElementById('minors-' + userId);
+    if (!chipRoot) return [];
+    return [...chipRoot.querySelectorAll('.adm-minor-chip')].map(el => el.getAttribute('data-code')).filter(Boolean);
+  },
+
+  _adminAddMinor(userId, code) {
+    if (!code) return;
+    const codes = this._adminMinorCodes(userId);
+    if (codes.includes(code)) return;
+    codes.push(code);
+    this._renderAdminMinorChips(userId, codes);
+  },
+
+  _adminRemoveMinor(userId, code) {
+    const codes = this._adminMinorCodes(userId).filter(c => c !== code);
+    this._renderAdminMinorChips(userId, codes);
+  },
+
+  _renderAdminMinorChips(userId, codes) {
+    const chipRoot = document.getElementById('minors-' + userId);
+    if (!chipRoot) return;
+    chipRoot.innerHTML = codes.length
+      ? codes.map(mc => `<span class="adm-minor-chip" data-code="${esc(mc)}">${esc(getMinorLabel(mc))}
+        <button type="button" class="adm-minor-chip-x" onclick="App._adminRemoveMinor(${userId}, '${esc(mc)}')">×</button></span>`).join('')
+      : '<span class="adm-minor-empty">—</span>';
+    const addEl = document.getElementById('minor-add-' + userId);
+    if (addEl) {
+      addEl.innerHTML = '<option value="">Add minor…</option>' + MINOR_LIST.filter(m => !codes.includes(m.code))
+        .map(m => `<option value="${m.code}">${esc(m.label)}</option>`).join('');
+    }
+  },
+
   async _saveUserAdmin(userId) {
     const roleEl = document.getElementById('role-' + userId);
     const majorEl = document.getElementById('major-' + userId);
-    const minorEl = document.getElementById('minor-' + userId);
     const patch = {
       role: roleEl ? roleEl.value : undefined,
       primary_program: majorEl ? majorEl.value : undefined,
-      minor_code: minorEl ? minorEl.value : undefined,
+      minor_codes: this._adminMinorCodes(userId),
     };
     const r = await apiPatchUser(userId, patch);
     if (!r.ok) {

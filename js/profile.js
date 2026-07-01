@@ -63,9 +63,22 @@ function getMinorLabel(code) {
   return m ? m.label : code;
 }
 
+/** Student minor codes (0..n). Supports legacy single `secondary`. */
+function getProfileMinors(profile) {
+  if (!profile) return [];
+  if (Array.isArray(profile.secondaries)) {
+    return profile.secondaries.filter(Boolean);
+  }
+  if (profile.secondary) return [profile.secondary];
+  return [];
+}
+
 function getMinorAsMajorCode(profile) {
-  if (!profile || profile.role !== 'student' || !profile.secondary) return null;
-  return MINOR_CODE_TO_MAJOR[profile.secondary] || null;
+  if (!profile || profile.role !== 'student') return null;
+  for (const mc of getProfileMinors(profile)) {
+    if (MINOR_CODE_TO_MAJOR[mc]) return MINOR_CODE_TO_MAJOR[mc];
+  }
+  return null;
 }
 
 // ── Roles ──────────────────────────────────────────────────
@@ -167,9 +180,13 @@ function validateProfile(profile) {
 
   if (profile.role === 'student') {
     if (!STUDENT_PROGRAMS.includes(profile.primary)) return false;
-    if (profile.secondary) {
-      if (!MINOR_LIST.some(m => m.code === profile.secondary)) return false;
-      if (MAJOR_TO_MINOR_CODE[profile.primary] === profile.secondary) return false;
+    const minors = getProfileMinors(profile);
+    const seen = new Set();
+    for (const mc of minors) {
+      if (seen.has(mc)) return false;
+      seen.add(mc);
+      if (!MINOR_LIST.some(m => m.code === mc)) return false;
+      if (MAJOR_TO_MINOR_CODE[profile.primary] === mc) return false;
     }
     return true;
   }
@@ -210,16 +227,18 @@ function validateProfile(profile) {
 // Storage keys:
 //   cf_role       — role identity (precise — area_head, associate_area_head…)
 //   cf_primary    — major code, minor code, 'AS', or empty (for area_head all-programs)
-//   cf_secondary  — student minor code only
-//   cf_scope      — advisor scope ('major' | 'minor' | 'arts_sciences' | 'all_programs')
+//   cf_secondary  — legacy first minor (mirrors cf_minors[0])
+//   cf_minors     — JSON array of student minor codes
 
 function saveProfile(profile) {
   if (!validateProfile(profile)) {
     throw new Error('saveProfile: profile failed validation');
   }
+  const minors = getProfileMinors(profile);
   localStorage.setItem('cf_role', profile.role);
   localStorage.setItem('cf_primary', profile.primary || '');
-  localStorage.setItem('cf_secondary', profile.secondary || '');
+  localStorage.setItem('cf_secondary', minors[0] || '');
+  localStorage.setItem('cf_minors', JSON.stringify(minors));
   localStorage.setItem('cf_scope', profile.scope || '');
 }
 
@@ -228,6 +247,12 @@ function loadProfile() {
   if (!role) return null;
   const primary = localStorage.getItem('cf_primary') || null;
   let secondary = localStorage.getItem('cf_secondary') || null;
+  let secondaries = [];
+  try {
+    const rawMinors = localStorage.getItem('cf_minors');
+    if (rawMinors) secondaries = JSON.parse(rawMinors);
+  } catch {}
+  if (!Array.isArray(secondaries)) secondaries = [];
   const scope   = localStorage.getItem('cf_scope') || null;
 
   // Migration: pre-2026-05-26 builds stored minor as a major code (CS/BA/BS).
@@ -241,11 +266,13 @@ function loadProfile() {
       try { localStorage.setItem('cf_secondary', ''); } catch {}
     }
   }
+  if (!secondaries.length && secondary) secondaries = [secondary];
 
   const profile = {
     role,
     primary:   primary || null,
-    secondary: secondary || null,
+    secondary: secondaries[0] || null,
+    secondaries,
     scope:     scope || null,
   };
   if (!validateProfile(profile)) return null;
@@ -256,5 +283,6 @@ function clearProfile() {
   localStorage.removeItem('cf_role');
   localStorage.removeItem('cf_primary');
   localStorage.removeItem('cf_secondary');
+  localStorage.removeItem('cf_minors');
   localStorage.removeItem('cf_scope');
 }

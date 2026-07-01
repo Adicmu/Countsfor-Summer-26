@@ -62,16 +62,9 @@ class Config:
     # ── Auth ──────────────────────────────────────────────────
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
     ALLOWED_EMAIL_DOMAIN = os.environ.get("ALLOWED_EMAIL_DOMAIN", "").strip().lower()
-    # The core admin team is baked in so they're ALWAYS admins on deploy,
-    # regardless of the Render dashboard env var. Any emails set in the
-    # ADMIN_EMAILS env var are merged on top (never replace these).
-    _DEFAULT_ADMINS = {
-        "hjendara@andrew.cmu.edu",   # Hind Jendara
-        "avivek@andrew.cmu.edu",     # Aditya Vivek
-        "hbouamor@andrew.cmu.edu",   # Houda Bouamor
-        "spessoa@andrew.cmu.edu",    # Silvia Pessoa
-    }
-    ADMIN_EMAILS = _DEFAULT_ADMINS | {e.lower() for e in _csv(os.environ.get("ADMIN_EMAILS"))}
+    # Admin emails come ONLY from the ADMIN_EMAILS env var (comma-separated).
+    # Faculty/advisor roles come from the directory JSON + Postgres staff table.
+    ADMIN_EMAILS = {e.lower() for e in _csv(os.environ.get("ADMIN_EMAILS"))}
     SEED_USERS_PATH = os.environ.get(
         "SEED_USERS_PATH",
         str(Path(__file__).resolve().parent / "seed_users.json"),

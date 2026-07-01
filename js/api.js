@@ -227,6 +227,13 @@ async function apiPatchUser(id, patch) {
   return apiFetch('/api/users/' + encodeURIComponent(id), { method: 'PATCH', body: patch });
 }
 
+async function apiListStaffDirectory() {
+  return apiFetch('/api/directory/staff');
+}
+async function apiAddStaffMember(body) {
+  return apiFetch('/api/directory/staff', { method: 'POST', body });
+}
+
 async function fetchMinorCourses() {
   try {
     const res = await fetch('data/minor_courses.json');

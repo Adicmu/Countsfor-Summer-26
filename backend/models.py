@@ -59,6 +59,17 @@ class User(db.Model):
     password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    minors: Mapped[list["UserMinor"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", order_by="UserMinor.id"
+    )
+
+    def minor_codes_list(self) -> list[str]:
+        return [m.minor_code for m in self.minors]
+
+    def sync_minor_code_legacy(self) -> None:
+        """Keep nullable minor_code aligned with first minor for legacy clients."""
+        codes = self.minor_codes_list()
+        self.minor_code = codes[0] if len(codes) == 1 else None
 
     def role_group(self) -> str:
         """Coarse UI bucket: student vs faculty. Precise role stays in `role`."""
@@ -81,6 +92,7 @@ class User(db.Model):
     def to_public_dict(self) -> dict:
         """Returned by /api/me — never expose google_sub or DB-internal ids
         to other users, but the owner can see their own."""
+        codes = self.minor_codes_list()
         return {
             "id": self.id,
             "name": self.name,
@@ -89,12 +101,57 @@ class User(db.Model):
             "role_group": self.role_group(),
             "primary_program": self.primary_program,
             "minor_code": self.minor_code,
+            "minor_codes": codes,
             "advisor_scope": self.advisor_scope,
             "department_scope": self.department_scope,
             "department": self.department,
             "is_admin": self.is_admin,
             "profile_completed": self.profile_completed,
             "last_login": self.last_login.isoformat() if self.last_login else None,
+        }
+
+
+class UserMinor(db.Model):
+    __tablename__ = "user_minors"
+    __table_args__ = (UniqueConstraint("user_id", "minor_code", name="uq_user_minor_code"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    minor_code: Mapped[str] = mapped_column(String(32), nullable=False)
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    user: Mapped[User] = relationship(back_populates="minors")
+
+
+class StaffDirectoryEntry(db.Model):
+    __tablename__ = "staff_directory_entries"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    role: Mapped[str] = mapped_column(String(32), nullable=False, default="professor")
+    added_by_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    def to_seed_dict(self) -> dict:
+        return {
+            "email": self.email,
+            "name": self.name,
+            "role": self.role,
+        }
+
+    def to_public_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "email": self.email,
+            "name": self.name,
+            "role": self.role,
+            "source": "db",
+            "created_at": self.created_at.isoformat() if self.created_at else None,
         }
 
 

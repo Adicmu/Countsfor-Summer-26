@@ -37,7 +37,7 @@ services:
       - key: GOOGLE_CLIENT_ID
         sync: false           # e.g. "1234567890-abc.apps.googleusercontent.com"
       - key: ADMIN_EMAILS
-        value: hjendara@andrew.cmu.edu,avivek@andrew.cmu.edu,hbouamor@andrew.cmu.edu,spessoa@andrew.cmu.edu
+        value: avivek@andrew.cmu.edu,hbouamor@andrew.cmu.edu,spessoa@andrew.cmu.edu
       - key: ALLOWED_EMAIL_DOMAIN
         value: andrew.cmu.edu
 

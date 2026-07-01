@@ -130,6 +130,19 @@ def test_patch_me_updates_profile(client, student):
     body = r.get_json()
     assert body["primary_program"] == "BA"
     assert body["minor_code"] == "history"
+    assert body["minor_codes"] == ["history"]
+
+
+def test_patch_me_accepts_multiple_minors(client, student):
+    login(client, student)
+    r = client.patch("/api/me", json={
+        "primary_program": "CS",
+        "minor_codes": ["finance", "history"],
+    })
+    assert r.status_code == 200, r.get_json()
+    body = r.get_json()
+    assert body["minor_codes"] == ["finance", "history"]
+    assert body["minor_code"] is None
 
 
 def test_patch_me_rejects_unknown_fields(client, student):
@@ -217,44 +230,38 @@ def test_patch_me_rejects_advisor_all_programs_with_program(client):
 
 # ── Admin demotion / no-demotion via env ───────────────────
 
-def test_google_signin_does_not_demote_existing_non_admin(client):
-    """If a user is a professor and their email isn't in ADMIN_EMAILS,
-    re-login must not silently change their role."""
-    with patch("backend.auth.id_token.verify_oauth2_token",
-               return_value=_fake_google_payload(email="prof@andrew.cmu.edu", sub="g-prof")):
-        # First login — creates as student (default), but we then update role to professor
-        client.post("/api/auth/google", json={"credential": "stub"})
-
-    from backend.db import db
-    from backend.models import User
-    with client.application.app_context():
-        u = db.session.query(User).filter_by(email="prof@andrew.cmu.edu").one()
-        u.role = "professor"
-        u.primary_program = "IS"
-        db.session.commit()
-
-    # Re-login — role must stay professor
-    with patch("backend.auth.id_token.verify_oauth2_token",
-               return_value=_fake_google_payload(email="prof@andrew.cmu.edu", sub="g-prof")):
-        r = client.post("/api/auth/google", json={"credential": "stub"})
+def test_google_signin_syncs_directory_role_on_relogin(client):
+    """Directory-listed faculty keep their role on every login."""
+    directory = {
+        "prof@andrew.cmu.edu": {
+            "email": "prof@andrew.cmu.edu",
+            "role": "professor",
+            "primary_program": "IS",
+        }
+    }
+    with patch("backend.auth.load_merged_directory", return_value=directory):
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake_google_payload(email="prof@andrew.cmu.edu", sub="g-prof")):
+            client.post("/api/auth/google", json={"credential": "stub"})
+            r = client.post("/api/auth/google", json={"credential": "stub"})
     assert r.get_json()["role"] == "professor"
 
 
-def test_google_signin_does_not_demote_admin_when_removed_from_env(client):
-    """If an existing admin's email is later removed from ADMIN_EMAILS,
-    their role stays 'admin' (demotion is manual). Tested by using an email
-    NOT in TestConfig.ADMIN_EMAILS but with role pre-set to admin."""
+def test_login_demotes_non_env_admin_without_directory(client):
+    """Accounts marked admin in DB but not in ADMIN_EMAILS or directory become students."""
     from backend.db import db
     from backend.models import User
     with client.application.app_context():
-        u = User(email="exadmin@andrew.cmu.edu", name="Ex", role="admin", google_sub="g-ex")
-        db.session.add(u); db.session.commit()
+        u = User(email="exadmin@andrew.cmu.edu", name="Ex", role="admin", is_admin=True, google_sub="g-ex")
+        db.session.add(u)
+        db.session.commit()
 
-    # Now they sign in — their email is NOT in ADMIN_EMAILS
     with patch("backend.auth.id_token.verify_oauth2_token",
                return_value=_fake_google_payload(email="exadmin@andrew.cmu.edu", sub="g-ex")):
         r = client.post("/api/auth/google", json={"credential": "stub"})
-    assert r.get_json()["role"] == "admin"  # not demoted
+    body = r.get_json()
+    assert body["role"] == "student"
+    assert body["is_admin"] is False
 
 
 # ── Logout ──────────────────────────────────────────────────

@@ -131,4 +131,90 @@ def run_migrations() -> list[str]:
     ):
         log.append("Added users.reset_token_expires")
 
+    if _ensure_user_minors_table():
+        log.append("Created user_minors table")
+        dialect = db.engine.dialect.name
+        if dialect == "postgresql":
+            db.session.execute(text("""
+                INSERT INTO user_minors (user_id, minor_code, added_at)
+                SELECT id, minor_code, COALESCE(updated_at, created_at, NOW())
+                FROM users
+                WHERE minor_code IS NOT NULL AND minor_code != ''
+                ON CONFLICT DO NOTHING
+            """))
+        else:
+            db.session.execute(text("""
+                INSERT OR IGNORE INTO user_minors (user_id, minor_code, added_at)
+                SELECT id, minor_code, COALESCE(updated_at, created_at, CURRENT_TIMESTAMP)
+                FROM users
+                WHERE minor_code IS NOT NULL AND minor_code != ''
+            """))
+        db.session.commit()
+        log.append("Backfilled user_minors from users.minor_code")
+
+    if _ensure_staff_directory_table():
+        log.append("Created staff_directory_entries table")
+
     return log
+
+
+def _ensure_user_minors_table() -> bool:
+    if _table_exists("user_minors"):
+        return False
+    dialect = db.engine.dialect.name
+    if dialect == "postgresql":
+        ddl = """
+            CREATE TABLE user_minors (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                minor_code VARCHAR(32) NOT NULL,
+                added_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                CONSTRAINT uq_user_minor_code UNIQUE (user_id, minor_code)
+            )
+        """
+    else:
+        ddl = """
+            CREATE TABLE user_minors (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                minor_code VARCHAR(32) NOT NULL,
+                added_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE (user_id, minor_code)
+            )
+        """
+    db.session.execute(text(ddl))
+    db.session.execute(text("CREATE INDEX ix_user_minors_user_id ON user_minors (user_id)"))
+    db.session.commit()
+    return True
+
+
+def _ensure_staff_directory_table() -> bool:
+    if _table_exists("staff_directory_entries"):
+        return False
+    dialect = db.engine.dialect.name
+    if dialect == "postgresql":
+        ddl = """
+            CREATE TABLE staff_directory_entries (
+                id SERIAL PRIMARY KEY,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                name VARCHAR(200) NOT NULL,
+                role VARCHAR(32) NOT NULL DEFAULT 'professor',
+                added_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """
+    else:
+        ddl = """
+            CREATE TABLE staff_directory_entries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                email VARCHAR(255) NOT NULL UNIQUE,
+                name VARCHAR(200) NOT NULL,
+                role VARCHAR(32) NOT NULL DEFAULT 'professor',
+                added_by_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """
+    db.session.execute(text(ddl))
+    db.session.execute(text("CREATE INDEX ix_staff_directory_entries_email ON staff_directory_entries (email)"))
+    db.session.commit()
+    return True

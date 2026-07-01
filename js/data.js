@@ -621,14 +621,15 @@ function annotateDoubleCounters(courses, profile, minorCourseList) {
     return;
   }
   const p = profile.primary;
-  if (!profile.secondary) {
+  const minors = getProfileMinors(profile);
+  if (!minors.length) {
     for (const c of courses) c._doubleCounter = false;
     return;
   }
   for (const c of courses) {
     const req = c.requirements || {};
     const hasPrimary = Array.isArray(req[p]) && req[p].length > 0;
-    const hasSecondary = courseCountsForMinor(c, profile.secondary, minorCourseList);
+    const hasSecondary = minors.some(mc => courseCountsForMinor(c, mc, minorCourseList));
     c._doubleCounter = hasPrimary && hasSecondary;
   }
 }

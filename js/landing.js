@@ -460,11 +460,10 @@
         '<div class="landing-panel-head">' +
         '<button type="button" class="landing-back" data-view="signin">← Back to sign in</button>' +
         '<h2 class="landing-panel-title" id="panel-title-forgot">Forgot password</h2>' +
-        '<p class="landing-panel-lead">Enter your <strong>@andrew.cmu.edu</strong> email. If an account exists, we\'ll email you a reset link.</p>' +
         '</div>' +
         backendWarnHtml() +
         '</div>' +
-        '<div class="landing-card__body">' +
+        '<div class="landing-card__body" id="cfForgotBody">' +
         '<form class="landing-form" id="cfAuthForm" novalidate>' +
         formErrorHtml() +
         emailField('cfForgotEmail', 'Andrew email') +
@@ -472,7 +471,6 @@
         '<button type="submit" class="landing-submit" id="cfAuthSubmit" disabled>Send reset link →</button>' +
         '</div>' +
         '</form>' +
-        '<div id="cfResetLinkBox" class="landing-reset-box" hidden></div>' +
         '</div>',
         'forgot'
       );
@@ -668,14 +666,12 @@
       updateSubmitState('forgot');
       return;
     }
-    const box = document.getElementById('cfResetLinkBox');
     const msg = (r.data && r.data.message) || 'If an account exists for that email, a reset link has been sent.';
-    if (box) {
-      box.hidden = false;
+    const body = document.getElementById('cfForgotBody');
+    if (body) {
+      let extra = '';
       if (r.data && r.data.reset_url) {
-        box.innerHTML =
-          '<p class="landing-reset-msg">' + esc(msg) + '</p>' +
-          '<a class="landing-reset-link" href="' + esc(r.data.reset_url) + '">Reset my password →</a>';
+        extra = '<a class="landing-reset-link" href="' + esc(r.data.reset_url) + '">Reset my password →</a>';
         state.resetToken = r.data.reset_token || '';
       } else if (r.data && r.data.reset_token) {
         const url =
@@ -683,13 +679,10 @@
           location.pathname.replace(/[^/]+$/, '') +
           'index.html?token=' +
           encodeURIComponent(r.data.reset_token);
-        box.innerHTML =
-          '<p class="landing-reset-msg">' + esc(msg) + '</p>' +
-          '<a class="landing-reset-link" href="' + esc(url) + '">Reset my password →</a>';
+        extra = '<a class="landing-reset-link" href="' + esc(url) + '">Reset my password →</a>';
         state.resetToken = r.data.reset_token;
-      } else {
-        box.innerHTML = '<p class="landing-reset-msg">' + esc(msg) + '</p>';
       }
+      body.innerHTML = '<p class="landing-reset-msg">' + esc(msg) + '</p>' + extra;
     }
   }
 

@@ -28,7 +28,7 @@ services:
       - key: GOOGLE_CLIENT_ID
         sync: false
       - key: ADMIN_EMAILS
-        value: hjendara@andrew.cmu.edu
+        value: ""
       - key: ALLOWED_EMAIL_DOMAIN
         value: andrew.cmu.edu
       - key: FRONTEND_ORIGIN
