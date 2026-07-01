@@ -41,10 +41,12 @@ const App = {
     this.applyTheme();
 
     const params = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
-    const resetTok = params.get('reset') || '';
-    const resetEmail = params.get('email') || '';
-    if (resetTok && resetEmail) {
-      location.href = `index.html?reset=${encodeURIComponent(resetTok)}&email=${encodeURIComponent(resetEmail)}`;
+    const resetTok = params.get('token') || params.get('reset') || '';
+    if (resetTok) {
+      const qs = params.get('token')
+        ? `token=${encodeURIComponent(resetTok)}`
+        : `reset=${encodeURIComponent(resetTok)}`;
+      location.href = `index.html?${qs}`;
       return;
     }
 
@@ -101,11 +103,13 @@ const App = {
   // The server endpoints are idempotent so re-running this is safe.
   async _syncLocalToServer() {
     if (this.authMode !== 'authed' || !this.authedUser) return;
+    const roleGroup = this.authedUser.role_group
+      || (this.authedUser.role === 'student' ? 'student' : 'faculty');
     const role = this.authedUser.role;
     const synced = loadStore('cf_synced', false);
 
-    // Flags — faculty / admin only
-    if ((role !== 'student') && !synced) {
+    // Flags — faculty / admin only (server assigns role_group; never trust client storage)
+    if (roleGroup === 'faculty' && role !== 'student' && !synced) {
       const flags = this._getFlags();
       for (const f of flags) {
         const r = await apiCreateFlag(f);
@@ -117,7 +121,7 @@ const App = {
     }
 
     // Wishlist — student only
-    if (role === 'student' && !synced) {
+    if (roleGroup === 'student' && role === 'student' && !synced) {
       const list = this._getWishlist();
       for (const code of list) {
         await apiAddWishlist(code);  // idempotent
@@ -960,6 +964,7 @@ const App = {
   _afterSignIn(user) {
     this.authedUser = user;
     this.authMode = 'authed';
+    // Server is source of truth for role / role_group — UI branches via isFaculty(profile).
     if (this._needsOnboarding(user)) {
       clearProfile();
       this.profile = null;

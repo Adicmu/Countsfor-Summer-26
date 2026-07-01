@@ -27,9 +27,51 @@ def _add_column_if_missing(table: str, column: str, ddl_sqlite: str, ddl_pg: str
     return True
 
 
+def _table_exists(table: str) -> bool:
+    return table in inspect(db.engine).get_table_names()
+
+
+def _ensure_password_reset_tokens_table() -> bool:
+    """Create password_reset_tokens on deploys that ran create_all before the model existed."""
+    if _table_exists("password_reset_tokens"):
+        return False
+    dialect = db.engine.dialect.name
+    if dialect == "postgresql":
+        ddl = """
+            CREATE TABLE password_reset_tokens (
+                id SERIAL PRIMARY KEY,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                token_hash VARCHAR(64) NOT NULL UNIQUE,
+                expires_at TIMESTAMPTZ NOT NULL,
+                used BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+            )
+        """
+    else:
+        ddl = """
+            CREATE TABLE password_reset_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+                token_hash VARCHAR(64) NOT NULL UNIQUE,
+                expires_at TIMESTAMP NOT NULL,
+                used BOOLEAN NOT NULL DEFAULT 0,
+                created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+            )
+        """
+    db.session.execute(text(ddl))
+    db.session.execute(text("CREATE INDEX ix_password_reset_tokens_user_id ON password_reset_tokens (user_id)"))
+    db.session.execute(text("CREATE INDEX ix_password_reset_tokens_token_hash ON password_reset_tokens (token_hash)"))
+    db.session.execute(text("CREATE INDEX ix_password_reset_tokens_user_used ON password_reset_tokens (user_id, used)"))
+    db.session.commit()
+    return True
+
+
 def run_migrations() -> list[str]:
     """Apply pending migrations. Returns human-readable log lines."""
     log: list[str] = []
+
+    if _ensure_password_reset_tokens_table():
+        log.append("Created password_reset_tokens table")
 
     if _add_column_if_missing(
         "users", "last_login", "last_login TIMESTAMP", "last_login TIMESTAMPTZ"

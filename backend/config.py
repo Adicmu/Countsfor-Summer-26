@@ -73,6 +73,18 @@ class Config:
         str(Path(__file__).resolve().parent / "seed_users.json"),
     )
 
+    # ── Password reset email ───────────────────────────────────
+    RESET_TOKEN_MINUTES = int(os.environ.get("RESET_TOKEN_MINUTES", "30"))
+    # Override reset link base (default: first FRONTEND_ORIGIN + /index.html)
+    FRONTEND_RESET_BASE = os.environ.get("FRONTEND_RESET_BASE", "").strip()
+    RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
+    MAIL_FROM = os.environ.get("MAIL_FROM", "").strip()
+    SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+    SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+    SMTP_PASS = os.environ.get("SMTP_PASS", "")
+    SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
+
     # ── CORS ──────────────────────────────────────────────────
     FRONTEND_ORIGINS = _csv(os.environ.get(
         "FRONTEND_ORIGIN",
@@ -91,3 +103,5 @@ class TestConfig(Config):
     SESSION_COOKIE_SAMESITE = "Lax"
     FRONTEND_ORIGINS = ["http://localhost:8765"]
     SEED_USERS_PATH = ""
+    # Tests opt in via monkeypatch when they need the raw reset token in responses.
+    EXPOSE_RESET_TOKEN = os.environ.get("EXPOSE_RESET_TOKEN", "")

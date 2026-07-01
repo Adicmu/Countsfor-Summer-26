@@ -360,7 +360,12 @@
   }
 
   function panelWrap(content, view) {
-    const labelledBy = 'panel-title-' + view;
+    const labelledBy =
+      view === 'register'
+        ? 'tab-register'
+        : view === 'signin'
+          ? 'panel-title-signin'
+          : 'panel-title-' + view;
     const role =
       view === 'signin' || view === 'register' ? 'tabpanel' : 'region';
     return (
@@ -396,14 +401,10 @@
       inner = panelWrap(
         '<div class="landing-card__top">' +
         tabsHtml('register') +
-        '<div class="landing-panel-head">' +
-        '<h2 class="landing-panel-title" id="panel-title-register">Create your account</h2>' +
-        '<p class="landing-panel-lead">Use your <strong>@andrew.cmu.edu</strong> email. Faculty in our directory are recognized automatically; everyone else starts as a student.</p>' +
-        '</div>' +
         backendWarnHtml() +
         '</div>' +
         '<div class="landing-card__body">' +
-        '<form class="landing-form landing-form--scrollable" id="cfAuthForm" novalidate>' +
+        '<form class="landing-form" id="cfAuthForm" novalidate>' +
         formErrorHtml() +
         '<div class="landing-form-fields">' +
         '<div class="landing-field-group">' +

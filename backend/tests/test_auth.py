@@ -400,6 +400,7 @@ def test_register_and_login(client):
     })
     assert r.status_code == 201, r.get_json()
     assert r.get_json()["role"] == "student"
+    assert r.get_json()["role_group"] == "student"
     assert r.get_json()["profile_completed"] is False
 
     client.post("/api/auth/logout")
@@ -440,7 +441,8 @@ def test_register_faculty_from_seed(client, tmp_path):
     assert body["profile_completed"] is True
 
 
-def test_forgot_and_reset_password(client):
+def test_forgot_and_reset_password(client, monkeypatch):
+    monkeypatch.setenv("EXPOSE_RESET_TOKEN", "1")
     client.post("/api/auth/register", json={
         "email": "resetme@andrew.cmu.edu",
         "password": "oldpass123",
@@ -452,9 +454,10 @@ def test_forgot_and_reset_password(client):
     assert r.status_code == 200
     data = r.get_json()
     assert data.get("reset_token")
+    assert "reset_url" in data
+    assert "reset_token=" in data["reset_url"] or "token=" in data["reset_url"]
 
     r2 = client.post("/api/auth/reset-password", json={
-        "email": "resetme@andrew.cmu.edu",
         "token": data["reset_token"],
         "password": "newpass456",
     })
@@ -465,3 +468,81 @@ def test_forgot_and_reset_password(client):
         "password": "newpass456",
     })
     assert ok.status_code == 200
+
+
+def test_forgot_password_generic_when_unknown(client):
+    r = client.post("/api/auth/forgot-password", json={"email": "nobody@andrew.cmu.edu"})
+    assert r.status_code == 200
+    body = r.get_json()
+    assert body["ok"] is True
+    assert "reset_token" not in body
+
+
+def test_reset_password_works_for_google_only_account(client, monkeypatch):
+    monkeypatch.setenv("EXPOSE_RESET_TOKEN", "1")
+    from backend.db import db
+    from backend.models import User
+    with client.application.app_context():
+        u = User(email="google@andrew.cmu.edu", name="G", role="student", google_sub="g-1")
+        db.session.add(u)
+        db.session.commit()
+
+    r = client.post("/api/auth/forgot-password", json={"email": "google@andrew.cmu.edu"})
+    token = r.get_json()["reset_token"]
+    r2 = client.post("/api/auth/reset-password", json={"token": token, "password": "newpass789"})
+    assert r2.status_code == 200
+
+    ok = client.post("/api/auth/login", json={"email": "google@andrew.cmu.edu", "password": "newpass789"})
+    assert ok.status_code == 200
+
+
+def test_register_login_normalizes_cmu_domain(client, tmp_path):
+    seed = tmp_path / "seed.json"
+    seed.write_text(json.dumps([
+        {"email": "fac@andrew.cmu.edu", "role": "professor", "primary_program": "CS"},
+    ]))
+
+    class SeedConfig(TestConfig):
+        SEED_USERS_PATH = str(seed)
+
+    app = create_app(SeedConfig)
+    with app.test_client() as c:
+        c.post("/api/auth/register", json={
+            "email": "fac@cmu.edu",
+            "password": "password12",
+            "confirm_password": "password12",
+        })
+        c.post("/api/auth/logout")
+        ok = c.post("/api/auth/login", json={"email": "fac@cmu.edu", "password": "password12"})
+    body = ok.get_json()
+    assert ok.status_code == 200
+    assert body["email"] == "fac@andrew.cmu.edu"
+    assert body["role"] == "professor"
+    assert body["role_group"] == "faculty"
+
+
+def test_faculty_directory_reapplied_on_login(client, tmp_path):
+    seed = tmp_path / "seed.json"
+    seed.write_text(json.dumps([
+        {"email": "prof@andrew.cmu.edu", "role": "professor", "primary_program": "IS"},
+    ]))
+
+    class SeedConfig(TestConfig):
+        SEED_USERS_PATH = str(seed)
+
+    app = create_app(SeedConfig)
+    with app.test_client() as c:
+        c.post("/api/auth/register", json={
+            "email": "prof@andrew.cmu.edu",
+            "password": "password12",
+            "confirm_password": "password12",
+        })
+        with app.app_context():
+            u = db.session.query(User).filter_by(email="prof@andrew.cmu.edu").one()
+            u.role = "student"
+            u.profile_completed = True
+            db.session.commit()
+        c.post("/api/auth/logout")
+        ok = c.post("/api/auth/login", json={"email": "prof@andrew.cmu.edu", "password": "password12"})
+    assert ok.get_json()["role"] == "professor"
+    assert ok.get_json()["role_group"] == "faculty"

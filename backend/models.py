@@ -24,6 +24,9 @@ VALID_ROLES = (
     "admin",
 )
 
+# Roles that map to the frontend "faculty" experience (flags, full course lens).
+FACULTY_ROLE_GROUP = frozenset({"professor", "area_head", "associate_area_head", "advisor", "admin"})
+
 FLAG_STATUSES = ("pending", "reviewed", "resolved", "dismissed")
 
 
@@ -53,6 +56,13 @@ class User(db.Model):
 
     flags: Mapped[list["Flag"]] = relationship(back_populates="submitter", foreign_keys="Flag.submitted_by_id")
     wishlist: Mapped[list["WishlistItem"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+    def role_group(self) -> str:
+        """Coarse UI bucket: student vs faculty. Precise role stays in `role`."""
+        return "faculty" if self.role in FACULTY_ROLE_GROUP else "student"
 
     def profile_is_complete(self) -> bool:
         """True when the user has enough profile data to skip onboarding."""
@@ -76,6 +86,7 @@ class User(db.Model):
             "name": self.name,
             "email": self.email,
             "role": self.role,
+            "role_group": self.role_group(),
             "primary_program": self.primary_program,
             "minor_code": self.minor_code,
             "advisor_scope": self.advisor_scope,
@@ -85,6 +96,22 @@ class User(db.Model):
             "profile_completed": self.profile_completed,
             "last_login": self.last_login.isoformat() if self.last_login else None,
         }
+
+
+class PasswordResetToken(db.Model):
+    __tablename__ = "password_reset_tokens"
+    __table_args__ = (Index("ix_password_reset_tokens_user_used", "user_id", "used"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    user: Mapped[User] = relationship(back_populates="password_reset_tokens")
 
 
 class Flag(db.Model):

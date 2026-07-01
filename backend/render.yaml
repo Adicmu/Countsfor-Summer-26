@@ -49,6 +49,15 @@ services:
       - key: SEED_USERS_PATH
         value: ../data/faculty_directory.json
 
+      # Password reset email (Resend preferred; SMTP fallback)
+      - key: RESEND_API_KEY
+        sync: false
+      - key: MAIL_FROM
+        sync: false          # e.g. "CountsFor <onboarding@yourdomain.com>"
+      # Optional SMTP fallback: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS
+      # Dev-only: EXPOSE_RESET_TOKEN=1 returns token in API response
+      # Optional: FRONTEND_RESET_BASE=https://your.pages.github.io/Countsfor-Summer-26/reset.html
+
 databases:
   - name: countsfor-db
     plan: free

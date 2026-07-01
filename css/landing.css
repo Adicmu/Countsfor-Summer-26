@@ -21,11 +21,14 @@
 
 html {
   height: 100%;
+  overflow: hidden;
 }
 
 body {
   font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
   color: var(--cf-black);
+  height: 100%;
+  overflow: hidden;
 }
 
 /* parchment base on the page */
@@ -60,51 +63,52 @@ body::before{
   z-index:1;
 }
 
-/* ── Page canvas ──────────────────────────────────────────── */
+/* ── Auth shell (viewport-locked) ─────────────────────────── */
 
-.landing-page {
-  min-height: 100vh;
-  min-height: 100dvh;
+.auth-shell {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  height: 100dvh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  justify-content: center;
   align-items: center;
-  padding-block: clamp(20px, 4vh, 56px);
-  padding-inline: 16px;
+  justify-content: center;
+  padding: clamp(12px, 2vh, 32px) 16px;
+  gap: clamp(8px, 2vh, 24px);
 }
 
-.landing-page__inner {
-  width: 100%;
-  max-width: 560px;
-  flex-shrink: 1;
-}
-
-/* ── Brand block ──────────────────────────────────────────── */
+/* ── Brand / hero ─────────────────────────────────────────── */
 
 .landing-brand {
   text-align: center;
-  margin-bottom: clamp(16px, 3vh, 30px);
+  margin: 0;
+  flex-shrink: 1;
+  min-height: 0;
+  width: 100%;
+  max-width: 400px;
 }
 
 .landing-brand__scotty {
   display: block;
   width: auto;
-  height: clamp(64px, 9vh, 96px);
-  margin: 0 auto 12px;
+  height: clamp(40px, 8vh, 72px);
+  margin: 0 auto clamp(2px, 0.8vh, 8px);
 }
 
 .landing-brand__rule {
-  width: 64px;
+  width: clamp(40px, 8vw, 64px);
   height: 3px;
-  margin: 0 auto 14px;
+  margin: 0 auto clamp(2px, 0.8vh, 8px);
   border: none;
   background: var(--cf-red);
 }
 
 .landing-brand__eyebrow {
-  margin: 0 0 12px;
+  margin: 0 0 clamp(2px, 0.8vh, 8px);
   font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 11px;
+  font-size: clamp(10px, 1.6vh, 13px);
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -112,21 +116,22 @@ body::before{
 }
 
 .landing-brand__wordmark {
-  margin: 0 0 12px;
-  font-size: clamp(40px, 6vh, 72px);
+  margin: 0 0 clamp(2px, 0.8vh, 8px);
+  font-size: clamp(28px, 6vh, 52px);
   font-weight: 800;
   letter-spacing: -0.03em;
-  line-height: 1.05;
+  line-height: 1;
   color: var(--cf-black);
 }
 
 .landing-brand__tagline {
-  margin: 0 auto;
-  max-width: 46ch;
-  font-size: clamp(14px, 2vh, 16px);
+  margin: 0;
+  max-width: none;
+  font-size: clamp(12px, 1.8vh, 16px);
   font-weight: 400;
-  line-height: 1.45;
+  line-height: 1.3;
   color: var(--cf-slate);
+  white-space: nowrap;
 }
 
 /* ── Auth card ────────────────────────────────────────────── */
@@ -136,22 +141,89 @@ body::before{
   border: 1px solid var(--cf-line);
   border-radius: 12px;
   box-shadow: 0 8px 32px rgba(38, 38, 38, 0.06);
-  overflow: hidden;
+  width: 100%;
+  max-width: 400px;
+  flex-shrink: 1;
+  min-height: 0;
+  padding: clamp(20px, 3.5vh, 40px);
+}
+
+@media (min-height: 600px) and (max-height: 720px) {
+  .auth-shell {
+    gap: clamp(6px, 1.5vh, 16px);
+    padding: clamp(10px, 1.5vh, 24px) 16px;
+  }
+
+  .landing-brand__scotty {
+    height: clamp(36px, 7vh, 60px);
+  }
+
+  .landing-brand__wordmark {
+    font-size: clamp(24px, 5vh, 44px);
+  }
+
+  .landing-brand__tagline {
+    font-size: clamp(11px, 1.6vh, 14px);
+  }
+
+  .landing-card {
+    padding: clamp(14px, 2.5vh, 28px);
+  }
+
+  .landing-tabs {
+    margin-bottom: clamp(8px, 1.4vh, 12px);
+  }
+
+  .landing-panel-head,
+  .landing-panel-head--signin {
+    padding-top: clamp(6px, 1vh, 10px);
+  }
+
+  .landing-form {
+    padding-top: clamp(8px, 1.2vh, 12px);
+  }
+
+  .landing-panel-lead {
+    font-size: clamp(10px, 1.4vh, 12px);
+    line-height: 1.25;
+  }
+
+  .landing-form-fields {
+    gap: clamp(8px, 1.6vh, 14px);
+  }
+
+  .landing-field-group {
+    gap: clamp(3px, 0.6vh, 6px);
+  }
+
+  .landing-input {
+    padding: clamp(9px, 1.4vh, 13px) 14px;
+  }
+
+  .landing-form-actions {
+    padding-top: clamp(6px, 1vh, 10px);
+  }
+
+  .landing-card__footer {
+    margin-top: clamp(6px, 1vh, 10px);
+    padding-top: clamp(6px, 1vh, 8px);
+  }
 }
 
 .landing-card__top {
-  padding: 0 20px;
+  padding: 0;
 }
 
 .landing-card__body {
-  padding: 0 20px 6px;
+  padding: 0;
 }
 
 .landing-card__footer {
-  padding: 12px 20px 16px;
+  padding: clamp(8px, 1.4vh, 12px) 0 0;
+  margin-top: clamp(8px, 1.4vh, 14px);
   border-top: 1px solid var(--cf-line);
   text-align: center;
-  font-size: 12px;
+  font-size: clamp(10px, 1.4vh, 12px);
   font-weight: 600;
   color: var(--cf-maroon);
 }
@@ -161,19 +233,19 @@ body::before{
 .landing-tabs {
   display: flex;
   border-bottom: 1px solid var(--cf-line);
-  margin: 0 -20px;
-  padding: 0 20px;
+  margin: 0 0 clamp(10px, 1.8vh, 18px);
+  padding: 0;
 }
 
 .landing-tab {
   flex: 1;
   margin: 0;
-  padding: 11px 8px 8px;
+  padding: clamp(6px, 1.2vh, 10px) 8px clamp(5px, 1vh, 8px);
   border: none;
   border-bottom: 3px solid transparent;
   background: transparent;
   font-family: inherit;
-  font-size: 14px;
+  font-size: clamp(12px, 1.8vh, 14px);
   font-weight: 600;
   color: var(--cf-muted);
   cursor: pointer;
@@ -198,26 +270,26 @@ body::before{
 /* ── Panel head ───────────────────────────────────────────── */
 
 .landing-panel-head {
-  padding: 14px 0 2px;
+  padding: clamp(8px, 1.4vh, 14px) 0 0;
 }
 
 .landing-panel-head--signin {
-  padding-top: 16px;
+  padding-top: clamp(10px, 1.6vh, 16px);
 }
 
 .landing-panel-title {
   margin: 0;
-  font-size: clamp(22px, 3.2vh, 26px);
+  font-size: clamp(18px, 2.8vh, 24px);
   font-weight: 800;
-  line-height: 1.2;
+  line-height: 1.15;
   color: var(--cf-black);
 }
 
 .landing-panel-lead {
-  margin: 10px 0 0;
-  font-size: 15px;
+  margin: clamp(4px, 0.8vh, 8px) 0 0;
+  font-size: clamp(11px, 1.6vh, 14px);
   font-weight: 400;
-  line-height: 1.55;
+  line-height: 1.35;
   color: var(--cf-slate);
 }
 
@@ -228,12 +300,12 @@ body::before{
 
 .landing-back {
   display: inline-block;
-  margin: 0 0 12px;
+  margin: 0 0 clamp(4px, 0.8vh, 8px);
   padding: 0;
   border: none;
   background: none;
   font-family: inherit;
-  font-size: 14px;
+  font-size: clamp(12px, 1.6vh, 14px);
   font-weight: 600;
   color: var(--cf-maroon);
   cursor: pointer;
@@ -252,25 +324,25 @@ body::before{
 /* ── Alerts ───────────────────────────────────────────────── */
 
 .landing-alert {
-  margin: 16px 0 0;
-  padding: 10px 12px;
+  margin: clamp(6px, 1vh, 10px) 0 0;
+  padding: clamp(6px, 1vh, 10px) clamp(8px, 1.2vh, 12px);
   border-radius: 8px;
-  font-size: 13px;
+  font-size: clamp(11px, 1.5vh, 13px);
   font-weight: 600;
-  line-height: 1.45;
+  line-height: 1.35;
   color: #7a4f00;
   background: #fff8e6;
   border: 1px solid #f0d48a;
 }
 
 .landing-form-error {
-  margin: 16px 0 0;
-  padding: 10px 12px 10px 14px;
+  margin: clamp(6px, 1vh, 10px) 0 0;
+  padding: clamp(6px, 1vh, 10px) clamp(8px, 1.2vh, 12px) clamp(6px, 1vh, 10px) clamp(10px, 1.4vh, 14px);
   border-left: 3px solid var(--cf-maroon);
   border-radius: 0 8px 8px 0;
-  font-size: 13px;
+  font-size: clamp(11px, 1.5vh, 13px);
   font-weight: 600;
-  line-height: 1.45;
+  line-height: 1.35;
   color: var(--cf-maroon);
   background: rgba(122, 15, 31, 0.06);
 }
@@ -286,34 +358,27 @@ body::before{
   flex-direction: column;
   gap: 0;
   margin: 0;
-  padding: 12px 0 0;
-}
-
-.landing-form--scrollable .landing-form-fields {
-  max-height: min(42vh, 360px);
-  overflow-y: auto;
-  padding-right: 4px;
-  margin-right: -4px;
+  padding: clamp(10px, 1.6vh, 18px) 0 0;
 }
 
 .landing-form-fields {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: clamp(12px, 2vh, 22px);
 }
 
 .landing-form-actions {
-  padding: 14px 0 4px;
+  padding: clamp(8px, 1.4vh, 14px) 0 0;
 }
 
 .landing-field-group {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: clamp(4px, 0.8vh, 8px);
 }
 
 .landing-label {
-  font-size: 12px;
+  font-size: clamp(11px, 1.5vh, 12px);
   font-weight: 700;
   color: var(--cf-muted);
 }
@@ -325,22 +390,22 @@ body::before{
 .landing-input {
   width: 100%;
   margin: 0;
-  min-height: 46px;
-  padding: 10px 14px;
+  padding: clamp(11px, 1.6vh, 15px) 14px;
   border: 1px solid var(--cf-line);
   border-radius: 8px;
   background: var(--cf-card);
   font-family: inherit;
-  font-size: 15px;
+  font-size: clamp(13px, 1.8vh, 15px);
   font-weight: 400;
+  line-height: 1.25;
   color: var(--cf-black);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
 .landing-input::placeholder {
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 15px;
-  font-weight: 500;
+  font-family: inherit;
+  font-size: clamp(13px, 1.8vh, 15px);
+  font-weight: 400;
   color: #9aa3ab;
 }
 
@@ -378,7 +443,7 @@ body::before{
   border-radius: 6px;
   background: transparent;
   font-family: inherit;
-  font-size: 13px;
+  font-size: clamp(11px, 1.5vh, 13px);
   font-weight: 600;
   color: var(--cf-muted);
   cursor: pointer;
@@ -394,23 +459,23 @@ body::before{
 }
 
 .landing-field-msg {
-  min-height: 1.4em;
+  min-height: 0;
   margin: 0;
-  font-family: "JetBrains Mono", ui-monospace, monospace;
-  font-size: 12px;
+  font-family: inherit;
+  font-size: clamp(10px, 1.4vh, 12px);
   font-weight: 500;
-  line-height: 1.4;
+  line-height: 1.3;
   color: var(--cf-maroon);
 }
 
 .landing-field-msg:empty {
-  visibility: hidden;
-  min-height: 0;
+  display: none;
 }
 
 .landing-field-msg.is-hint {
   color: var(--cf-muted);
-  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-family: inherit;
+  font-size: clamp(10px, 1.4vh, 12px);
 }
 
 .landing-field-msg.is-ok:not(:empty) {
@@ -424,16 +489,16 @@ body::before{
 .landing-forgot-row {
   display: flex;
   justify-content: flex-end;
-  margin: -2px 0 2px;
+  margin: clamp(-2px, -0.4vh, 0) 0 clamp(2px, 0.4vh, 4px);
 }
 
 .landing-link-btn {
   margin: 0;
-  padding: 4px 0;
+  padding: 2px 0;
   border: none;
   background: none;
   font-family: inherit;
-  font-size: 13px;
+  font-size: clamp(11px, 1.5vh, 13px);
   font-weight: 600;
   color: var(--cf-maroon);
   cursor: pointer;
@@ -458,14 +523,14 @@ body::before{
   gap: 8px;
   width: 100%;
   margin: 0;
-  min-height: 46px;
-  padding: 12px 20px;
+  padding: clamp(8px, 1.4vh, 14px) 20px;
   border: none;
   border-radius: 999px;
   background: var(--cf-red);
   font-family: inherit;
-  font-size: 15px;
+  font-size: clamp(13px, 1.8vh, 15px);
   font-weight: 700;
+  line-height: 1.25;
   color: #fff;
   cursor: pointer;
   transition: background 0.15s ease, opacity 0.15s ease;
@@ -507,8 +572,8 @@ body::before{
 /* ── Reset box ────────────────────────────────────────────── */
 
 .landing-reset-box {
-  margin-top: 16px;
-  padding: 14px 16px;
+  margin-top: clamp(8px, 1.4vh, 12px);
+  padding: clamp(8px, 1.4vh, 12px) clamp(10px, 1.6vh, 14px);
   border: 1px solid var(--cf-line);
   border-radius: 8px;
   background: var(--cf-parchment);
@@ -566,58 +631,32 @@ body::before{
 
 /* ── Responsive ───────────────────────────────────────────── */
 
-@media (max-width: 480px) {
-  .landing-page {
-    justify-content: flex-start;
-    padding-block: 28px 40px;
-  }
-
-  .landing-brand {
-    margin-bottom: 24px;
-  }
-
-  .landing-brand__wordmark {
-    font-size: 32px;
-  }
-
-  .landing-brand__scotty {
-    height: clamp(64px, 12vw, 96px);
-  }
-
-  .landing-card__top,
-  .landing-card__body {
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-
-  .landing-tabs {
-    margin-left: -20px;
-    margin-right: -20px;
-    padding-left: 20px;
-    padding-right: 20px;
-  }
-
-  .landing-card__footer {
-    padding-left: 20px;
-    padding-right: 20px;
+@media (max-width: 520px) {
+  .landing-brand__tagline {
+    white-space: normal;
+    max-width: 36ch;
+    margin-inline: auto;
   }
 }
 
 @media (max-width: 360px) {
-  .landing-brand__tagline {
-    font-size: 14px;
-  }
-
   .landing-tab {
-    font-size: 13px;
     padding-left: 4px;
     padding-right: 4px;
   }
 }
 
-@media (max-height: 700px) {
-  .landing-form--scrollable .landing-form-fields {
-    max-height: 38vh;
+@media (max-height: 599px) {
+  html,
+  body {
+    overflow-y: auto;
+  }
+
+  .auth-shell {
+    overflow-y: auto;
+    justify-content: flex-start;
+    height: auto;
+    min-height: 100dvh;
   }
 }
 

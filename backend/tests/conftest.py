@@ -23,6 +23,8 @@ def app():
     with app.app_context():
         db.drop_all()
         db.create_all()
+        from backend.migrate import run_migrations
+        run_migrations()
     yield app
     with app.app_context():
         db.session.remove()

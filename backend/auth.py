@@ -5,6 +5,7 @@ Frontend posts the Google ID token (JWT from Google Identity Services) to
 cookie. Subsequent requests carry the cookie automatically (with CORS
 `credentials: 'include'`).
 """
+import hashlib
 import json
 import os
 import secrets
@@ -18,7 +19,8 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
 from .db import db
-from .models import User
+from .email_util import send_password_reset_email
+from .models import PasswordResetToken, User
 from .permissions import require_login, current_user
 
 
@@ -27,7 +29,7 @@ bp = Blueprint("auth", __name__, url_prefix="/api")
 
 CMU_EMAIL_DOMAINS = ("andrew.cmu.edu", "cmu.edu", "qatar.cmu.edu")
 MIN_PASSWORD_LEN = 8
-RESET_TOKEN_HOURS = 24
+GENERIC_RESET_MESSAGE = "If an account exists for that email, a reset link has been sent."
 
 
 def _hash_password(password: str) -> str:
@@ -46,18 +48,85 @@ def _validate_password(password: str) -> str | None:
     return None
 
 
+def _hash_reset_token(raw_token: str) -> str:
+    """Deterministic SHA-256 so we can look up by raw token without storing it."""
+    return hashlib.sha256(raw_token.encode("utf-8")).hexdigest()
+
+
+def _reset_token_ttl() -> timedelta:
+    minutes = int(current_app.config.get("RESET_TOKEN_MINUTES") or 30)
+    return timedelta(minutes=minutes)
+
+
+def _frontend_reset_url(raw_token: str) -> str:
+    """Build the link emailed to the user (static GH Pages / local)."""
+    configured = (current_app.config.get("FRONTEND_RESET_BASE") or "").strip()
+    if configured:
+        base = configured.rstrip("/")
+        sep = "&" if "?" in base else "?"
+        return f"{base}{sep}token={raw_token}"
+    origins = current_app.config.get("FRONTEND_ORIGINS") or []
+    origin = (origins[0] if origins else "http://localhost:8765").rstrip("/")
+    return f"{origin}/reset.html?token={raw_token}"
+
+
+def _invalidate_reset_tokens(user_id: int) -> None:
+    db.session.query(PasswordResetToken).filter_by(user_id=user_id, used=False).update(
+        {"used": True}, synchronize_session=False
+    )
+
+
+def _create_reset_token(user: User) -> str:
+    """Store hashed token; return raw token for email/dev exposure."""
+    _invalidate_reset_tokens(user.id)
+    raw_token = secrets.token_urlsafe(32)
+    row = PasswordResetToken(
+        user_id=user.id,
+        token_hash=_hash_reset_token(raw_token),
+        expires_at=datetime.now(timezone.utc) + _reset_token_ttl(),
+        used=False,
+    )
+    db.session.add(row)
+    db.session.commit()
+    return raw_token
+
+
+def _find_valid_reset_token(raw_token: str) -> PasswordResetToken | None:
+    if not raw_token:
+        return None
+    token_hash = _hash_reset_token(raw_token.strip())
+    row = (
+        db.session.query(PasswordResetToken)
+        .filter_by(token_hash=token_hash, used=False)
+        .one_or_none()
+    )
+    if row is None:
+        return None
+    expires = row.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires < datetime.now(timezone.utc):
+        return None
+    return row
+
+
 def _finalize_user(user: User, email: str) -> User:
-    """Apply seed/admin rules and mark profile complete when ready."""
-    if not user.profile_completed:
-        seed = _load_seed_users().get(email)
-        if seed:
-            _apply_seed(user, seed)
-    _sync_admin_flag(user, email)
+    """Apply directory/admin rules and mark profile complete when ready."""
+    _sync_directory_profile(user, email)
     user.last_login = datetime.now(timezone.utc)
     if user.profile_is_complete():
         user.profile_completed = True
     db.session.commit()
     return user
+
+
+def _sync_directory_profile(user: User, email: str) -> None:
+    """Apply faculty directory on every login/register (not only first onboarding)."""
+    if user.role != "admin":
+        seed = _load_seed_users().get(email)
+        if seed:
+            _apply_seed(user, seed)
+    _sync_admin_flag(user, email)
 
 
 def _create_user_with_password(email: str, name: str, password: str) -> User:
@@ -68,9 +137,9 @@ def _create_user_with_password(email: str, name: str, password: str) -> User:
         password_hash=_hash_password(password),
     )
     db.session.add(user)
-    seed = _load_seed_users().get(email)
-    if seed:
-        _apply_seed(user, seed)
+    db.session.flush()
+    if not user.password_hash:
+        raise RuntimeError("password_hash was not set during registration")
     return _finalize_user(user, email)
 
 
@@ -87,12 +156,25 @@ def _normalize_cmu_email(raw: str) -> str | None:
     return email
 
 
+def _resolve_seed_path(path: Path) -> Path:
+    """Resolve relative seed paths against cwd, backend/, and repo root."""
+    if path.is_absolute():
+        return path
+    backend_dir = Path(__file__).resolve().parent
+    repo_root = backend_dir.parent
+    for base in (Path.cwd(), backend_dir, repo_root):
+        candidate = (base / path).resolve()
+        if candidate.is_file():
+            return candidate
+    return (repo_root / path).resolve()
+
+
 def _seed_file_candidates() -> list[Path]:
     """Ordered list of seed JSON paths (first match wins)."""
     paths: list[Path] = []
     configured = (current_app.config.get("SEED_USERS_PATH") or "").strip()
     if configured:
-        paths.append(Path(configured))
+        paths.append(_resolve_seed_path(Path(configured)))
     backend_dir = Path(__file__).resolve().parent
     repo_root = backend_dir.parent
     if not current_app.config.get("TESTING"):
@@ -163,6 +245,7 @@ def _write_session(user: User) -> None:
     session["email"] = user.email
     session["name"] = user.name
     session["role"] = user.role
+    session["role_group"] = user.role_group()
     session["primary_program"] = user.primary_program
     session["minor_code"] = user.minor_code
     session["is_admin"] = user.is_admin
@@ -193,20 +276,13 @@ def _upsert_user_from_login(email: str, name: str, google_sub: str | None = None
             role="student",
         )
         db.session.add(user)
-        seed = _load_seed_users().get(email)
-        if seed:
-            _apply_seed(user, seed)
     else:
         if google_sub and not user.google_sub:
             user.google_sub = google_sub
         if not user.name and name:
             user.name = name
-        if not user.profile_completed:
-            seed = _load_seed_users().get(email)
-            if seed:
-                _apply_seed(user, seed)
 
-    _sync_admin_flag(user, email)
+    _sync_directory_profile(user, email)
 
     user.last_login = datetime.now(timezone.utc)
     if user.profile_is_complete():
@@ -252,6 +328,9 @@ def register():
         name = (data.get("name") or "").strip() or email.split("@", 1)[0].replace(".", " ").title()
         user = _create_user_with_password(email, name, password)
 
+    if not user.password_hash:
+        return jsonify(error="server_error", message="Account could not be created. Try again."), 500
+
     _write_session(user)
     return jsonify(user.to_public_dict()), 201
 
@@ -284,53 +363,43 @@ def forgot_password():
     if not email:
         return jsonify(error="invalid_email", message="Enter your @andrew.cmu.edu email."), 400
 
+    payload = {"ok": True, "message": GENERIC_RESET_MESSAGE}
     user = db.session.query(User).filter_by(email=email).one_or_none()
-    payload = {
-        "ok": True,
-        "message": "If an account exists for that email, you can reset your password with the link below.",
-    }
-    if user is None:
-        return jsonify(payload)
+    if user is not None:
+        raw_token = _create_reset_token(user)
+        reset_url = _frontend_reset_url(raw_token)
+        send_password_reset_email(email, reset_url)
 
-    raw_token = secrets.token_urlsafe(32)
-    user.reset_token_hash = generate_password_hash(raw_token)
-    user.reset_token_expires = datetime.now(timezone.utc) + timedelta(hours=RESET_TOKEN_HOURS)
-    db.session.commit()
+        expose = os.environ.get("EXPOSE_RESET_TOKEN", "").lower() in ("1", "true", "yes")
+        if expose:
+            payload["reset_token"] = raw_token
+            payload["reset_url"] = reset_url
 
-    expose = os.environ.get("EXPOSE_RESET_TOKEN", "").lower() in ("1", "true", "yes")
-    expose = expose or not current_app.config.get("IS_PRODUCTION", False)
-    if expose:
-        payload["reset_token"] = raw_token
-        payload["email"] = email
     return jsonify(payload)
 
 
 @bp.route("/auth/reset-password", methods=["POST"])
 def reset_password():
-    """Set a new password using the token from forgot-password."""
+    """Set a new password using the token from the reset email."""
     data = request.get_json(silent=True) or {}
-    email = _normalize_cmu_email(data.get("email") or "")
     token = (data.get("token") or "").strip()
     password = data.get("password") or ""
-    if not email or not token:
-        return jsonify(error="missing_fields", message="Email and reset token are required."), 400
+    if not token:
+        return jsonify(error="missing_fields", message="Reset token is required."), 400
     err = _validate_password(password)
     if err:
         return jsonify(error="weak_password", message=err), 400
 
-    user = db.session.query(User).filter_by(email=email).one_or_none()
-    if (
-        user is None
-        or not user.reset_token_hash
-        or not user.reset_token_expires
-        or user.reset_token_expires < datetime.now(timezone.utc)
-        or not check_password_hash(user.reset_token_hash, token)
-    ):
+    row = _find_valid_reset_token(token)
+    if row is None:
+        return jsonify(error="invalid_token", message="This reset link is invalid or has expired."), 400
+
+    user = db.session.get(User, row.user_id)
+    if user is None:
         return jsonify(error="invalid_token", message="This reset link is invalid or has expired."), 400
 
     user.password_hash = _hash_password(password)
-    user.reset_token_hash = None
-    user.reset_token_expires = None
+    _invalidate_reset_tokens(user.id)
     db.session.commit()
     return jsonify(ok=True, message="Password updated. You can sign in now.")
 

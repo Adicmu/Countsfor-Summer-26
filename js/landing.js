@@ -82,9 +82,24 @@
     backendUnreachable: false,
   };
 
-  function isAndrewEmail(raw) {
+  function normalizeCmuEmail(raw) {
     const e = (raw || '').trim().toLowerCase();
-    return /^[^\s@]+@andrew\.cmu\.edu$/.test(e);
+    if (!/^[^\s@]+@[^\s@]+$/.test(e)) return null;
+    const local = e.split('@')[0];
+    const domain = e.split('@')[1];
+    if (domain === 'cmu.edu' || domain === 'qatar.cmu.edu') {
+      return local + '@andrew.cmu.edu';
+    }
+    if (domain === 'andrew.cmu.edu') return e;
+    return null;
+  }
+
+  function isCmuEmail(raw) {
+    return normalizeCmuEmail(raw) !== null;
+  }
+
+  function isAndrewEmail(raw) {
+    return isCmuEmail(raw);
   }
 
   function setFieldMsg(inputId, msgId, text, kind) {
@@ -113,7 +128,7 @@
       clearFieldMsg(inputId, msgId);
       return false;
     }
-    if (!isAndrewEmail(val)) {
+    if (!isCmuEmail(val)) {
       setFieldMsg(inputId, msgId, 'Use your @andrew.cmu.edu email address.', 'error');
       return false;
     }
@@ -360,7 +375,12 @@
   }
 
   function panelWrap(content, view) {
-    const labelledBy = 'panel-title-' + view;
+    const labelledBy =
+      view === 'register'
+        ? 'tab-register'
+        : view === 'signin'
+          ? 'panel-title-signin'
+          : 'panel-title-' + view;
     const role =
       view === 'signin' || view === 'register' ? 'tabpanel' : 'region';
     return (
@@ -396,14 +416,10 @@
       inner = panelWrap(
         '<div class="landing-card__top">' +
         tabsHtml('register') +
-        '<div class="landing-panel-head">' +
-        '<h2 class="landing-panel-title" id="panel-title-register">Create your account</h2>' +
-        '<p class="landing-panel-lead">Use your <strong>@andrew.cmu.edu</strong> email. Faculty in our directory are recognized automatically; everyone else starts as a student.</p>' +
-        '</div>' +
         backendWarnHtml() +
         '</div>' +
         '<div class="landing-card__body">' +
-        '<form class="landing-form landing-form--scrollable" id="cfAuthForm" novalidate>' +
+        '<form class="landing-form" id="cfAuthForm" novalidate>' +
         formErrorHtml() +
         '<div class="landing-form-fields">' +
         '<div class="landing-field-group">' +
@@ -427,7 +443,7 @@
         '<div class="landing-panel-head">' +
         '<button type="button" class="landing-back" data-view="signin">← Back to sign in</button>' +
         '<h2 class="landing-panel-title" id="panel-title-forgot">Forgot password</h2>' +
-        '<p class="landing-panel-lead">Enter your <strong>@andrew.cmu.edu</strong> email. We\'ll give you a reset link you can use below.</p>' +
+        '<p class="landing-panel-lead">Enter your <strong>@andrew.cmu.edu</strong> email. If an account exists, we\'ll email you a reset link.</p>' +
         '</div>' +
         backendWarnHtml() +
         '</div>' +
@@ -448,9 +464,7 @@
         '<div class="landing-card__top">' +
         '<div class="landing-panel-head">' +
         '<h2 class="landing-panel-title" id="panel-title-reset">Set a new password</h2>' +
-        '<p class="landing-panel-lead">Choose a new password for <strong>' +
-        esc(state.resetEmail || 'your account') +
-        '</strong>.</p>' +
+        '<p class="landing-panel-lead">Choose a new password for your account.</p>' +
         '</div>' +
         '</div>' +
         '<div class="landing-card__body">' +
@@ -559,7 +573,7 @@
       return;
     }
     setLoading(true, 'Sign in →');
-    const r = await apiLogin({ email, password });
+    const r = await apiLogin({ email: normalizeCmuEmail(email) || email, password });
     setLoading(false, 'Sign in →');
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Email or password is incorrect.';
@@ -589,7 +603,7 @@
     if (!validatePasswordMatch('cfRegPass', 'cfRegPass2', 'cfRegPass2Msg')) return;
     setLoading(true, 'Create account →');
     const r = await apiRegister({
-      email,
+      email: normalizeCmuEmail(email) || email,
       password,
       confirm_password: confirm,
       name: name || undefined,
@@ -614,7 +628,7 @@
     const email = (document.getElementById('cfForgotEmail')?.value || '').trim();
     if (!validateAndrewField('cfForgotEmail', 'cfForgotEmailMsg')) return;
     setLoading(true, 'Send reset link →');
-    const r = await apiForgotPassword(email);
+    const r = await apiForgotPassword(normalizeCmuEmail(email) || email);
     setLoading(false, 'Send reset link →');
     if (!r.ok) {
       setFormError((r.data && r.data.message) || 'Request failed.');
@@ -622,30 +636,27 @@
       return;
     }
     const box = document.getElementById('cfResetLinkBox');
-    if (box && r.data && r.data.reset_token) {
-      const url =
-        location.origin +
-        location.pathname +
-        '?reset=' +
-        encodeURIComponent(r.data.reset_token) +
-        '&email=' +
-        encodeURIComponent(r.data.email);
+    const msg = (r.data && r.data.message) || 'If an account exists for that email, a reset link has been sent.';
+    if (box) {
       box.hidden = false;
-      box.innerHTML =
-        '<p class="landing-reset-msg">' +
-        esc(r.data.message || 'Use this link to reset your password:') +
-        '</p>' +
-        '<a class="landing-reset-link" href="' +
-        esc(url) +
-        '">Reset my password →</a>';
-      state.resetToken = r.data.reset_token;
-      state.resetEmail = r.data.email;
-    } else if (box) {
-      box.hidden = false;
-      box.innerHTML =
-        '<p class="landing-reset-msg">' +
-        esc(r.data.message || 'If that email is registered, check for a reset link.') +
-        '</p>';
+      if (r.data && r.data.reset_url) {
+        box.innerHTML =
+          '<p class="landing-reset-msg">' + esc(msg) + '</p>' +
+          '<a class="landing-reset-link" href="' + esc(r.data.reset_url) + '">Reset my password →</a>';
+        state.resetToken = r.data.reset_token || '';
+      } else if (r.data && r.data.reset_token) {
+        const url =
+          location.origin +
+          location.pathname.replace(/[^/]+$/, '') +
+          'index.html?token=' +
+          encodeURIComponent(r.data.reset_token);
+        box.innerHTML =
+          '<p class="landing-reset-msg">' + esc(msg) + '</p>' +
+          '<a class="landing-reset-link" href="' + esc(url) + '">Reset my password →</a>';
+        state.resetToken = r.data.reset_token;
+      } else {
+        box.innerHTML = '<p class="landing-reset-msg">' + esc(msg) + '</p>';
+      }
     }
   }
 
@@ -661,7 +672,6 @@
     if (!validatePasswordMatch('cfResetPass', 'cfResetPass2', 'cfResetPass2Msg')) return;
     setLoading(true, 'Update password →');
     const r = await apiResetPassword({
-      email: state.resetEmail,
       token: state.resetToken,
       password,
     });
@@ -690,11 +700,9 @@
 
   async function init() {
     const params = new URLSearchParams(location.search);
-    const resetTok = params.get('reset') || '';
-    const resetEmail = params.get('email') || '';
-    if (resetTok && resetEmail) {
+    const resetTok = params.get('token') || params.get('reset') || '';
+    if (resetTok) {
       state.resetToken = resetTok;
-      state.resetEmail = resetEmail;
       state.view = 'reset';
     }
 
