@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet/search",
-    "last_scrape": "2026-06-30T14:03:25.407865+00:00",
+    "last_scrape": "2026-07-01T09:42:20.827240+00:00",
     "semesters_on_form": [
       {
         "code": "F26",
@@ -12499,7 +12499,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -12581,7 +12581,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-04:00PM",
+              "days_times": "TR 12:00PM-12:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -100732,6 +100732,16 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "D2",
+              "mini": "Y",
+              "days": "TR",
+              "begin_time": "05:00PM",
+              "end_time": "06:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
             }
           ],
           "campus": [
@@ -100770,6 +100780,18 @@
               "modality": "In Person",
               "units": "6",
               "days_times": "TR 11:00AM-12:20PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            },
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "D2",
+              "modality": "In Person",
+              "units": "6",
+              "days_times": "TR 05:00PM-06:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -113431,7 +113453,7 @@
         },
         {
           "course_number": "95736",
-          "title": "Advanced Relational Database Management",
+          "title": "Advanced Relational Database Management This Section Cancelled",
           "units": "6",
           "department_code": "ISM",
           "department": "Information Systems:Sch of IS & Mgt",
@@ -113522,6 +113544,44 @@
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "Remote only"
+            }
+          ],
+          "semester": "Fall 2026",
+          "semester_code": "F26"
+        },
+        {
+          "course_number": "95740",
+          "title": "ISPM Professional Seminar",
+          "units": "6",
+          "department_code": "ISM",
+          "department": "Information Systems:Sch of IS & Mgt",
+          "sections": [
+            {
+              "section": "A1",
+              "mini": "Y",
+              "days": "R",
+              "begin_time": "12:30PM",
+              "end_time": "01:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "A1",
+              "modality": "In Person",
+              "units": "6",
+              "days_times": "R 12:30PM-01:50PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
             }
           ],
           "semester": "Fall 2026",
@@ -114788,6 +114848,44 @@
           "semester_code": "F26"
         },
         {
+          "course_number": "95843",
+          "title": "ISM Professional Seminar",
+          "units": "6",
+          "department_code": "ISM",
+          "department": "Information Systems:Sch of IS & Mgt",
+          "sections": [
+            {
+              "section": "A1",
+              "mini": "Y",
+              "days": "R",
+              "begin_time": "12:30PM",
+              "end_time": "01:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "A1",
+              "modality": "In Person",
+              "units": "6",
+              "days_times": "R 12:30PM-01:50PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            }
+          ],
+          "semester": "Fall 2026",
+          "semester_code": "F26"
+        },
+        {
           "course_number": "95844",
           "title": "Introduction to Cyber Intelligence",
           "units": "6",
@@ -115252,6 +115350,44 @@
           "semester_code": "F26"
         },
         {
+          "course_number": "95871",
+          "title": "BIDA Professional Seminar",
+          "units": "12",
+          "department_code": "ISM",
+          "department": "Information Systems:Sch of IS & Mgt",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "T",
+              "begin_time": "12:30PM",
+              "end_time": "01:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "A",
+              "modality": "In Person",
+              "units": "12",
+              "days_times": "T 12:30PM-01:50PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            }
+          ],
+          "semester": "Fall 2026",
+          "semester_code": "F26"
+        },
+        {
           "course_number": "95874",
           "title": "Agile Methods",
           "units": "6",
@@ -115477,6 +115613,44 @@
               "modality": "In Person",
               "units": "12",
               "days_times": "TR 03:30PM-04:50PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            }
+          ],
+          "semester": "Fall 2026",
+          "semester_code": "F26"
+        },
+        {
+          "course_number": "95886",
+          "title": "AIM Professional Seminar",
+          "units": "6",
+          "department_code": "ISM",
+          "department": "Information Systems:Sch of IS & Mgt",
+          "sections": [
+            {
+              "section": "A1",
+              "mini": "Y",
+              "days": "M",
+              "begin_time": "12:30PM",
+              "end_time": "01:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "A1",
+              "modality": "In Person",
+              "units": "6",
+              "days_times": "M 12:30PM-01:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -146974,6 +147148,44 @@
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
+            }
+          ],
+          "semester": "Fall 2026",
+          "semester_code": "F26"
+        },
+        {
+          "course_number": "92871",
+          "title": "Executive Leadership",
+          "units": "4",
+          "department_code": "MED",
+          "department": "Medical Management:Sch of Pub Pol & Mgt",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "Remote only",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "A",
+              "modality": "Remote",
+              "units": "4",
+              "days_times": "TBA",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "Remote only"
             }
           ],
           "semester": "Fall 2026",
@@ -188628,6 +188840,44 @@
           "semester_code": "F26"
         },
         {
+          "course_number": "90727",
+          "title": "PPM Professional Seminar",
+          "units": "12",
+          "department_code": "PPP",
+          "department": "Public Policy & Mgt:Sch of Pub Pol & Mgt",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "M",
+              "begin_time": "12:30PM",
+              "end_time": "01:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "A",
+              "modality": "In Person",
+              "units": "12",
+              "days_times": "M 12:30PM-01:50PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            }
+          ],
+          "semester": "Fall 2026",
+          "semester_code": "F26"
+        },
+        {
           "course_number": "90736",
           "title": "Public Finance",
           "units": "12",
@@ -188660,6 +188910,44 @@
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-Person + Technology"
+            }
+          ],
+          "semester": "Fall 2026",
+          "semester_code": "F26"
+        },
+        {
+          "course_number": "90741",
+          "title": "HCA Professional Seminar",
+          "units": "6",
+          "department_code": "PPP",
+          "department": "Public Policy & Mgt:Sch of Pub Pol & Mgt",
+          "sections": [
+            {
+              "section": "A1",
+              "mini": "Y",
+              "days": "T",
+              "begin_time": "12:30PM",
+              "end_time": "01:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "A1",
+              "modality": "In Person",
+              "units": "6",
+              "days_times": "T 12:30PM-01:50PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
             }
           ],
           "semester": "Fall 2026",
@@ -207772,7 +208060,7 @@
           "code": "HC",
           "name": "Heinz College Wide Courses",
           "courses": 55,
-          "sections": 147
+          "sections": 148
         },
         {
           "code": "HIS",
@@ -207813,8 +208101,8 @@
         {
           "code": "ISM",
           "name": "Information Systems:Sch of IS & Mgt",
-          "courses": 59,
-          "sections": 119
+          "courses": 63,
+          "sections": 123
         },
         {
           "code": "III",
@@ -207867,8 +208155,8 @@
         {
           "code": "MED",
           "name": "Medical Management:Sch of Pub Pol & Mgt",
-          "courses": 5,
-          "sections": 5
+          "courses": 6,
+          "sections": 6
         },
         {
           "code": "MUS",
@@ -207921,8 +208209,8 @@
         {
           "code": "PPP",
           "name": "Public Policy & Mgt:Sch of Pub Pol & Mgt",
-          "courses": 51,
-          "sections": 57
+          "courses": 53,
+          "sections": 59
         },
         {
           "code": "ROB",
@@ -207967,10 +208255,10 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-06-30T14:03:25.407865+00:00",
+      "scraped_at": "2026-07-01T09:42:20.827240+00:00",
       "semester_label": "Fall 2026",
-      "total_courses": 3228,
-      "total_sections": 7082
+      "total_courses": 3235,
+      "total_sections": 7090
     },
     "S26": {
       "courses": [
@@ -413942,7 +414230,7 @@
           "sections": 39
         }
       ],
-      "scraped_at": "2026-06-30T14:03:25.407865+00:00",
+      "scraped_at": "2026-07-01T09:42:20.827240+00:00",
       "semester_label": "Spring 2026",
       "total_courses": 3209,
       "total_sections": 7007
@@ -621674,7 +621962,7 @@
           "sections": 36
         }
       ],
-      "scraped_at": "2026-06-30T14:03:25.407865+00:00",
+      "scraped_at": "2026-07-01T09:42:20.827240+00:00",
       "semester_label": "Fall 2025",
       "total_courses": 3213,
       "total_sections": 7084
