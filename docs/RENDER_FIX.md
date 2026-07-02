@@ -22,19 +22,6 @@ Open **Countsfor-Summer-26 → Settings**:
 | **Build Command** | `pip install -r requirements.txt` |
 | **Pre-Deploy Command** | `python -m backend.bootstrap_db` |
 | **Start Command** | `SKIP_DB_BOOTSTRAP=1 gunicorn --workers=1 --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - 'backend.app:create_app()'` |
-| **Health Check Path** | `/health` |
-| **Python Version** | `3.11.9` (or add env `PYTHON_VERSION=3.11.9`) |
-
-Alternative (also valid):
-
-| Setting | Value |
-|---------|--------|
-| **Root Directory** | `backend` |
-| **Build Command** | `pip install -r requirements.txt` |
-| **Pre-Deploy Command** | `cd .. && python -m backend.bootstrap_db` |
-| **Start Command** | `cd .. && SKIP_DB_BOOTSTRAP=1 gunicorn --workers=1 --bind 0.0.0.0:$PORT --timeout 120 --access-logfile - 'backend.app:create_app()'` |
-
-Use **one** of these pairs, not a mix.
 
 ---
 

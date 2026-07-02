@@ -29,6 +29,37 @@ def _csv(env_value: str) -> list[str]:
     return [v.strip() for v in (env_value or "").split(",") if v.strip()]
 
 
+def _resolve_database_url() -> str:
+    """Resolve SQLAlchemy URI. Never silently use SQLite on Render or production."""
+    raw = (os.environ.get("DATABASE_URL") or "").strip()
+    on_render = os.environ.get("RENDER", "").lower() == "true"
+    is_production = os.environ.get("FLASK_ENV", "").strip().lower() == "production"
+
+    if raw:
+        if raw.startswith("postgres://"):
+            raw = raw.replace("postgres://", "postgresql://", 1)
+        return raw
+
+    if on_render:
+        raise RuntimeError(
+            "DATABASE_URL is not set on Render. Link the web service to "
+            "CountsFor_Summer_2026 — refusing SQLite fallback."
+        )
+    if is_production:
+        raise RuntimeError(
+            "DATABASE_URL is required when FLASK_ENV=production. "
+            "Refusing SQLite fallback."
+        )
+
+    allow_sqlite = os.environ.get("ALLOW_SQLITE", "").lower() in ("1", "true", "yes")
+    if allow_sqlite or not is_production:
+        return "sqlite:///countsfor.db"
+
+    raise RuntimeError(
+        "DATABASE_URL is unset. Set DATABASE_URL or ALLOW_SQLITE=1 for local SQLite dev."
+    )
+
+
 class Config:
     # ── Flask core ────────────────────────────────────────────
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-change-me")
@@ -47,10 +78,7 @@ class Config:
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 30  # 30 days
 
     # ── Database ──────────────────────────────────────────────
-    # Render gives postgres:// — SQLAlchemy 2 wants postgresql://
-    _raw_db = os.environ.get("DATABASE_URL", "sqlite:///countsfor.db")
-    if _raw_db.startswith("postgres://"):
-        _raw_db = _raw_db.replace("postgres://", "postgresql://", 1)
+    _raw_db = _resolve_database_url()
     SQLALCHEMY_DATABASE_URI = _raw_db
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # Fail fast on Render if Postgres is misconfigured instead of hanging gunicorn.

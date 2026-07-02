@@ -325,6 +325,11 @@ def register():
     if not user.password_hash:
         return jsonify(error="server_error", message="Account could not be created. Try again."), 500
 
+    # Ensure password_hash is persisted before returning (register must survive re-login).
+    db.session.refresh(user)
+    if not user.password_hash:
+        return jsonify(error="server_error", message="Account could not be saved. Try again."), 500
+
     _write_session(user)
     return jsonify(_auth_payload(user)), 201
 
