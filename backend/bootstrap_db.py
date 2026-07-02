@@ -5,6 +5,9 @@ ALTER TABLE and the web process can bind to $PORT immediately.
 """
 from __future__ import annotations
 
+from __future__ import annotations
+
+import os
 import sys
 
 from sqlalchemy import inspect, text
@@ -20,13 +23,23 @@ def verify_bootstrap(app) -> None:
         uri = app.config["SQLALCHEMY_DATABASE_URI"]
         print(f"Database target: {redact_database_url(uri)}")
 
+        on_render = os.environ.get("RENDER", "").lower() == "true"
+        is_production = os.environ.get("FLASK_ENV", "").strip().lower() == "production"
+
         if not uri.startswith("postgresql"):
+            if on_render or is_production:
+                print(
+                    f"FATAL: bootstrap expected PostgreSQL but got {uri!r}. "
+                    "Link DATABASE_URL to CountsFor_Summer_2026 on Render.",
+                    file=sys.stderr,
+                )
+                raise SystemExit(1)
             print(
-                f"FATAL: bootstrap expected PostgreSQL but got {uri!r}. "
-                "Refusing to report success.",
+                "WARNING: local SQLite bootstrap — tables created for dev only. "
+                "To bootstrap Render Postgres, set DATABASE_URL in backend/.env "
+                "(External URL from CountsFor_Summer_2026) and re-run.",
                 file=sys.stderr,
             )
-            raise SystemExit(1)
 
         dialect = db.engine.dialect.name
         print(f"Database dialect: {dialect}")
@@ -43,7 +56,6 @@ def verify_bootstrap(app) -> None:
         found = sorted(REQUIRED_TABLES & present)
         print(f"Required tables present ({len(found)}): {', '.join(found)}")
 
-        # Sanity query — proves we are talking to a live Postgres instance.
         db.session.execute(text("SELECT 1"))
         db.session.commit()
 
@@ -54,7 +66,11 @@ def main() -> None:
     for line in logs:
         print(line)
     verify_bootstrap(app)
-    print("Database bootstrap OK")
+    uri = app.config["SQLALCHEMY_DATABASE_URI"]
+    if uri.startswith("postgresql"):
+        print("Database bootstrap OK")
+    else:
+        print("Database bootstrap OK (local SQLite - not production Postgres)")
 
 
 if __name__ == "__main__":

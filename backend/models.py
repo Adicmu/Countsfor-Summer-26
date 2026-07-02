@@ -3,6 +3,8 @@
 Field meanings live in `schema.sql`. Keep this file thin — business logic
 belongs in route modules or permissions.py.
 """
+from __future__ import annotations
+
 from datetime import datetime, timezone
 from sqlalchemy import (
     Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint, Index
