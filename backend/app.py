@@ -18,7 +18,7 @@ from sqlalchemy import inspect, text
 
 from .config import Config
 from .db import db
-from .db_schema import REQUIRED_TABLES
+from .db_schema import REQUIRED_TABLES, database_host, redact_database_url
 
 
 def init_database(app: Flask) -> list[str]:
@@ -71,8 +71,10 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
     @app.route("/health")
     def health():
         uri = app.config.get("SQLALCHEMY_DATABASE_URI") or ""
+        db_target = redact_database_url(uri) if uri else ""
+        db_host = database_host(uri) if uri else ""
         if uri.startswith("sqlite"):
-            return jsonify(status="ok", database="sqlite")
+            return jsonify(status="ok", database="sqlite", db_host="sqlite")
         try:
             with app.app_context():
                 db.session.execute(text("SELECT 1"))
@@ -82,11 +84,23 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
                     return jsonify(
                         status="degraded",
                         database="missing_tables",
+                        db_host=db_host,
+                        db_target=db_target,
                         missing=sorted(missing),
                     ), 503
-                return jsonify(status="ok", database="connected", tables=len(present))
+                return jsonify(
+                    status="ok",
+                    database="connected",
+                    db_host=db_host,
+                    tables=len(present),
+                )
         except Exception as exc:
-            return jsonify(status="degraded", database="error", message=str(exc)), 503
+            return jsonify(
+                status="degraded",
+                database="error",
+                db_host=db_host,
+                message=str(exc),
+            ), 503
 
     # Friendly 404 in JSON shape
     @app.errorhandler(404)

@@ -6,27 +6,12 @@ ALTER TABLE and the web process can bind to $PORT immediately.
 from __future__ import annotations
 
 import sys
-from urllib.parse import urlparse, urlunparse
 
 from sqlalchemy import inspect, text
 
 from .app import create_app, init_database
 from .db import db
-from .db_schema import REQUIRED_TABLES
-
-
-def redact_database_url(url: str) -> str:
-    """Return connection URL with password replaced for safe logging."""
-    parsed = urlparse(url)
-    netloc = parsed.netloc
-    if "@" in netloc:
-        creds, host = netloc.rsplit("@", 1)
-        if ":" in creds:
-            user, _password = creds.split(":", 1)
-            netloc = f"{user}:***@{host}"
-        else:
-            netloc = f"{creds}:***@{host}"
-    return urlunparse(parsed._replace(netloc=netloc))
+from .db_schema import REQUIRED_TABLES, redact_database_url
 
 
 def verify_bootstrap(app) -> None:
