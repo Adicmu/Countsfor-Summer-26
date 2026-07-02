@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet/search",
-    "last_scrape": "2026-07-01T14:16:33.715796+00:00",
+    "last_scrape": "2026-07-02T08:53:42.507717+00:00",
     "semesters_on_form": [
       {
         "code": "F26",
@@ -12519,7 +12519,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -12605,7 +12605,7 @@
               "section": "D",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-12:50PM",
+              "days_times": "TR 12:00PM-04:00PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -38116,7 +38116,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -38176,7 +38176,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 02:00PM-02:50PM",
+              "days_times": "MW 02:00PM-04:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -113552,13 +113552,13 @@
         {
           "course_number": "95740",
           "title": "ISPM Professional Seminar",
-          "units": "6",
+          "units": "0",
           "department_code": "ISM",
           "department": "Information Systems:Sch of IS & Mgt",
           "sections": [
             {
               "section": "A1",
-              "mini": "Y",
+              "mini": "",
               "days": "R",
               "begin_time": "12:30PM",
               "end_time": "01:50PM",
@@ -113577,7 +113577,7 @@
               "campus": "Pittsburgh",
               "section": "A1",
               "modality": "In Person",
-              "units": "6",
+              "units": "0",
               "days_times": "R 12:30PM-01:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -114850,13 +114850,13 @@
         {
           "course_number": "95843",
           "title": "ISM Professional Seminar",
-          "units": "6",
+          "units": "0",
           "department_code": "ISM",
           "department": "Information Systems:Sch of IS & Mgt",
           "sections": [
             {
               "section": "A1",
-              "mini": "Y",
+              "mini": "",
               "days": "R",
               "begin_time": "12:30PM",
               "end_time": "01:50PM",
@@ -114875,7 +114875,7 @@
               "campus": "Pittsburgh",
               "section": "A1",
               "modality": "In Person",
-              "units": "6",
+              "units": "0",
               "days_times": "R 12:30PM-01:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -115352,7 +115352,7 @@
         {
           "course_number": "95871",
           "title": "BIDA Professional Seminar",
-          "units": "12",
+          "units": "0",
           "department_code": "ISM",
           "department": "Information Systems:Sch of IS & Mgt",
           "sections": [
@@ -115377,7 +115377,7 @@
               "campus": "Pittsburgh",
               "section": "A",
               "modality": "In Person",
-              "units": "12",
+              "units": "0",
               "days_times": "T 12:30PM-01:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -115624,13 +115624,13 @@
         {
           "course_number": "95886",
           "title": "AIM Professional Seminar",
-          "units": "6",
+          "units": "0",
           "department_code": "ISM",
           "department": "Information Systems:Sch of IS & Mgt",
           "sections": [
             {
               "section": "A1",
-              "mini": "Y",
+              "mini": "",
               "days": "M",
               "begin_time": "12:30PM",
               "end_time": "01:50PM",
@@ -115649,7 +115649,7 @@
               "campus": "Pittsburgh",
               "section": "A1",
               "modality": "In Person",
-              "units": "6",
+              "units": "0",
               "days_times": "M 12:30PM-01:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -188842,7 +188842,7 @@
         {
           "course_number": "90727",
           "title": "PPM Professional Seminar",
-          "units": "12",
+          "units": "0",
           "department_code": "PPP",
           "department": "Public Policy & Mgt:Sch of Pub Pol & Mgt",
           "sections": [
@@ -188867,7 +188867,7 @@
               "campus": "Pittsburgh",
               "section": "A",
               "modality": "In Person",
-              "units": "12",
+              "units": "0",
               "days_times": "M 12:30PM-01:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -188918,13 +188918,13 @@
         {
           "course_number": "90741",
           "title": "HCA Professional Seminar",
-          "units": "6",
+          "units": "0",
           "department_code": "PPP",
           "department": "Public Policy & Mgt:Sch of Pub Pol & Mgt",
           "sections": [
             {
               "section": "A1",
-              "mini": "Y",
+              "mini": "",
               "days": "T",
               "begin_time": "12:30PM",
               "end_time": "01:50PM",
@@ -188943,7 +188943,7 @@
               "campus": "Pittsburgh",
               "section": "A1",
               "modality": "In Person",
-              "units": "6",
+              "units": "0",
               "days_times": "T 12:30PM-01:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -208255,7 +208255,7 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-07-01T14:16:33.715796+00:00",
+      "scraped_at": "2026-07-02T08:53:42.507717+00:00",
       "semester_label": "Fall 2026",
       "total_courses": 3235,
       "total_sections": 7090
@@ -247479,7 +247479,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation Rotation",
               "campus": "Pittsburgh"
@@ -247518,7 +247518,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 02:00PM-02:50PM",
+              "days_times": "MW 02:00PM-04:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation Rotation"
@@ -247764,7 +247764,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -247803,7 +247803,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "12",
-              "days_times": "MW 02:00PM-02:50PM",
+              "days_times": "MW 02:00PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -414230,7 +414230,7 @@
           "sections": 39
         }
       ],
-      "scraped_at": "2026-07-01T14:16:33.715796+00:00",
+      "scraped_at": "2026-07-02T08:53:42.507717+00:00",
       "semester_label": "Spring 2026",
       "total_courses": 3209,
       "total_sections": 7007
@@ -452082,7 +452082,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "07:20PM",
+              "end_time": "08:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -452144,7 +452144,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-07:20PM",
+              "days_times": "MW 06:30PM-08:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -621962,7 +621962,7 @@
           "sections": 36
         }
       ],
-      "scraped_at": "2026-07-01T14:16:33.715796+00:00",
+      "scraped_at": "2026-07-02T08:53:42.507717+00:00",
       "semester_label": "Fall 2025",
       "total_courses": 3213,
       "total_sections": 7084
