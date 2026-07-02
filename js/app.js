@@ -903,11 +903,15 @@ const App = {
       return;
     }
     this._setAuthLoading(true, 'Sign in →');
-    const r = await apiLogin({ email, password });
+    const normalizedEmail = (typeof normalizeCmuEmail === 'function' ? normalizeCmuEmail(email) : null) || email;
+    const r = await apiLogin({ email: normalizedEmail, password });
     this._setAuthLoading(false, 'Sign in →');
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Email or password is incorrect.';
-      if (r.status === 401) {
+      if (r.data && r.data.error === 'no_password_set') {
+        this._setAuthFormError(msg);
+        this._switchAuthView('register');
+      } else if (r.status === 401) {
         this._setFieldMsg('cfLoginPass', 'cfLoginPassMsg', msg, 'error');
       } else {
         this._setAuthFormError(msg);
@@ -932,7 +936,8 @@ const App = {
     }
     if (!this._validatePasswordMatch('cfRegPass', 'cfRegPass2', 'cfRegPass2Msg')) return;
     this._setAuthLoading(true, 'Create account →');
-    const r = await apiRegister({ email, password, confirm_password: confirm, name: name || undefined });
+    const normalizedEmail = (typeof normalizeCmuEmail === 'function' ? normalizeCmuEmail(email) : null) || email;
+    const r = await apiRegister({ email: normalizedEmail, password, confirm_password: confirm, name: name || undefined });
     this._setAuthLoading(false, 'Create account →');
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Registration failed.';
@@ -953,7 +958,8 @@ const App = {
     const email = (document.getElementById('cfForgotEmail')?.value || '').trim();
     if (!this._validateAndrewField('cfForgotEmail', 'cfForgotEmailMsg')) return;
     this._setAuthLoading(true, 'Send reset link →');
-    const r = await apiForgotPassword(email);
+    const normalizedEmail = (typeof normalizeCmuEmail === 'function' ? normalizeCmuEmail(email) : null) || email;
+    const r = await apiForgotPassword(normalizedEmail);
     this._setAuthLoading(false, 'Send reset link →');
     if (!r.ok) {
       this._setAuthFormError((r.data && r.data.message) || 'Request failed.');

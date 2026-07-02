@@ -12,15 +12,7 @@ from sqlalchemy import inspect, text
 
 from .app import create_app, init_database
 from .db import db
-
-REQUIRED_TABLES = frozenset({
-    "users",
-    "flags",
-    "wishlist_items",
-    "password_reset_tokens",
-    "user_minors",
-    "directory_entries",
-})
+from .db_schema import REQUIRED_TABLES
 
 
 def redact_database_url(url: str) -> str:

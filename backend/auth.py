@@ -346,7 +346,25 @@ def login():
         return jsonify(error="missing_password", message="Enter your password."), 400
 
     user = db.session.query(User).filter_by(email=email).one_or_none()
-    if user is None or not _password_ok(user, password):
+    if user is None:
+        return jsonify(error="invalid_credentials", message="Email or password is incorrect."), 401
+    if not user.password_hash:
+        if user.google_sub:
+            return jsonify(
+                error="no_password_set",
+                message=(
+                    "This account uses Google sign-in. Use Continue with Google, "
+                    "or open Create account to set a password for this email."
+                ),
+            ), 401
+        return jsonify(
+            error="no_password_set",
+            message=(
+                "No password is saved for this email yet. Open Create account to set one, "
+                "then sign in with that password."
+            ),
+        ), 401
+    if not _password_ok(user, password):
         return jsonify(error="invalid_credentials", message="Email or password is incorrect."), 401
 
     user = _finalize_user(user, email)

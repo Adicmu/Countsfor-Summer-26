@@ -2,6 +2,20 @@
 // CountsFor — Utilities
 // ============================================================
 
+/** Match backend normalize_cmu_email — always send @andrew.cmu.edu to the API. */
+function normalizeCmuEmail(raw) {
+  const e = (raw || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+$/.test(e)) return null;
+  const parts = e.split('@');
+  const local = parts[0];
+  const domain = parts[1];
+  if (domain === 'cmu.edu' || domain === 'qatar.cmu.edu') {
+    return local + '@andrew.cmu.edu';
+  }
+  if (domain === 'andrew.cmu.edu') return e;
+  return null;
+}
+
 function debounce(fn, ms = 250) {
   let t;
   return function (...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); };

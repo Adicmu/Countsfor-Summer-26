@@ -560,6 +560,20 @@ def test_register_login_normalizes_cmu_domain(client, tmp_path):
     assert body["role_group"] == "faculty"
 
 
+def test_login_passwordless_user_gets_clear_error(client):
+    """Google/legacy users without password_hash need Create account, not generic 401."""
+    client.post("/api/auth/email", json={"email": "googleonly@andrew.cmu.edu", "name": "Google Only"})
+    client.post("/api/auth/logout")
+    r = client.post("/api/auth/login", json={
+        "email": "googleonly@andrew.cmu.edu",
+        "password": "anypassword1",
+    })
+    assert r.status_code == 401
+    body = r.get_json()
+    assert body["error"] == "no_password_set"
+    assert "Create account" in body["message"]
+
+
 def test_login_with_bearer_token_without_session_cookie(client):
     client.post("/api/auth/register", json={
         "email": "bearer@andrew.cmu.edu",

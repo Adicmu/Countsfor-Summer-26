@@ -14,9 +14,11 @@ import os
 
 from flask import Flask, jsonify
 from flask_cors import CORS
+from sqlalchemy import inspect, text
 
 from .config import Config
 from .db import db
+from .db_schema import REQUIRED_TABLES
 
 
 def init_database(app: Flask) -> list[str]:
@@ -65,10 +67,26 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
     app.register_blueprint(users_bp)
     app.register_blueprint(directory_bp)
 
-    # Health check (Render pings this)
+    # Health check (Render pings this). Fails if Postgres tables are missing.
     @app.route("/health")
     def health():
-        return jsonify(status="ok")
+        uri = app.config.get("SQLALCHEMY_DATABASE_URI") or ""
+        if uri.startswith("sqlite"):
+            return jsonify(status="ok", database="sqlite")
+        try:
+            with app.app_context():
+                db.session.execute(text("SELECT 1"))
+                present = set(inspect(db.engine).get_table_names())
+                missing = REQUIRED_TABLES - present
+                if missing:
+                    return jsonify(
+                        status="degraded",
+                        database="missing_tables",
+                        missing=sorted(missing),
+                    ), 503
+                return jsonify(status="ok", database="connected", tables=len(present))
+        except Exception as exc:
+            return jsonify(status="degraded", database="error", message=str(exc)), 503
 
     # Friendly 404 in JSON shape
     @app.errorhandler(404)

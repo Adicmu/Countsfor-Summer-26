@@ -1,6 +1,0 @@
-# DEPRECATED — do not deploy from this file.
-#
-# The only Render blueprint is ../render.yaml at the repo root.
-# It wires DATABASE_URL to CountsFor_Summer_2026 (ohio).
-#
-# This file previously pointed at countsfor-db (oregon) and caused deploy/DB mismatch.

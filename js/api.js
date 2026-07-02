@@ -105,7 +105,7 @@ function getBackendUrl() {
     : null;
   const fromMeta = (meta && meta.getAttribute('content') || '').trim();
   if (fromMeta) return fromMeta.replace(/\/$/, '');
-  return 'https://countsfor-backend.onrender.com';
+  return 'https://countsfor-summer-26.onrender.com';
 }
 
 /** True when index.html sets a production backend URL (not demo-only GH Pages). */

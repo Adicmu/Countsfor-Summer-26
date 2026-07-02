@@ -14,7 +14,7 @@
     if (host === 'localhost' || host === '127.0.0.1' || host === '') {
       return 'http://localhost:5000';
     }
-    return 'https://countsfor-backend.onrender.com';
+    return 'https://countsfor-summer-26.onrender.com';
   }
 
   const BACKEND_URL = getBackendUrl();
@@ -99,20 +99,19 @@
     backendUnreachable: false,
   };
 
-  function normalizeCmuEmail(raw) {
+  function normalizeCmuEmailLocal(raw) {
+    if (typeof normalizeCmuEmail === 'function') return normalizeCmuEmail(raw);
     const e = (raw || '').trim().toLowerCase();
     if (!/^[^\s@]+@[^\s@]+$/.test(e)) return null;
     const local = e.split('@')[0];
     const domain = e.split('@')[1];
-    if (domain === 'cmu.edu' || domain === 'qatar.cmu.edu') {
-      return local + '@andrew.cmu.edu';
-    }
+    if (domain === 'cmu.edu' || domain === 'qatar.cmu.edu') return local + '@andrew.cmu.edu';
     if (domain === 'andrew.cmu.edu') return e;
     return null;
   }
 
   function isCmuEmail(raw) {
-    return normalizeCmuEmail(raw) !== null;
+    return normalizeCmuEmailLocal(raw) !== null;
   }
 
   function isAndrewEmail(raw) {
@@ -588,11 +587,15 @@
       return;
     }
     setLoading(true, 'Sign in →');
-    const r = await apiLogin({ email: normalizeCmuEmail(email) || email, password });
+    const r = await apiLogin({ email: normalizeCmuEmailLocal(email) || email, password });
     setLoading(false, 'Sign in →');
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Email or password is incorrect.';
-      if (r.status === 401) {
+      if (r.data && r.data.error === 'no_password_set') {
+        setFormError(msg);
+        state.view = 'register';
+        renderPanel({ focus: false });
+      } else if (r.status === 401) {
         setFieldMsg('cfLoginPass', 'cfLoginPassMsg', msg, 'error');
       } else {
         setFormError(msg);
@@ -625,7 +628,7 @@
     if (!validatePasswordMatch('cfRegPass', 'cfRegPass2', 'cfRegPass2Msg')) return;
     setLoading(true, 'Create account →');
     const r = await apiRegister({
-      email: normalizeCmuEmail(email) || email,
+      email: normalizeCmuEmailLocal(email) || email,
       password,
       confirm_password: confirm,
       name: name || undefined,
@@ -659,7 +662,7 @@
     const email = (document.getElementById('cfForgotEmail')?.value || '').trim();
     if (!validateAndrewField('cfForgotEmail', 'cfForgotEmailMsg')) return;
     setLoading(true, 'Send reset link →');
-    const r = await apiForgotPassword(normalizeCmuEmail(email) || email);
+    const r = await apiForgotPassword(normalizeCmuEmailLocal(email) || email);
     setLoading(false, 'Send reset link →');
     if (!r.ok) {
       setFormError((r.data && r.data.message) || 'Request failed.');
