@@ -1887,7 +1887,7 @@ const App = {
     if (vm === 'focused-dual') {
       const dcCount = this.courses.filter(c => c._doubleCounter).length;
       dcBannerHtml = `
-        <div class="home-insight" onclick="App.showDoubleCounterList()">
+        <div class="home-insight home-insight-compact" onclick="App.showDoubleCounterList()">
           <div class="home-insight-num">${dcCount}</div>
           <div class="home-insight-col">
             <div class="home-insight-label">${p} MAJOR + ${minorMajor} MINOR</div>
@@ -1904,7 +1904,7 @@ const App = {
       const mpCount = this.courses.filter(c => (c._programCount || 0) >= 3).length;
       const majorForBrowse = this.activeMajor || 'CS';
       mpBannerHtml = `
-        <div class="home-insight home-insight-mp" onclick="App.enterExplorer('${majorForBrowse}')">
+        <div class="home-insight home-insight-mp home-insight-compact" onclick="App.enterExplorer('${majorForBrowse}')">
           <div class="home-insight-num">${mpCount}</div>
           <div class="home-insight-col">
             <div class="home-insight-label">CROSS-PROGRAM</div>
@@ -1917,51 +1917,55 @@ const App = {
 
     return `
       <div class="home">
-        <h1 class="home-hero">Find a course.</h1>
-        <p class="home-lead">${lead}</p>
+        <div class="home-plaid" aria-hidden="true"></div>
 
-        <div class="home-search-grid">
-          <div class="home-search-cell">
-            <label class="home-search-label" for="courseSearch">Search by course</label>
+        <header class="home-head">
+          <h1 class="home-hero">Find a course.</h1>
+          <p class="home-lead">${lead}</p>
+        </header>
+
+        <section class="home-strip" aria-label="Search and browse">
+          <div class="home-strip-search">
+            <label class="home-strip-label" for="courseSearch">Course</label>
             <div class="home-search">
               <span class="home-search-icon">🔍</span>
-              <input type="text" class="home-search-input" id="courseSearch" placeholder='Try "15-122" or "Probability"' autocomplete="off" />
+              <input type="text" class="home-search-input" id="courseSearch" placeholder='15-122 or Probability' autocomplete="off" />
               <div class="typeahead" id="typeahead"></div>
             </div>
           </div>
 
-          <div class="home-search-cell">
-            <label class="home-search-label" for="categorySearch">Search by category</label>
+          <div class="home-strip-search">
+            <label class="home-strip-label" for="categorySearch">Category</label>
             <div class="home-search">
               <span class="home-search-icon">🔍</span>
-              <input type="text" class="home-search-input" id="categorySearch" placeholder='Try "Contextual Thinking" or "Arts"' autocomplete="off" />
+              <input type="text" class="home-search-input" id="categorySearch" placeholder='Contextual Thinking' autocomplete="off" />
               <div class="typeahead" id="categoryTypeahead"></div>
             </div>
           </div>
 
-          <div class="home-search-cell">
-            <span class="home-search-label">Browse by major</span>
-            <button class="home-browse" onclick="App.enterExplorer('${browseMajor}')">
-              <span class="home-browse-icon">🗂</span>
-              <span class="home-browse-text">
-                <span class="home-browse-title">Browse requirements</span>
-                <span class="home-browse-sub">${browseSub}</span>
-              </span>
-              <span class="home-browse-arrow">→</span>
-            </button>
-          </div>
-        </div>
+          <button type="button" class="home-strip-browse" onclick="App.enterExplorer('${browseMajor}')" title="Browse ${browseSub}">
+            <span class="home-strip-browse-icon">🗂</span>
+            <span class="home-strip-browse-text">
+              <span class="home-strip-browse-title">Browse</span>
+              <span class="home-strip-browse-sub">${browseSub}</span>
+            </span>
+            <span class="home-strip-browse-arrow">→</span>
+          </button>
+        </section>
 
-        ${this._renderWishlistEntry()}
-        ${this._renderStudentFlaggedPanel()}
-        ${this._renderMyFlagsPanel()}
-        ${dcBannerHtml}${mpBannerHtml}
+        <section class="home-lanes">
+          ${this._renderWishlistEntry()}
+          ${this._renderStudentFlaggedPanel()}
+          ${this._renderMyFlagsPanel()}
+        </section>
 
-        <footer class="home-footer">
-          <a class="home-footer-cmuq" href="https://www.qatar.cmu.edu/" target="_blank" rel="noopener" aria-label="Carnegie Mellon University Qatar">
-            <img src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University Qatar" />
+        ${dcBannerHtml || mpBannerHtml ? `<section class="home-banners">${dcBannerHtml}${mpBannerHtml}</section>` : ''}
+
+        <footer class="home-foot">
+          <a class="home-foot-logo" href="https://www.qatar.cmu.edu/" target="_blank" rel="noopener" aria-label="Carnegie Mellon University Qatar">
+            <img src="assets/img/cmuq-wordmark.png" alt="" />
           </a>
-          <span class="home-footer-note">A curriculum explorer for the CMU-Q community.</span>
+          <span class="home-foot-note">A curriculum explorer for the CMU-Q community.</span>
         </footer>
       </div>
     `;
@@ -2004,14 +2008,14 @@ const App = {
       ? 'Tap the bookmark on any course to add it here.'
       : `${count} course${count === 1 ? '' : 's'} saved — open to add notes.`;
     return `
-      <div class="home-wishlist-card" onclick="App.showWishlistView()" role="button" tabindex="0">
-        <span class="home-wishlist-icon">${this._iconBookmarkFilled()}</span>
-        <span class="home-wishlist-text">
-          <span class="home-wishlist-title">Your saved courses</span>
-          <span class="home-wishlist-sub">${subtext}</span>
+      <button type="button" class="home-tile home-tile-wish" onclick="App.showWishlistView()">
+        <span class="home-tile-icon">${this._iconBookmarkFilled()}</span>
+        <span class="home-tile-body">
+          <span class="home-tile-title">Saved courses</span>
+          <span class="home-tile-sub">${subtext}</span>
         </span>
-        <span class="home-wishlist-arrow">→</span>
-      </div>`;
+        <span class="home-tile-arrow">→</span>
+      </button>`;
   },
 
   // ── Faculty flag queue (all faculty + admin) ───────────────
@@ -2023,21 +2027,22 @@ const App = {
     if (!isStudent(this.profile) || this.authMode !== 'authed') return '';
     const st = this._studentFlagsState;
     if (!st || !st.loaded) {
-      return `<div class="home-flagged" id="homeStudentFlags"><span class="home-flagged-title">Flagged courses</span><span class="home-flagged-sub">Loading…</span></div>`;
+      return `<div class="home-tile home-tile-flag" id="homeStudentFlags"><span class="home-tile-title">Flagged courses</span><span class="home-tile-sub">Loading…</span></div>`;
     }
     const n = (st.items || []).length;
     if (n === 0) {
-      return `<div class="home-flagged" id="homeStudentFlags"><span class="home-flagged-title">Flagged courses</span><span class="home-flagged-sub">No open course flags right now. Faculty-reported issues appear here.</span></div>`;
+      return `<div class="home-tile home-tile-flag home-tile-muted" id="homeStudentFlags"><span class="home-tile-title">Flagged courses</span><span class="home-tile-sub">No open flags right now</span></div>`;
     }
-    const preview = st.items.slice(0, 3).map(f =>
-      `<li><strong>${esc(f.course_code)}</strong> · ${esc(f.reason_label)} <span class="home-flagged-status">${esc(f.status)}</span></li>`
-    ).join('');
+    const preview = st.items.slice(0, 2).map(f => f.course_code).join(' · ');
     return `
-      <div class="home-flagged" id="homeStudentFlags" role="button" tabindex="0" onclick="App.showStudentFlagsView()">
-        <span class="home-flagged-title">Flagged courses <span class="home-flagged-count">${n}</span></span>
-        <ul class="home-flagged-list">${preview}</ul>
-        <span class="home-flagged-link">View all →</span>
-      </div>`;
+      <button type="button" class="home-tile home-tile-flag" id="homeStudentFlags" onclick="App.showStudentFlagsView()">
+        <span class="home-tile-icon">⚑</span>
+        <span class="home-tile-body">
+          <span class="home-tile-title">Flagged <span class="home-tile-badge">${n}</span></span>
+          <span class="home-tile-sub">${esc(preview)}</span>
+        </span>
+        <span class="home-tile-arrow">→</span>
+      </button>`;
   },
 
   async _loadStudentFlagsSummary() {
