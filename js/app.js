@@ -1429,7 +1429,7 @@ const App = {
 
   filterByLocation(courseOrLeaf) {
     if (!courseOrLeaf) return true;
-    const full = this.courseIndex[courseOrLeaf.course_code || courseOrLeaf.code] || courseOrLeaf;
+    const full = lookupCourse(this.courseIndex, courseOrLeaf.course_code || courseOrLeaf.code) || courseOrLeaf;
     return courseHasMatchingOffering(full, this._filterParams());
   },
 
@@ -2498,7 +2498,7 @@ const App = {
   },
 
   _renderLeafCourse(c, major) {
-    const fullCourse = this.courseIndex[c.code] || c;
+    const fullCourse = lookupCourse(this.courseIndex, c.code) || c;
     const isActive = this.selectedCourse && this.selectedCourse.course_code === c.code;
     const vm = computeViewMode(this.profile);
     const minorMajor = getMinorAsMajorCode(this.profile);
@@ -2631,7 +2631,7 @@ const App = {
 
   // ── Cross-linking ─────────────────────────────────────────
   selectCourseFromTree(code) {
-    const course = this.courseIndex[code];
+    const course = lookupCourse(this.courseIndex, code);
     if (!course) return;
     this._selectCourse(course);
 
@@ -2733,7 +2733,7 @@ const App = {
 
     const items = this._getWishlistItems();
     const courses = items
-      .map(i => ({ item: i, course: this.courseIndex[i.course_code] }))
+      .map(i => ({ item: i, course: lookupCourse(this.courseIndex, i.course_code) }))
       .filter(x => x.course);
 
     let rowsHtml;
@@ -2929,7 +2929,7 @@ const App = {
       showToast('Sign in to flag a course.');
       return;
     }
-    const course = this.courseIndex[courseCode];
+    const course = lookupCourse(this.courseIndex, courseCode);
     if (!course) return;
     this._flagModalState = { courseCode, reason: null, notes: '' };
 
@@ -3005,7 +3005,7 @@ const App = {
   async submitFlag() {
     const s = this._flagModalState;
     if (!s || !s.reason) return;
-    const course = this.courseIndex[s.courseCode];
+    const course = lookupCourse(this.courseIndex, s.courseCode);
     if (!course) return;
 
     const reasonMeta = this.FLAG_REASONS.find(r => r.code === s.reason);

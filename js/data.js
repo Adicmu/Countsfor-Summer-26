@@ -330,13 +330,34 @@ function splitTreeSections(tree, majorCode) {
   return { degree, gened };
 }
 
+// ── Canonical course code (82101, 82101.0, 82-101 → 82-101) ─
+function normalizeCourseCode(code) {
+  if (code == null || code === '') return '';
+  let s = String(code).trim();
+  if (/^\d+\.0$/.test(s)) s = s.slice(0, -2);
+  const digits = s.replace(/-/g, '');
+  if (/^\d{5}$/.test(digits)) return digits.slice(0, 2) + '-' + digits.slice(2);
+  return s;
+}
+
 // ── Build course index ──────────────────────────────────────
 function buildCourseIndex(courses) {
   const index = {};
   for (const course of courses) {
-    index[course.course_code] = course;
+    const canonical = normalizeCourseCode(course.course_code);
+    if (canonical && canonical !== course.course_code) {
+      course.course_code = canonical;
+    }
+    if (!canonical) continue;
+    index[canonical] = course;
+    index[canonical.replace(/-/g, '')] = course;
   }
   return index;
+}
+
+function lookupCourse(index, code) {
+  if (!code) return null;
+  return index[normalizeCourseCode(code)] || index[code] || null;
 }
 
 // ── Get display-ready mappings for a course ─────────────────

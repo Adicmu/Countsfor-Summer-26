@@ -15,6 +15,7 @@ from soc_parse import (  # noqa: E402
     build_offering,
     code_to_course_number,
     course_number_to_code,
+    normalize_course_code,
 )
 
 SOC_PATH = os.environ.get("SOC_JSON_PATH", str(ROOT / "data" / "soc.json"))
@@ -150,7 +151,9 @@ def reconcile_file(courses_path: str, soc_path: str) -> dict:
     added = 0
 
     for course in courses:
-        code = course.get("course_code")
+        code = normalize_course_code(course.get("course_code"))
+        if code and code != course.get("course_code"):
+            course["course_code"] = code
         offs = by_code.get(code, [])
         old_q, old_p = course.get("offered_qatar"), course.get("offered_pitts")
         reconcile_course(course, offs)

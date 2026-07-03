@@ -29,6 +29,9 @@ jobs:
       - name: Reconcile offerings into bundled course data
         run: python data/reconcile_offerings.py
 
+      - name: Apply manual requirement mapping overlays
+        run: python data/apply_mapping_overlays.py
+
       - name: Validate SOC coverage in CountsFor catalog
         run: python data/validate_soc_coverage.py
 

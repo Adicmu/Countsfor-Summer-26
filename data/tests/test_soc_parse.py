@@ -42,6 +42,20 @@ def test_modality_in_person():
     assert normalize_modality("In-person Expectation") == "In Person"
 
 
+def test_normalize_course_code_compact_and_float():
+    from soc_parse import normalize_course_code
+
+    assert normalize_course_code("82101") == "82-101"
+    assert normalize_course_code("82101.0") == "82-101"
+    assert normalize_course_code("82-101") == "82-101"
+
+
+def test_course_number_to_code_uses_normalizer():
+    from soc_parse import course_number_to_code
+
+    assert course_number_to_code("82101.0") == "82-101"
+
+
 def test_department_list_parses_soc_form():
     from soc_departments import parse_department_list
 

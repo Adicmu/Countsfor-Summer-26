@@ -80,16 +80,37 @@ def format_days_times(section: dict) -> str:
     return days
 
 
+def normalize_course_code(code) -> str | None:
+    """Canonicalize course codes: 82101, 82101.0, 82-101 -> 82-101."""
+    if code is None:
+        return None
+    if isinstance(code, (int, float)):
+        code = str(int(code)) if float(code) == int(code) else str(code)
+    s = str(code).strip()
+    if not s:
+        return None
+    if s.endswith(".0") and s[:-2].isdigit():
+        s = s[:-2]
+    if "-" in s:
+        left, right = s.split("-", 1)
+        if left.isdigit() and right.isdigit():
+            return f"{left}-{right}"
+        return s
+    digits = s.replace("-", "")
+    if len(digits) == 5 and digits.isdigit():
+        return f"{digits[:2]}-{digits[2:]}"
+    return s
+
+
 def course_number_to_code(num: str) -> str:
     """15122 -> 15-122"""
-    n = (num or "").strip()
-    if len(n) == 5 and n.isdigit():
-        return f"{n[:2]}-{n[2:]}"
-    return n
+    normalized = normalize_course_code(num)
+    return normalized if normalized else (num or "")
 
 
 def code_to_course_number(code: str) -> str:
-    return (code or "").replace("-", "")
+    normalized = normalize_course_code(code)
+    return (normalized or code or "").replace("-", "")
 
 
 def build_offering(
