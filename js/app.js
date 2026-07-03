@@ -1288,7 +1288,9 @@ const App = {
           <div class="panel-body" id="leftBody"></div>
         </div>
 
-        <div class="panel-resizer" id="panelResizer" role="separator" aria-orientation="vertical" aria-label="Resize panels" tabindex="0"></div>
+        <div class="panel-resizer" id="panelResizer" role="separator" aria-orientation="vertical" aria-label="Resize panels — drag left or right" tabindex="0">
+          <span class="panel-resizer-grip" aria-hidden="true"></span>
+        </div>
 
         <div class="panel panel-right ${isSplit && this.mobileLens==='lookup'?'hidden-mobile':''}" id="panelRight">
           <div class="major-tabs" id="majorTabs">
@@ -1315,31 +1317,31 @@ const App = {
   _initPanelResizer() {
     const resizer = document.getElementById('panelResizer');
     const layout = document.getElementById('mainLayout');
-    if (!resizer || !layout || resizer.dataset.bound) return;
-    resizer.dataset.bound = '1';
+    if (!resizer || !layout) return;
 
     const saved = loadStore('cf_split_left_px', null);
     if (saved && Number(saved) > 0) {
-      layout.style.setProperty('--split-left', saved + 'px');
+      layout.style.setProperty('--split-left-width', saved + 'px');
     }
+    if (resizer._panelResizeBound) return;
 
     const minPanel = 280;
+    const resizerWidth = 12;
     let dragging = false;
 
     const clampSplit = (px) => {
-      const max = layout.getBoundingClientRect().width - minPanel - 6;
+      const max = layout.getBoundingClientRect().width - minPanel - resizerWidth;
       return Math.max(minPanel, Math.min(max, px));
     };
 
     const applySplit = (px) => {
       const clamped = clampSplit(px);
-      layout.style.setProperty('--split-left', clamped + 'px');
+      layout.style.setProperty('--split-left-width', clamped + 'px');
       return clamped;
     };
 
-    const onMove = (e) => {
+    const onMove = (clientX) => {
       if (!dragging || this.layoutMode !== 'split') return;
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
       const rect = layout.getBoundingClientRect();
       applySplit(clientX - rect.left);
     };
@@ -1349,40 +1351,45 @@ const App = {
       dragging = false;
       resizer.classList.remove('is-dragging');
       document.body.classList.remove('is-resizing-panels');
-      const val = layout.style.getPropertyValue('--split-left');
+      const val = layout.style.getPropertyValue('--split-left-width');
       const px = parseInt(val, 10);
       if (px > 0) saveStore('cf_split_left_px', px);
-      document.removeEventListener('mousemove', onMove);
-      document.removeEventListener('mouseup', stopDrag);
-      document.removeEventListener('touchmove', onMove);
-      document.removeEventListener('touchend', stopDrag);
-      document.removeEventListener('touchcancel', stopDrag);
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', stopDrag);
+      document.removeEventListener('pointercancel', stopDrag);
+    };
+
+    const onPointerMove = (e) => {
+      if (e.pointerId !== resizer._dragPointerId) return;
+      e.preventDefault();
+      onMove(e.clientX);
     };
 
     const startDrag = (e) => {
       if (this.layoutMode !== 'split' || window.innerWidth <= 860) return;
+      if (e.button !== undefined && e.button !== 0) return;
       e.preventDefault();
+      e.stopPropagation();
       dragging = true;
+      resizer._dragPointerId = e.pointerId;
       resizer.classList.add('is-dragging');
       document.body.classList.add('is-resizing-panels');
-      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
-      const rect = layout.getBoundingClientRect();
-      applySplit(clientX - rect.left);
-      document.addEventListener('mousemove', onMove);
-      document.addEventListener('mouseup', stopDrag);
-      document.addEventListener('touchmove', onMove, { passive: false });
-      document.addEventListener('touchend', stopDrag);
-      document.addEventListener('touchcancel', stopDrag);
+      onMove(e.clientX);
+      try { resizer.setPointerCapture(e.pointerId); } catch {}
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', stopDrag);
+      document.addEventListener('pointercancel', stopDrag);
     };
 
-    resizer.addEventListener('mousedown', startDrag);
-    resizer.addEventListener('touchstart', startDrag, { passive: false });
+    resizer._panelResizeBound = true;
+
+    resizer.addEventListener('pointerdown', startDrag);
 
     resizer.addEventListener('keydown', (e) => {
       if (this.layoutMode !== 'split') return;
       const step = e.shiftKey ? 48 : 16;
-      const current = parseInt(layout.style.getPropertyValue('--split-left'), 10)
-        || Math.round(layout.getBoundingClientRect().width * 0.4);
+      const current = parseInt(layout.style.getPropertyValue('--split-left-width'), 10)
+        || Math.round(layout.getBoundingClientRect().width * 0.42);
       if (e.key === 'ArrowLeft') {
         e.preventDefault();
         const px = applySplit(current - step);
@@ -1395,7 +1402,7 @@ const App = {
     });
 
     resizer.addEventListener('dblclick', () => {
-      layout.style.removeProperty('--split-left');
+      layout.style.removeProperty('--split-left-width');
       saveStore('cf_split_left_px', null);
     });
   },
@@ -1568,6 +1575,7 @@ const App = {
     // Show right panel
     const rightPanel = document.getElementById('panelRight');
     if (rightPanel) rightPanel.style.display = 'flex';
+    this._initPanelResizer();
     // Hide inline explore button in split mode
     const explBtn = document.getElementById('exploreInlineBtn');
     if (explBtn) explBtn.style.display = 'none';
