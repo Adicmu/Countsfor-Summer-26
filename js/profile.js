@@ -64,6 +64,11 @@ function canManageDirectory(profile) {
   return g === 'faculty' || g === 'admin';
 }
 
+function canFlagCourses(profile) {
+  const g = getRoleGroup(profile);
+  return g === 'faculty' || g === 'admin';
+}
+
 function canManageUsers(profile) {
   return getRoleGroup(profile) === 'admin';
 }

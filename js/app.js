@@ -32,11 +32,12 @@ const App = {
   //   3. If 401, render the login screen.
   //   4. If the backend is unreachable, fall back to localStorage demo mode
   //      so the GH-Pages-only deploy keeps working.
-  authedUser: null,             // server-confirmed user, or null in demo mode
-  authMode: 'demo',             // 'authed' | 'demo' | 'login'
-  authView: 'signin',           // signin | register | forgot | reset
+  authedUser: null,
+  authMode: 'demo',
+  authView: 'signin',
   resetEmail: '',
   resetToken: '',
+  serverFlags: [],
   async init() {
     this.applyTheme();
 
@@ -122,19 +123,34 @@ const App = {
 
     // Wishlist — student only
     if (roleGroup === 'student' && role === 'student' && !synced) {
-      const list = this._getWishlist();
-      for (const code of list) {
-        await apiAddWishlist(code);  // idempotent
+      const items = this._getWishlistItems();
+      for (const item of items) {
+        await apiAddWishlist(item.course_code, item.note);
       }
       // Pull the canonical server list back so future renders reflect any
       // additions from another device.
       const r = await apiGetWishlist();
       if (r.ok && Array.isArray(r.data.items)) {
-        this._saveWishlist(r.data.items.map(i => i.course_code));
+        this._saveWishlistItems(r.data.items.map(i => ({
+          course_code: i.course_code,
+          note: i.note || '',
+        })));
       }
     }
 
+    if (this.authMode === 'authed') {
+      await this._loadServerFlags();
+    }
+
     saveStore('cf_synced', true);
+  },
+
+  async _loadServerFlags() {
+    if (this.authMode !== 'authed') return;
+    const r = await apiListFlags('limit=200');
+    if (r.ok && Array.isArray(r.data.items)) {
+      this.serverFlags = r.data.items;
+    }
   },
 
   _needsOnboarding(u) {
@@ -1255,8 +1271,8 @@ const App = {
           </div>
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
           ${canManageUsers(this.authedUser) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
-          ${(this.authedUser && getRoleGroup(this.authedUser) === 'admin') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review submitted course flags">Flag review</button>' : ''}
-          ${(isFaculty(this.profile) && this.authMode === 'authed' && getRoleGroup(this.authedUser) !== 'admin') ? '<button class="nav-admin" onclick="App.showMyFlagsView(\'pending\')" title="See the status of course issues you reported">My flags</button>' : ''}
+          ${(canFlagCourses(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review and resolve course flags">Flag review</button>' : ''}
+          ${(isFaculty(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showStudentFavorites()" title="View student saved courses and notes">Student favorites</button>' : ''}
           ${this.authMode === 'authed' ? '<button class="nav-signout" onclick="App.signOut()" title="Sign out" aria-label="Sign out">Sign out</button>' : ''}
         </div>
       </nav>
@@ -1286,7 +1302,7 @@ const App = {
         </div>
       </div>
       ${(canManageDirectory(this.profile) && this.authMode === 'authed') ? `
-        <button type="button" class="directory-fab" onclick="App.toggleDirectoryPanel()" title="Directory — grant faculty access">Directory</button>
+        <button type="button" class="directory-fab" onclick="App.toggleDirectoryPanel()" title="Directory — manage faculty access">📋 Directory</button>
         <div id="directoryPanelRoot" class="directory-panel-root" hidden></div>
       ` : ''}
     `;
@@ -1723,11 +1739,11 @@ const App = {
     if (explBtn) explBtn.style.display = 'none';
     this._homeView = 'home';
     el.innerHTML = this._renderHome();
-    // Faculty home shows a "My flags" summary — fetch counts async and swap
-    // the placeholder in place. Admins use the dedicated Flag-review surface.
-    if (isFaculty(this.profile) && this.authMode === 'authed'
-        && !(this.authedUser && this.authedUser.role === 'admin')) {
+    // Faculty home — flag queue summary; students — flagged courses read-only
+    if (canFlagCourses(this.profile) && this.authMode === 'authed') {
       this._loadMyFlagsSummary();
+    } else if (isStudent(this.profile) && this.authMode === 'authed') {
+      this._loadStudentFlagsSummary();
     }
   },
 
@@ -1831,6 +1847,7 @@ const App = {
         </div>
 
         ${this._renderWishlistEntry()}
+        ${this._renderStudentFlaggedPanel()}
         ${this._renderMyFlagsPanel()}
         ${dcBannerHtml}${mpBannerHtml}
 
@@ -1876,7 +1893,7 @@ const App = {
 
   _renderWishlistEntry() {
     if (!isStudent(this.profile)) return '';
-    const count = this._getWishlist().length;
+    const count = this._getWishlistItems().length;
     const subtext = count === 0
       ? 'Tap the bookmark on any course to add it here.'
       : `${count} course${count === 1 ? '' : 's'} saved for planning later.`;
@@ -1891,19 +1908,54 @@ const App = {
       </div>`;
   },
 
-  // ── Faculty "My flags" ────────────────────────────────────
-  _myFlagsState: null,                 // { loaded, error, counts, items }
+  // ── Faculty flag queue (all faculty + admin) ───────────────
+  _myFlagsState: null,
   _myFlagsView:  { status: 'pending', items: [], total: 0 },
+  _studentFlagsState: null,
+
+  _renderStudentFlaggedPanel() {
+    if (!isStudent(this.profile) || this.authMode !== 'authed') return '';
+    const st = this._studentFlagsState;
+    if (!st || !st.loaded) {
+      return `<div class="home-flagged" id="homeStudentFlags"><span class="home-flagged-title">Flagged courses</span><span class="home-flagged-sub">Loading…</span></div>`;
+    }
+    const n = (st.items || []).length;
+    if (n === 0) {
+      return `<div class="home-flagged" id="homeStudentFlags"><span class="home-flagged-title">Flagged courses</span><span class="home-flagged-sub">No open course flags right now. Faculty-reported issues appear here.</span></div>`;
+    }
+    const preview = st.items.slice(0, 3).map(f =>
+      `<li><strong>${esc(f.course_code)}</strong> · ${esc(f.reason_label)} <span class="home-flagged-status">${esc(f.status)}</span></li>`
+    ).join('');
+    return `
+      <div class="home-flagged" id="homeStudentFlags" role="button" tabindex="0" onclick="App.showStudentFlagsView()">
+        <span class="home-flagged-title">Flagged courses <span class="home-flagged-count">${n}</span></span>
+        <ul class="home-flagged-list">${preview}</ul>
+        <span class="home-flagged-link">View all →</span>
+      </div>`;
+  },
+
+  async _loadStudentFlagsSummary() {
+    const r = await apiListFlags('limit=100');
+    if (!r.ok) {
+      this._studentFlagsState = { loaded: true, items: [] };
+    } else {
+      this._studentFlagsState = { loaded: true, items: (r.data && r.data.items) || [] };
+      this.serverFlags = this._studentFlagsState.items;
+    }
+    if (this._homeView === 'home') {
+      const node = document.getElementById('homeStudentFlags');
+      if (node) node.outerHTML = this._renderStudentFlaggedPanel();
+    }
+  },
 
   _renderMyFlagsPanel() {
-    if (!isFaculty(this.profile)) return '';
-    if (this.authedUser && this.authedUser.role === 'admin') return '';  // admins use Flag review
+    if (!canFlagCourses(this.profile)) return '';
 
     if (this.authMode !== 'authed') {
       return `
         <div class="home-myflags home-myflags-offline">
-          <span class="home-myflags-title">Your flags</span>
-          <span class="home-myflags-sub">Sign in to see the status of course issues you've reported.</span>
+          <span class="home-myflags-title">Course flags</span>
+          <span class="home-myflags-sub">Sign in to review and resolve faculty-reported course issues.</span>
         </div>`;
     }
 
@@ -1911,15 +1963,15 @@ const App = {
     if (!st || !st.loaded) {
       return `
         <div class="home-myflags" id="homeMyFlags">
-          <span class="home-myflags-title">Your flags</span>
+          <span class="home-myflags-title">Course flags</span>
           <span class="home-myflags-sub">Loading…</span>
         </div>`;
     }
     if (st.error) {
       return `
         <div class="home-myflags" id="homeMyFlags">
-          <span class="home-myflags-title">Your flags</span>
-          <span class="home-myflags-sub">Couldn't load your flags right now.</span>
+          <span class="home-myflags-title">Course flags</span>
+          <span class="home-myflags-sub">Couldn't load flags right now.</span>
         </div>`;
     }
 
@@ -1928,13 +1980,13 @@ const App = {
     if (total === 0) {
       return `
         <div class="home-myflags" id="homeMyFlags">
-          <span class="home-myflags-title">Your flags</span>
-          <span class="home-myflags-sub">You haven't reported any course issues yet. Use “Flag course issue” on a course to report one.</span>
+          <span class="home-myflags-title">Course flags</span>
+          <span class="home-myflags-sub">No flags yet. Use “Flag course issue” on a course to report one.</span>
         </div>`;
     }
 
     const chip = (n, label, status, cls) => `
-      <button class="home-myflags-chip ${cls}" onclick="App.showMyFlagsView('${status}')">
+      <button class="home-myflags-chip ${cls}" onclick="App.showFlagReview(); App._switchFlagStatus('${status}')">
         <span class="home-myflags-num">${n}</span>
         <span class="home-myflags-label">${label}</span>
       </button>`;
@@ -1942,8 +1994,8 @@ const App = {
     return `
       <div class="home-myflags" id="homeMyFlags">
         <div class="home-myflags-head">
-          <span class="home-myflags-title">Your flags</span>
-          <button class="home-myflags-all" onclick="App.showMyFlagsView('pending')">View all →</button>
+          <span class="home-myflags-title">Course flags</span>
+          <button class="home-myflags-all" onclick="App.showFlagReview()">Review queue →</button>
         </div>
         <div class="home-myflags-chips">
           ${chip(c.pending,   'Pending',   'pending',   'mf-pending')}
@@ -1955,7 +2007,7 @@ const App = {
   },
 
   async _loadMyFlagsSummary() {
-    const r = await apiGetMyFlags('limit=100');
+    const r = await apiListFlags('limit=200');
     if (!r.ok) {
       this._myFlagsState = { loaded: true, error: true, counts: summarizeFlagsByStatus([]), items: [] };
     } else {
@@ -2470,8 +2522,10 @@ const App = {
       const saved = this._isInWishlist(course.course_code);
       acts.push(`<button class="tr-leaf-action tr-leaf-wishlist ${saved ? 'is-saved' : ''}" data-action="wishlist" data-course-code="${esc(course.course_code)}" title="${saved ? 'Remove from wishlist' : 'Save for later'}" aria-label="${saved ? 'Remove from wishlist' : 'Save for later'}">${saved ? this._iconBookmarkFilled() : this._iconBookmarkOutline()}</button>`);
     }
-    if (this.authMode === 'authed') {
+    if (canFlagCourses(this.profile)) {
       acts.push(`<button class="tr-leaf-action tr-leaf-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Flag course data issue" aria-label="Flag course data issue">${this._iconFlag()}</button>`);
+    } else if (isStudent(this.profile) && this._courseHasVisibleFlag(course.course_code)) {
+      acts.push(`<span class="tr-leaf-flag-badge" title="Faculty-flagged course">${this._iconFlag()}</span>`);
     }
     if (!acts.length) return '';
     return `<span class="tr-leaf-actions">${acts.join('')}</span>`;
@@ -2502,12 +2556,14 @@ const App = {
           <span>${saved ? 'Saved ✓' : 'Save course'}</span>
         </button>`);
     }
-    if (this.authMode === 'authed') {
+    if (canFlagCourses(this.profile)) {
       parts.push(`
         <button class="cc-action cc-action-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Report a data issue with this course" aria-label="Flag course issue">
           ${this._iconFlag()}
           <span>Flag course issue</span>
         </button>`);
+    } else if (isStudent(this.profile) && this._courseHasVisibleFlag(course.course_code)) {
+      parts.push(`<span class="cc-flag-badge">Faculty flagged · ${esc(this._courseFlagStatus(course.course_code))}</span>`);
     }
     if (!parts.length) return '';
     return `<div class="cc-head-actions">${parts.join('')}</div>`;
@@ -2578,19 +2634,36 @@ const App = {
   // ══════════════════════════════════════════════════════════
   // WISHLIST (students only)
   // ══════════════════════════════════════════════════════════
-  // Storage: localStorage['cf_wishlist'] = [course_code, ...]
-  // No backend yet — clean local persistence with clear integration points.
+  // Storage: localStorage['cf_wishlist'] = [{ course_code, note }, ...]
 
-  _getWishlist() {
-    return loadStore('cf_wishlist', []);
+  _getWishlistItems() {
+    const raw = loadStore('cf_wishlist', []);
+    return raw.map(x => (typeof x === 'string'
+      ? { course_code: x, note: '' }
+      : { course_code: x.course_code, note: x.note || '' }));
   },
 
-  _saveWishlist(list) {
+  _saveWishlistItems(list) {
     saveStore('cf_wishlist', list);
   },
 
+  _getWishlist() {
+    return this._getWishlistItems().map(i => i.course_code);
+  },
+
+  _saveWishlist(list) {
+    const notes = {};
+    this._getWishlistItems().forEach(i => { notes[i.course_code] = i.note; });
+    this._saveWishlistItems(list.map(code => ({ course_code: code, note: notes[code] || '' })));
+  },
+
+  _getWishlistNote(code) {
+    const item = this._getWishlistItems().find(i => i.course_code === code);
+    return item ? (item.note || '') : '';
+  },
+
   _isInWishlist(code) {
-    return this._getWishlist().indexOf(code) !== -1;
+    return this._getWishlistItems().some(i => i.course_code === code);
   },
 
   async toggleWishlist(code) {
@@ -2599,11 +2672,11 @@ const App = {
       return;
     }
     if (!code) return;
-    const list = this._getWishlist();
-    const idx = list.indexOf(code);
+    const list = this._getWishlistItems();
+    const idx = list.findIndex(i => i.course_code === code);
     if (idx === -1) {
-      list.push(code);
-      this._saveWishlist(list);
+      list.push({ course_code: code, note: '' });
+      this._saveWishlistItems(list);
       if (this.authMode === 'authed') {
         const r = await apiAddWishlist(code);
         if (!r.ok) {
@@ -2615,7 +2688,7 @@ const App = {
       showToast('Saved for later');
     } else {
       list.splice(idx, 1);
-      this._saveWishlist(list);
+      this._saveWishlistItems(list);
       if (this.authMode === 'authed') {
         const r = await apiRemoveWishlist(code);
         if (!r.ok && r.status !== 404) {
@@ -2644,10 +2717,10 @@ const App = {
     const el = document.getElementById('leftBody');
     if (!el) return;
 
-    const list = this._getWishlist();
-    const courses = list
-      .map(code => this.courseIndex[code])
-      .filter(Boolean);
+    const items = this._getWishlistItems();
+    const courses = items
+      .map(i => ({ item: i, course: this.courseIndex[i.course_code] }))
+      .filter(x => x.course);
 
     let rowsHtml;
     if (courses.length === 0) {
@@ -2658,8 +2731,7 @@ const App = {
           <div class="wl-empty-hint">Tap the bookmark on any course to save it here for planning later.</div>
         </div>`;
     } else {
-      rowsHtml = courses.map(c => {
-        // Surface a warning if any faculty member flagged this course as no-longer-offered
+      rowsHtml = courses.map(({ item, course: c }) => {
         const flagWarn = this._hasUnavailabilityFlag(c.course_code)
           ? `<span class="wl-warn" title="Flagged by a faculty member as possibly no longer offered">${this._iconWarn()} Possibly unavailable</span>`
           : '';
@@ -2672,6 +2744,10 @@ const App = {
             <span class="wl-main">
               <span class="wl-name">${esc(c.course_name)}</span>
               <span class="wl-meta">${c.units || '?'} units${where.length ? ' · ' + where.join(' & ') : ''}${flagWarn ? ' · ' + flagWarn : ''}</span>
+              <label class="wl-note-wrap">
+                <span class="wl-note-label">Your note</span>
+                <textarea class="wl-note-input" data-wl-note="${esc(c.course_code)}" placeholder="Why you saved this course…" rows="2">${esc(item.note || '')}</textarea>
+              </label>
             </span>
             <button class="wl-remove" data-action="wishlist" data-course-code="${esc(c.course_code)}" title="Remove from wishlist" aria-label="Remove from wishlist">Remove</button>
           </div>`;
@@ -2683,10 +2759,86 @@ const App = {
         <div class="wl-header">
           <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
           <div class="wl-title">Saved courses${courses.length ? ` <span class="wl-count">· ${courses.length}</span>` : ''}</div>
+          <p class="wl-hint">Add a note on each course — faculty advisors can read these when you share favorites.</p>
         </div>
         <div class="wl-list">${rowsHtml}</div>
       </div>
     `;
+    el.querySelectorAll('.wl-note-input').forEach(ta => {
+      ta.addEventListener('blur', () => this._saveWishlistNote(ta.dataset.wlNote, ta.value));
+    });
+  },
+
+  async _saveWishlistNote(code, note) {
+    const items = this._getWishlistItems();
+    const idx = items.findIndex(i => i.course_code === code);
+    if (idx === -1) return;
+    items[idx].note = (note || '').trim();
+    this._saveWishlistItems(items);
+    if (this.authMode === 'authed') {
+      await apiUpdateWishlistNote(code, items[idx].note);
+    }
+  },
+
+  async showStudentFlagsView() {
+    if (!isStudent(this.profile) || this.authMode !== 'authed') return;
+    this._homeView = 'studentflags';
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    await this._loadServerFlags();
+    const items = this.serverFlags || [];
+    const rows = items.length
+      ? items.map(f => `
+        <div class="adm-row adm-row-readonly">
+          <div class="adm-course"><span class="adm-course-code">${esc(f.course_code)}</span><span class="adm-course-name">${esc(f.course_name)}</span></div>
+          <span class="adm-status adm-status-${esc(f.status)}">${esc(f.status)}</span>
+          <div class="adm-reason">${esc(f.reason_label)}</div>
+          ${f.admin_notes ? `<div class="adm-notes adm-notes-admin">${esc(f.admin_notes)}</div>` : ''}
+        </div>`).join('')
+      : '<div class="empty-state"><div class="empty-text">No flagged courses right now.</div></div>';
+    el.innerHTML = `
+      <div class="adm-view">
+        <div class="adm-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <div class="adm-title">Flagged courses <span class="adm-count">· ${items.length}</span></div>
+        </div>
+        <p class="adm-hint">Read-only — students cannot submit flags. Faculty report and resolve issues.</p>
+        <div class="adm-list">${rows}</div>
+      </div>`;
+  },
+
+  async showStudentFavorites() {
+    if (!isFaculty(this.profile) || this.authMode !== 'authed') {
+      showToast('Faculty access required.');
+      return;
+    }
+    this._homeView = 'studentfavs';
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="spinner"></div><div class="empty-text" style="margin-top:12px">Loading student favorites…</div></div>';
+    const r = await apiGetWishlistRoster();
+    if (!r.ok) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-text">Could not load favorites: ${esc((r.data && r.data.message) || 'error')}</div></div>`;
+      return;
+    }
+    const students = (r.data && r.data.students) || [];
+    const blocks = students.length ? students.map(s => {
+      const rows = (s.items || []).map(i => `
+        <li><strong>${esc(i.course_code)}</strong>${i.note ? ` — <em>${esc(i.note)}</em>` : ''}</li>`).join('') || '<li class="sf-empty">No saved courses</li>';
+      return `
+        <div class="sf-student">
+          <div class="sf-student-head"><strong>${esc(s.name)}</strong> <span class="sf-email">${esc(s.email)}</span>${s.primary_program ? ` · ${esc(s.primary_program)}` : ''}</div>
+          <ul class="sf-courses">${rows}</ul>
+        </div>`;
+    }).join('') : '<div class="empty-state"><div class="empty-text">No students have saved courses yet.</div></div>';
+    el.innerHTML = `
+      <div class="adm-view">
+        <div class="adm-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <div class="adm-title">Student favorites <span class="adm-count">· ${students.length} students</span></div>
+        </div>
+        <div class="sf-list">${blocks}</div>
+      </div>`;
   },
 
   // ══════════════════════════════════════════════════════════
@@ -2715,14 +2867,31 @@ const App = {
     saveStore('cf_flags', list);
   },
   _hasUnavailabilityFlag(code) {
-    return this._getFlags().some(f =>
+    const flags = (this.serverFlags && this.serverFlags.length)
+      ? this.serverFlags
+      : this._getFlags();
+    return flags.some(f =>
       f.course_code === code &&
       (f.reason_code === 'not_offered' || f.reason_code === 'campus_wrong') &&
       f.status !== 'dismissed'
     );
   },
 
+  _courseHasVisibleFlag(code) {
+    const flags = this.serverFlags || [];
+    return flags.some(f => f.course_code === code && f.status !== 'dismissed');
+  },
+
+  _courseFlagStatus(code) {
+    const f = (this.serverFlags || []).find(x => x.course_code === code && x.status !== 'dismissed');
+    return f ? f.status : '';
+  },
+
   openFlagModal(courseCode) {
+    if (!canFlagCourses(this.profile)) {
+      showToast('Only faculty can flag course issues.');
+      return;
+    }
     if (this.authMode !== 'authed') {
       showToast('Sign in to flag a course.');
       return;
@@ -2749,7 +2918,7 @@ const App = {
         <header class="cf-modal-head">
           <div>
             <h3 id="cfFlagTitle" class="cf-modal-title">Flag a course</h3>
-            <div class="cf-modal-sub">Help us keep course data accurate. Admins review flags before changes.</div>
+            <div class="cf-modal-sub">Help us keep course data accurate. Any faculty member can review and resolve flags.</div>
           </div>
           <button class="cf-modal-x" aria-label="Close" onclick="App.closeFlagModal()">×</button>
         </header>
@@ -3161,8 +3330,8 @@ const App = {
   _adminState: { status: 'pending', items: [], total: 0 },
 
   async showFlagReview() {
-    if (!(this.authedUser && getRoleGroup(this.authedUser) === 'admin')) {
-      showToast('Admin access required.');
+    if (!canFlagCourses(this.profile)) {
+      showToast('Faculty access required.');
       return;
     }
     this._homeView = 'admin';

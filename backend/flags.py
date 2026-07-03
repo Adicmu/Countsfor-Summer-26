@@ -1,16 +1,22 @@
-"""Flags API: faculty create, admin review.
+"""Flags API: faculty submit, faculty+admin resolve, students read-only.
 
-Frontend submits flags via POST /api/flags. Server snapshots the submitter
-identity (name/email/role/program) at submit time so the record stays useful
-even if the user is later deleted or changes role.
+Students may list non-dismissed flags (to see flagged courses) but cannot POST.
+All faculty (professor, area_head, associate_area_head, advisor) and admin share
+the same flag queue and may resolve flags.
 """
 import secrets
 import time
 from flask import Blueprint, g, jsonify, request
 
 from .db import db
-from .models import Flag, FLAG_STATUSES, FACULTY_ROLES
-from .permissions import require_role_group, require_role, ROLE_GROUP_STUDENT, ROLE_GROUP_FACULTY, ROLE_GROUP_ADMIN
+from .models import Flag, FLAG_STATUSES
+from .permissions import (
+    require_login,
+    require_role_group,
+    ROLE_GROUP_STUDENT,
+    ROLE_GROUP_FACULTY,
+    ROLE_GROUP_ADMIN,
+)
 
 
 bp = Blueprint("flags", __name__, url_prefix="/api/flags")
@@ -33,16 +39,14 @@ REQUIRED_POST_FIELDS = {"course_code", "course_name", "reason_code", "reason_lab
 
 
 def _new_flag_id() -> str:
-    """Mirror the frontend's existing 'flg-<base36ts>-<rand>' scheme so
-    server-issued IDs feel consistent with imported localStorage entries."""
-    ts = format(int(time.time() * 1000), "x")  # hex (close enough to base36 for IDs)
+    ts = format(int(time.time() * 1000), "x")
     rnd = secrets.token_hex(3)
     return f"flg-{ts}-{rnd}"
 
 
-# ── POST /api/flags — students + faculty + admin ─────────────
+# ── POST /api/flags — faculty + admin only ───────────────────
 @bp.route("", methods=["POST"])
-@require_role_group(ROLE_GROUP_STUDENT, ROLE_GROUP_FACULTY, ROLE_GROUP_ADMIN)
+@require_role_group(ROLE_GROUP_FACULTY, ROLE_GROUP_ADMIN)
 def create_flag():
     data = request.get_json(silent=True) or {}
     missing = REQUIRED_POST_FIELDS - set(data.keys())
@@ -53,8 +57,6 @@ def create_flag():
         return jsonify(error="invalid_reason", message=f"reason_code must be one of {sorted(VALID_REASON_CODES)}"), 400
 
     user = g.user
-    # Accept a client-supplied ID (for one-shot migration from localStorage)
-    # but only if it looks like our format. Otherwise mint one.
     incoming_id = data.get("id")
     flag_id = incoming_id if (incoming_id and incoming_id.startswith("flg-")) else _new_flag_id()
 
@@ -73,7 +75,6 @@ def create_flag():
         submitted_minor=user.minor_code,
         status="pending",
     )
-    # Idempotent insert: re-POST of the same ID returns the existing record.
     existing = db.session.get(Flag, flag_id)
     if existing:
         return jsonify(existing.to_dict()), 200
@@ -83,23 +84,25 @@ def create_flag():
     return jsonify(flag.to_dict()), 201
 
 
-# ── GET /api/flags — admin sees all; faculty see only their own ───
+# ── GET /api/flags — students: read-only; faculty/admin: full queue ─
 @bp.route("", methods=["GET"])
-@require_role_group(ROLE_GROUP_FACULTY, ROLE_GROUP_ADMIN)
+@require_login
 def list_flags():
-    """Admins get every flag (the review queue). Non-admin faculty get ONLY
-    the flags they submitted (their "My flags" view) — the owner filter is
-    forced server-side and can't be widened via query params, so no faculty
-    member can read another's flags. Students are blocked by the decorator."""
     status = request.args.get("status")
     course = request.args.get("course")
     page = max(1, int(request.args.get("page", "1") or "1"))
     limit = min(100, max(1, int(request.args.get("limit", "50") or "50")))
 
     q = db.session.query(Flag)
-    # Non-admin faculty are scoped to their own submissions.
-    if g.user.role_group() != ROLE_GROUP_ADMIN:
-        q = q.filter(Flag.submitted_by_id == g.user.id)
+    group = g.user.role_group()
+
+    if group == ROLE_GROUP_STUDENT:
+        q = q.filter(Flag.status != "dismissed")
+    elif group == ROLE_GROUP_FACULTY:
+        mine = request.args.get("mine", "").lower() in ("1", "true", "yes")
+        if mine:
+            q = q.filter(Flag.submitted_by_id == g.user.id)
+
     if status:
         if status not in FLAG_STATUSES:
             return jsonify(error="invalid_status", message=f"status must be one of {list(FLAG_STATUSES)}"), 400
@@ -114,17 +117,30 @@ def list_flags():
         .limit(limit)
         .all()
     )
-    return jsonify(
-        total=total,
-        page=page,
-        limit=limit,
-        items=[f.to_dict() for f in rows],
-    )
+
+    if group == ROLE_GROUP_STUDENT:
+        items = [
+            {
+                "id": f.id,
+                "course_code": f.course_code,
+                "course_name": f.course_name,
+                "reason_code": f.reason_code,
+                "reason_label": f.reason_label,
+                "status": f.status,
+                "admin_notes": f.admin_notes,
+                "updated_at": f.updated_at.isoformat() if f.updated_at else None,
+            }
+            for f in rows
+        ]
+    else:
+        items = [f.to_dict() for f in rows]
+
+    return jsonify(total=total, page=page, limit=limit, items=items)
 
 
-# ── PATCH /api/flags/<id> — admin updates status/notes ────────
+# ── PATCH /api/flags/<id> — faculty + admin resolve ───────────
 @bp.route("/<flag_id>", methods=["PATCH"])
-@require_role_group(ROLE_GROUP_ADMIN)
+@require_role_group(ROLE_GROUP_FACULTY, ROLE_GROUP_ADMIN)
 def update_flag(flag_id: str):
     data = request.get_json(silent=True) or {}
     flag = db.session.get(Flag, flag_id)

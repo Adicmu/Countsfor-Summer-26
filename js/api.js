@@ -266,5 +266,13 @@ async function apiUpdateFlag(id, patch)   { return apiFetch('/api/flags/' + enco
 
 // ── Wishlist ─────────────────────────────────────────────────
 async function apiGetWishlist()                 { return apiFetch('/api/wishlist'); }
-async function apiAddWishlist(course_code)      { return apiFetch('/api/wishlist', { method: 'POST', body: { course_code } }); }
+async function apiGetWishlistRoster()           { return apiFetch('/api/wishlist/roster'); }
+async function apiAddWishlist(course_code, note) {
+  const body = { course_code };
+  if (note !== undefined) body.note = note;
+  return apiFetch('/api/wishlist', { method: 'POST', body });
+}
+async function apiUpdateWishlistNote(course_code, note) {
+  return apiFetch('/api/wishlist/' + encodeURIComponent(course_code), { method: 'PATCH', body: { note } });
+}
 async function apiRemoveWishlist(course_code)   { return apiFetch('/api/wishlist/' + encodeURIComponent(course_code), { method: 'DELETE' }); }

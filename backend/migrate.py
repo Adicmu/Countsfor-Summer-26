@@ -161,6 +161,9 @@ def run_migrations() -> list[str]:
     if _migrate_staff_to_directory_entries():
         log.append("Migrated staff_directory_entries → directory_entries")
 
+    if _add_column_if_missing("wishlist_items", "note", "note TEXT"):
+        log.append("Added wishlist_items.note")
+
     return log
 
 

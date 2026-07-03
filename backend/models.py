@@ -272,6 +272,7 @@ class WishlistItem(db.Model):
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     course_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    note: Mapped[str | None] = mapped_column(Text, nullable=True)
     added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
     user: Mapped[User] = relationship(back_populates="wishlist")
@@ -279,5 +280,6 @@ class WishlistItem(db.Model):
     def to_dict(self) -> dict:
         return {
             "course_code": self.course_code,
+            "note": self.note,
             "added_at": self.added_at.isoformat() if self.added_at else None,
         }
