@@ -1522,6 +1522,7 @@ const App = {
   setSemester(code) {
     this.activeSemester = code;
     this._refreshFilters();
+    if (this._homeView === 'home') this._loadPopularCourses();
     showToast('Showing ' + semesterLabel(code));
   },
 
@@ -1739,6 +1740,7 @@ const App = {
 
   _selectCourse(course) {
     if (!course) return;
+    this._recordCourseSearch(course.course_code);
     const wasEmpty = !this.selectedCourse;
     this.selectedCourse = course;
     if (wasEmpty) this.renderShell();
@@ -2060,6 +2062,111 @@ const App = {
     } else if (isStudent(this.profile) && this.authMode === 'authed') {
       this._loadStudentFlagsSummary();
     }
+    this._loadPopularCourses();
+  },
+
+  _popularProgram() {
+    const p = this.profile && this.profile.primary;
+    return (p && p !== 'AS') ? p : 'CS';
+  },
+
+  _localSearchStoreKey() {
+    return 'cf_search_counts_' + this._popularProgram() + '_' + this.activeSemester;
+  },
+
+  _bumpLocalSearchCount(courseCode) {
+    const code = normalizeCourseCode(courseCode);
+    if (!code) return;
+    const key = this._localSearchStoreKey();
+    const counts = loadStore(key, {}) || {};
+    counts[code] = (counts[code] || 0) + 1;
+    saveStore(key, counts);
+  },
+
+  _getLocalPopularCourses(limit) {
+    const counts = loadStore(this._localSearchStoreKey(), {}) || {};
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, limit || 5)
+      .map(([code, count]) => ({ course_code: code, search_count: count }));
+  },
+
+  _recentSearchRecorded: {},
+
+  _recordCourseSearch(courseCode) {
+    const code = normalizeCourseCode(courseCode);
+    if (!code) return;
+
+    const now = Date.now();
+    const last = this._recentSearchRecorded[code] || 0;
+    if (now - last < 60000) return;
+    this._recentSearchRecorded[code] = now;
+
+    this._bumpLocalSearchCount(code);
+
+    if (isStudent(this.profile) && this.authMode === 'authed') {
+      apiRecordCourseSearch(code, this.activeSemester).catch(() => {});
+    }
+
+    if (this._homeView === 'home') {
+      this._loadPopularCourses();
+    }
+  },
+
+  async _loadPopularCourses() {
+    const listEl = document.getElementById('homePopularList');
+    const subEl = document.getElementById('homePopularSub');
+    const cardEl = document.getElementById('homePopularCard');
+    if (!listEl || !cardEl) return;
+
+    const program = this._popularProgram();
+    const semester = this.activeSemester;
+    const limit = 5;
+    let items = [];
+    let peerScope = false;
+
+    const r = await apiGetPopularCourses(program, semester, limit);
+    if (r.ok && r.data && Array.isArray(r.data.items) && r.data.items.length) {
+      items = r.data.items;
+      peerScope = true;
+    }
+
+    if (!items.length) {
+      const local = this._getLocalPopularCourses(limit);
+      if (local.length) {
+        items = local;
+      }
+    }
+
+    if (!items.length) {
+      items = HOME_POPULAR_COURSES.map(code => ({ course_code: code, search_count: 0 }));
+    } else if (!peerScope) {
+      // local-only counts in demo / before peers have searched
+    }
+
+    const rows = items.map(item => {
+      const c = lookupCourse(this.courseIndex, item.course_code);
+      if (!c) return '';
+      return `<li><button type="button" class="home-qs-link" onclick="App.selectCourseFromTree('${esc(item.course_code)}')"><span class="home-qs-code">${esc(item.course_code)}</span>${esc(c.course_name)}</button></li>`;
+    }).filter(Boolean);
+
+    if (!rows.length) {
+      cardEl.hidden = true;
+      return;
+    }
+
+    cardEl.hidden = false;
+    listEl.innerHTML = rows.join('');
+
+    if (subEl) {
+      if (peerScope) {
+        subEl.textContent = `Top among ${program} students this semester`;
+      } else if (this.authMode === 'authed') {
+        subEl.textContent = `Suggested courses — be the first ${program} student to explore`;
+      } else {
+        subEl.textContent = 'Suggested starter courses';
+      }
+    }
   },
 
   _renderHome() {
@@ -2225,19 +2332,14 @@ const App = {
   _renderQuickStart(browseMajor) {
     const cards = [];
 
-    const popular = HOME_POPULAR_COURSES.map(code => {
-      const c = lookupCourse(this.courseIndex, code);
-      return c ? { code, name: c.course_name } : null;
-    }).filter(Boolean);
-    if (popular.length) {
-      cards.push(`
-        <article class="home-qs-card">
-          <h3 class="home-qs-title">Popular this semester</h3>
-          <ul class="home-qs-list">
-            ${popular.map(p => `<li><button type="button" class="home-qs-link" onclick="App.selectCourseFromTree('${esc(p.code)}')"><span class="home-qs-code">${esc(p.code)}</span>${esc(p.name)}</button></li>`).join('')}
-          </ul>
-        </article>`);
-    }
+    cards.push(`
+      <article class="home-qs-card" id="homePopularCard">
+        <h3 class="home-qs-title">Popular this semester</h3>
+        <p class="home-qs-sub" id="homePopularSub"></p>
+        <ul class="home-qs-list" id="homePopularList">
+          <li class="home-qs-loading">Loading…</li>
+        </ul>
+      </article>`);
 
     const gened = this._getIsGenedCategories();
     if (gened.length) {

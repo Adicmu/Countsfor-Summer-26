@@ -283,3 +283,31 @@ class WishlistItem(db.Model):
             "note": self.note,
             "added_at": self.added_at.isoformat() if self.added_at else None,
         }
+
+
+class CourseSearchCount(db.Model):
+    """Aggregated course lookups by program + semester (student peer signal)."""
+    __tablename__ = "course_search_counts"
+    __table_args__ = (
+        UniqueConstraint(
+            "primary_program", "semester_code", "course_code",
+            name="uq_search_count_program_sem_course",
+        ),
+        Index("ix_search_count_program_sem", "primary_program", "semester_code"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    primary_program: Mapped[str] = mapped_column(String(8), nullable=False)
+    semester_code: Mapped[str] = mapped_column(String(8), nullable=False)
+    course_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    search_count: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    last_searched_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "course_code": self.course_code,
+            "search_count": self.search_count,
+            "last_searched_at": self.last_searched_at.isoformat() if self.last_searched_at else None,
+        }

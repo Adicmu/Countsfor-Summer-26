@@ -2504,7 +2504,17 @@ body.is-resizing-panels * {
   font-size: 0.92rem;
   font-weight: 700;
   color: var(--charcoal);
-  margin: 0 0 12px;
+  margin: 0 0 6px;
+}
+.home-qs-sub {
+  font-size: 0.78rem;
+  color: var(--text-tertiary);
+  margin: 0 0 10px;
+}
+.home-qs-loading {
+  font-size: 0.84rem;
+  color: var(--text-tertiary);
+  padding: 8px 0;
 }
 .home-qs-list {
   list-style: none;

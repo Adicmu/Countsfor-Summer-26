@@ -276,3 +276,15 @@ async function apiUpdateWishlistNote(course_code, note) {
   return apiFetch('/api/wishlist/' + encodeURIComponent(course_code), { method: 'PATCH', body: { note } });
 }
 async function apiRemoveWishlist(course_code)   { return apiFetch('/api/wishlist/' + encodeURIComponent(course_code), { method: 'DELETE' }); }
+
+// ── Search analytics (peer popularity by major) ───────────────
+async function apiRecordCourseSearch(course_code, semester_code) {
+  return apiFetch('/api/search-analytics/events', {
+    method: 'POST',
+    body: { course_code, semester_code },
+  });
+}
+async function apiGetPopularCourses(program, semester, limit) {
+  const q = new URLSearchParams({ program, semester, limit: String(limit || 5) });
+  return apiFetch('/api/search-analytics/popular?' + q.toString());
+}

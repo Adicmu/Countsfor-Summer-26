@@ -8,6 +8,7 @@ REQUIRED_TABLES = frozenset({
     "password_reset_tokens",
     "user_minors",
     "directory_entries",
+    "course_search_counts",
 })
 
 

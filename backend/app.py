@@ -60,12 +60,14 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
     from .wishlist import bp as wishlist_bp
     from .users import bp as users_bp
     from .directory_routes import bp as directory_bp
+    from .search_analytics import bp as search_analytics_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(flags_bp)
     app.register_blueprint(wishlist_bp)
     app.register_blueprint(users_bp)
     app.register_blueprint(directory_bp)
+    app.register_blueprint(search_analytics_bp)
 
     # Health check (Render pings this). Fails if Postgres tables are missing.
     @app.route("/health")
