@@ -2,6 +2,12 @@
 // CountsFor — Main Application (Progressive Disclosure)
 // ============================================================
 
+const HOME_POPULAR_COURSES = ['15-122', '21-120', '36-200', '67-250', '82-112'];
+const HOME_SEARCH_CHIPS = ['15-122', 'Contextual Thinking', 'Intercultural and Global Inquiry', 'Probability'];
+const HOME_RECENT_MAPPINGS = [
+  { courses: '82-101 – 82-142', label: 'Modern Languages → IS GenEd IGI', major: 'IS', path: 'GenEd---GenEd---Foundations---Intercultural and Global Inquiry' },
+];
+
 const App = {
   // State
   courses: [],
@@ -1251,23 +1257,30 @@ const App = {
 
     document.getElementById('app').innerHTML = `
       <nav class="navbar">
-        <div class="navbar-brand" onclick="App.reset()"><img class="navbar-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" /><span class="navbar-wordmark">CountsFor</span> <span class="subtitle">CMU-Q</span></div>
-        ${this._roleBadgeHtml()}
-        ${this._navbarWishlistHtml()}
+        <div class="navbar-left-group">
+          <div class="navbar-brand" onclick="App.reset()"><img class="navbar-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" /><span class="navbar-wordmark">CountsFor</span> <span class="subtitle">CMU-Q</span></div>
+          ${this._roleBadgeHtml()}
+          ${this._navbarWishlistHtml()}
+        </div>
         <div class="navbar-right">
-          <div class="navbar-semester">
-            <label class="sr-only" for="semesterSelect">Semester</label>
-            <select id="semesterSelect" class="semester-select" onchange="App.setSemester(this.value)">
-              ${SEMESTER_OPTIONS.map(s => `<option value="${s.code}" ${this.activeSemester===s.code?'selected':''}>${esc(s.label)}</option>`).join('')}
-            </select>
-          </div>
-          <div class="navbar-location-toggle">
-            <button class="loc-btn ${this.locationFilter==='all'?'active':''}" onclick="App.setLocation('all')">All</button>
-            <button class="loc-btn ${this.locationFilter==='qatar'?'active':''}" onclick="App.setLocation('qatar')">🇶🇦 Qatar</button>
-            <button class="loc-btn ${this.locationFilter==='pittsburgh'?'active':''}" onclick="App.setLocation('pittsburgh')">🇺🇸 Pittsburgh</button>
-          </div>
-          <div class="navbar-modality-toggle">
-            ${MODALITY_OPTIONS.map(m => `<button class="mod-btn ${this.modalityFilter===m.id?'active':''}" onclick="App.setModalityFilter('${m.id}')">${esc(m.label)}</button>`).join('')}
+          <div class="navbar-filters-wrap">
+            <button type="button" class="navbar-filters-toggle" id="filtersToggle" onclick="App.toggleFiltersPopover()" aria-expanded="false" aria-controls="navbarFiltersPanel">Filters ▾</button>
+            <div class="navbar-filters navbar-filters-panel" id="navbarFiltersPanel">
+              <div class="navbar-semester">
+                <label class="sr-only" for="semesterSelect">Semester</label>
+                <select id="semesterSelect" class="semester-select" onchange="App.setSemester(this.value)">
+                  ${SEMESTER_OPTIONS.map(s => `<option value="${s.code}" ${this.activeSemester===s.code?'selected':''}>${esc(s.label)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="navbar-location-toggle">
+                <button class="loc-btn ${this.locationFilter==='all'?'active':''}" onclick="App.setLocation('all')">All</button>
+                <button class="loc-btn ${this.locationFilter==='qatar'?'active':''}" onclick="App.setLocation('qatar')">🇶🇦 Qatar</button>
+                <button class="loc-btn ${this.locationFilter==='pittsburgh'?'active':''}" onclick="App.setLocation('pittsburgh')">🇺🇸 Pittsburgh</button>
+              </div>
+              <div class="navbar-modality-toggle">
+                ${MODALITY_OPTIONS.map(m => `<button class="mod-btn ${this.modalityFilter===m.id?'active':''}" onclick="App.setModalityFilter('${m.id}')">${esc(m.label)}</button>`).join('')}
+              </div>
+            </div>
           </div>
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
           ${canManageUsers(this.authedUser) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
@@ -1413,8 +1426,11 @@ const App = {
     if (this._globalEventsBound) return;
     this._globalEventsBound = true;
     document.addEventListener('input', (e) => {
+      if (e.target.id === 'homeSearch') {
+        this._setHomeSearchLoading(true);
+        this.handleUnifiedSearch(e.target.value);
+      }
       if (e.target.id === 'courseSearch') this.handleSearch(e.target.value);
-      if (e.target.id === 'categorySearch') this.handleCategorySearch(e.target.value);
       if (e.target.id === 'treeSearchInput') {
         this.treeSearchQuery = e.target.value.trim().toLowerCase();
         this.renderTree();
@@ -1422,18 +1438,29 @@ const App = {
     });
 
     document.addEventListener('keydown', (e) => {
+      if (e.target.id === 'homeSearch') this.handleUnifiedSearchKeydown(e);
       if (e.target.id === 'courseSearch') this.handleSearchKeydown(e);
-      if (e.target.id === 'categorySearch') this.handleCategoryKeydown(e);
     });
 
     document.addEventListener('click', (e) => {
       // Close typeaheads if clicking outside any search bar
-      const insideSearch = e.target.closest('.search-wrapper, .home-search');
+      const insideSearch = e.target.closest('.search-wrapper, .home-hero-search');
       if (!insideSearch) {
         const ta = document.getElementById('typeahead');
         if (ta) ta.classList.remove('visible');
-        const cta = document.getElementById('categoryTypeahead');
-        if (cta) cta.classList.remove('visible');
+        const hta = document.getElementById('homeTypeahead');
+        if (hta) hta.classList.remove('visible');
+      }
+
+      if (!e.target.closest('.home-dock, .home-dock-pill')) {
+        document.querySelectorAll('.home-dock-pill.open').forEach(p => p.classList.remove('open'));
+      }
+
+      if (!e.target.closest('.navbar-filters-wrap')) {
+        const pop = document.getElementById('navbarFiltersPanel');
+        const toggle = document.getElementById('filtersToggle');
+        if (pop) pop.classList.remove('open');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
       }
 
       // Per-row action buttons (wishlist / flag) — intercept BEFORE course-row click
@@ -1838,6 +1865,188 @@ const App = {
     this.enterExplorer(r.major, r.path);
   },
 
+  toggleFiltersPopover() {
+    const panel = document.getElementById('navbarFiltersPanel');
+    const toggle = document.getElementById('filtersToggle');
+    if (!panel || !toggle) return;
+    const open = panel.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  },
+
+  // ── Unified home search (courses + categories) ────────────
+  _unifiedResults: [],
+  _unifiedIdx: -1,
+  _unifiedBrowseMajor: 'CS',
+
+  _isCourseCodeQuery(q) {
+    const t = q.trim();
+    return /^\d{1,2}-?\d{0,4}$/.test(t) || /^\d{2}-\d{3}/.test(t);
+  },
+
+  _setHomeSearchLoading(on) {
+    const sp = document.getElementById('homeSearchSpinner');
+    const wrap = document.querySelector('.home-hero-search');
+    if (sp) sp.hidden = !on;
+    if (wrap) wrap.classList.toggle('is-loading', !!on);
+  },
+
+  handleUnifiedSearch: debounce(function(query) {
+    const ta = document.getElementById('homeTypeahead');
+    if (!ta) return;
+    App._setHomeSearchLoading(false);
+
+    const q = query.trim().toLowerCase();
+    const qNorm = q.replace(/-/g, '');
+    if (q.length < 2) { ta.classList.remove('visible'); return; }
+
+    const codeQuery = App._isCourseCodeQuery(query);
+    let courseResults = App.courses.filter(c => {
+      const code = c.course_code.replace(/-/g, '').toLowerCase();
+      const name = (c.course_name || '').toLowerCase();
+      if (code.includes(qNorm) || name.includes(q)) return true;
+      const dept = getDeptName(c.course_code).toLowerCase();
+      return dept.includes(q);
+    }).filter(c => App.filterByLocation(c));
+
+    if (!codeQuery) {
+      courseResults = courseResults.filter(c => {
+        if (c.course_code.replace(/-/g, '').toLowerCase().includes(qNorm)) return true;
+        if ((c.course_name || '').toLowerCase().includes(q)) return true;
+        return false;
+      });
+    }
+
+    courseResults = courseResults.slice(0, 6);
+    App._searchResults = courseResults;
+
+    const idx = App._buildCategoryIndex();
+    let catResults = idx.filter(entry => {
+      if (entry.leaf.toLowerCase().includes(q)) return true;
+      return entry.parts.some(p => p.toLowerCase().includes(q));
+    });
+    catResults.sort((a, b) => {
+      const aLeaf = a.leaf.toLowerCase().includes(q) ? 0 : 1;
+      const bLeaf = b.leaf.toLowerCase().includes(q) ? 0 : 1;
+      if (aLeaf !== bLeaf) return aLeaf - bLeaf;
+      return b.count - a.count;
+    });
+    catResults = catResults.slice(0, 6);
+    App._categoryResults = catResults;
+
+    const flat = [];
+    courseResults.forEach((c, i) => flat.push({ kind: 'course', idx: i }));
+    catResults.forEach((r, i) => flat.push({ kind: 'category', idx: i }));
+    App._unifiedResults = flat;
+    App._unifiedIdx = -1;
+
+    if (flat.length === 0) {
+      const bm = App._unifiedBrowseMajor || 'CS';
+      ta.innerHTML = '<div class="typeahead-empty">No matches, try the <button type="button" class="typeahead-browse-link" onclick="App.enterExplorer(\'' + bm + '\')">category browser</button></div>';
+    } else {
+      let html = '';
+      if (courseResults.length) {
+        html += '<div class="typeahead-group-label">Courses</div>';
+        html += courseResults.map((c, i) => {
+          return '<div class="typeahead-item" data-unified-idx="' + flat.findIndex(f => f.kind === 'course' && f.idx === i) + '" onclick="App.selectUnifiedResult(' + flat.findIndex(f => f.kind === 'course' && f.idx === i) + ')">' +
+            '<span class="typeahead-code">' + esc(c.course_code) + '</span>' +
+            '<span class="typeahead-name">' + esc(c.course_name) + '</span>' +
+            '<span class="typeahead-units">' + (c.units || '?') + ' u</span>' +
+          '</div>';
+        }).join('');
+      }
+      if (catResults.length) {
+        html += '<div class="typeahead-group-label">Categories</div>';
+        html += catResults.map((r, i) => {
+          const uidx = flat.findIndex(f => f.kind === 'category' && f.idx === i);
+          const breadcrumb = r.parts.length > 1 ? esc(r.parts.slice(0, -1).join(' › ')) : '';
+          return '<div class="typeahead-item" data-unified-idx="' + uidx + '" onclick="App.selectUnifiedResult(' + uidx + ')">' +
+            '<span class="typeahead-cat-major typeahead-cat-major-' + r.major.toLowerCase() + '">' + r.major + '</span>' +
+            '<span class="typeahead-name"><strong>' + esc(r.leaf) + '</strong>' +
+              (breadcrumb ? '<span class="typeahead-cat-crumb"> · ' + breadcrumb + '</span>' : '') +
+            '</span>' +
+            '<span class="typeahead-units">' + r.count + ' ' + (r.count === 1 ? 'course' : 'courses') + '</span>' +
+          '</div>';
+        }).join('');
+      }
+      ta.innerHTML = html;
+    }
+    ta.classList.add('visible');
+  }, 180),
+
+  handleUnifiedSearchKeydown(e) {
+    const ta = document.getElementById('homeTypeahead');
+    if (!ta || !ta.classList.contains('visible')) return;
+    const items = ta.querySelectorAll('.typeahead-item[data-unified-idx]');
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this._unifiedIdx = Math.min(this._unifiedIdx + 1, items.length - 1);
+      items.forEach((it, i) => it.classList.toggle('focused', i === this._unifiedIdx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this._unifiedIdx = Math.max(this._unifiedIdx - 1, 0);
+      items.forEach((it, i) => it.classList.toggle('focused', i === this._unifiedIdx));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (this._unifiedIdx >= 0 && this._unifiedIdx < this._unifiedResults.length) {
+        this.selectUnifiedResult(this._unifiedIdx);
+      } else if (this._unifiedResults.length > 0) {
+        this.selectUnifiedResult(0);
+      }
+    } else if (e.key === 'Escape') {
+      ta.classList.remove('visible');
+    }
+  },
+
+  selectUnifiedResult(uidx) {
+    const item = this._unifiedResults[uidx];
+    if (!item) return;
+    const ta = document.getElementById('homeTypeahead');
+    if (ta) ta.classList.remove('visible');
+    if (item.kind === 'course') {
+      this.selectSearchResult(item.idx);
+      const input = document.getElementById('homeSearch');
+      const course = this._searchResults[item.idx];
+      if (input && course) input.value = course.course_code;
+    } else {
+      this.selectCategoryResult(item.idx);
+      const input = document.getElementById('homeSearch');
+      const cat = this._categoryResults[item.idx];
+      if (input && cat) input.value = cat.leaf;
+    }
+  },
+
+  runHomeSearchChip(text) {
+    const input = document.getElementById('homeSearch');
+    if (!input) return;
+    input.value = text;
+    input.focus();
+    this._setHomeSearchLoading(true);
+    this.handleUnifiedSearch(text);
+  },
+
+  toggleHomeDock(kind) {
+    const pill = document.querySelector('.home-dock-pill[data-dock="' + kind + '"]');
+    if (!pill) return;
+    const wasOpen = pill.classList.contains('open');
+    document.querySelectorAll('.home-dock-pill.open').forEach(p => p.classList.remove('open'));
+    if (!wasOpen) pill.classList.add('open');
+  },
+
+  _refreshHomeDock() {
+    if (this._homeView !== 'home') return;
+    const slot = document.getElementById('homeDock');
+    if (!slot) return;
+    const html = this._renderHomeDock();
+    if (!html) {
+      slot.innerHTML = '';
+      slot.classList.remove('has-dock');
+    } else {
+      slot.innerHTML = html;
+      slot.classList.add('has-dock');
+    }
+  },
+
   renderLeftEmpty() {
     const el = document.getElementById('leftBody');
     if (!el) return;
@@ -1859,7 +2068,6 @@ const App = {
     const minorMajor = getMinorAsMajorCode(this.profile);
     const minorLabel = (this.profile && this.profile.secondary) ? getMinorLabel(this.profile.secondary) : null;
 
-    // Lead sentence per spec § 4.3
     let lead;
     if (vm === 'focused-dual') {
       lead = `See what it counts for in your ${p} major and ${esc(minorLabel)} minor.`;
@@ -1873,93 +2081,60 @@ const App = {
       lead = `See what it counts for across CS, IS, BA, and BS.`;
     }
 
-    // Browse-button subtitle
     let browseSub;
-    if (vm === 'focused-dual') browseSub = `${p} + ${minorMajor} requirement tree — find courses by slot`;
+    if (vm === 'focused-dual') browseSub = `${p} + ${minorMajor} requirement tree`;
     else if (vm === 'focused-single') browseSub = `${p} requirement tree`;
     else browseSub = `CS · IS · BA · BS requirement tree`;
 
-    // The major to open when Browse is clicked
     const browseMajor = (vm === 'cross-program') ? this.activeMajor : (p || this.activeMajor);
+    this._unifiedBrowseMajor = browseMajor;
 
-    // Double-counter banner (focused-dual only)
-    let dcBannerHtml = '';
-    if (vm === 'focused-dual') {
-      const dcCount = this.courses.filter(c => c._doubleCounter).length;
-      dcBannerHtml = `
-        <div class="home-insight home-insight-compact" onclick="App.showDoubleCounterList()">
-          <div class="home-insight-num">${dcCount}</div>
-          <div class="home-insight-col">
-            <div class="home-insight-label">${p} MAJOR + ${minorMajor} MINOR</div>
-            <div class="home-insight-text">courses count for both — pick these first</div>
-          </div>
-          <span class="home-insight-cta">See all →</span>
-        </div>
-      `;
-    }
+    const chipsHtml = HOME_SEARCH_CHIPS.map(c =>
+      `<button type="button" class="home-chip" onclick="App.runHomeSearchChip(${JSON.stringify(c)})">${esc(c)}</button>`
+    ).join('');
 
-    // Multi-program lane (cross-program only) replaces the dc banner
-    let mpBannerHtml = '';
-    if (vm === 'cross-program') {
-      const mpCount = this.courses.filter(c => (c._programCount || 0) >= 3).length;
-      const majorForBrowse = this.activeMajor || 'CS';
-      mpBannerHtml = `
-        <div class="home-insight home-insight-mp home-insight-compact" onclick="App.enterExplorer('${majorForBrowse}')">
-          <div class="home-insight-num">${mpCount}</div>
-          <div class="home-insight-col">
-            <div class="home-insight-label">CROSS-PROGRAM</div>
-            <div class="home-insight-text">courses count for 3+ programs</div>
-          </div>
-          <span class="home-insight-cta">Browse →</span>
-        </div>
-      `;
-    }
+    const compareBtn = vm === 'cross-program'
+      ? `<button type="button" class="home-ghost-btn" onclick="App.enterExplorer('${browseMajor}')"><span>Compare majors</span><span aria-hidden="true">→</span></button>`
+      : '';
+
+    const dockHtml = this._renderHomeDock();
+    const quickStartHtml = this._renderQuickStart(browseMajor);
 
     return `
-      <div class="home">
+      <div class="home-page">
         <div class="home-plaid" aria-hidden="true"></div>
+        <div class="home-main">
+          <div class="home-main-spacer" aria-hidden="true"></div>
+          <section class="home-hero" aria-label="Course search">
+            <header class="home-hero-head">
+              <h1 class="home-hero-title">Find a course.</h1>
+              <span class="home-hero-accent" aria-hidden="true"></span>
+              <p class="home-hero-lead">${lead}</p>
+            </header>
 
-        <header class="home-head">
-          <h1 class="home-hero">Find a course.</h1>
-          <p class="home-lead">${lead}</p>
-        </header>
-
-        <section class="home-strip" aria-label="Search and browse">
-          <div class="home-strip-search">
-            <label class="home-strip-label" for="courseSearch">Course</label>
-            <div class="home-search">
-              <span class="home-search-icon">🔍</span>
-              <input type="text" class="home-search-input" id="courseSearch" placeholder='15-122 or Probability' autocomplete="off" />
-              <div class="typeahead" id="typeahead"></div>
+            <div class="home-hero-search">
+              <span class="home-search-icon" aria-hidden="true">🔍</span>
+              <input type="search" class="home-search-input" id="homeSearch" placeholder="Search a course number, title, or category, e.g. 15-122 or Probability" autocomplete="off" enterkeyhint="search" />
+              <span class="home-search-spinner" id="homeSearchSpinner" hidden aria-hidden="true"></span>
+              <div class="typeahead home-typeahead" id="homeTypeahead"></div>
             </div>
-          </div>
 
-          <div class="home-strip-search">
-            <label class="home-strip-label" for="categorySearch">Category</label>
-            <div class="home-search">
-              <span class="home-search-icon">🔍</span>
-              <input type="text" class="home-search-input" id="categorySearch" placeholder='Contextual Thinking' autocomplete="off" />
-              <div class="typeahead" id="categoryTypeahead"></div>
+            <div class="home-chips" aria-label="Example searches">${chipsHtml}</div>
+
+            <div class="home-ghost-actions">
+              <button type="button" class="home-ghost-btn" onclick="App.enterExplorer('${browseMajor}')" title="Browse ${browseSub}">
+                <span>Browse ${browseSub}</span><span aria-hidden="true">→</span>
+              </button>
+              ${compareBtn}
             </div>
-          </div>
 
-          <button type="button" class="home-strip-browse" onclick="App.enterExplorer('${browseMajor}')" title="Browse ${browseSub}">
-            <span class="home-strip-browse-icon">🗂</span>
-            <span class="home-strip-browse-text">
-              <span class="home-strip-browse-title">Browse</span>
-              <span class="home-strip-browse-sub">${browseSub}</span>
-            </span>
-            <span class="home-strip-browse-arrow">→</span>
-          </button>
-        </section>
+            <div class="home-dock-slot ${dockHtml ? 'has-dock' : ''}" id="homeDock">${dockHtml}</div>
+          </section>
 
-        <section class="home-lanes">
-          ${this._renderWishlistEntry()}
-          ${this._renderStudentFlaggedPanel()}
-          ${this._renderMyFlagsPanel()}
-        </section>
+          ${quickStartHtml}
 
-        ${dcBannerHtml || mpBannerHtml ? `<section class="home-banners">${dcBannerHtml}${mpBannerHtml}</section>` : ''}
+          <div class="home-main-spacer home-main-spacer-bottom" aria-hidden="true"></div>
+        </div>
 
         <footer class="home-foot">
           <a class="home-foot-logo" href="https://www.qatar.cmu.edu/" target="_blank" rel="noopener" aria-label="Carnegie Mellon University Qatar">
@@ -1969,6 +2144,128 @@ const App = {
         </footer>
       </div>
     `;
+  },
+
+  _renderHomeDock() {
+    const pills = [];
+
+    if (isStudent(this.profile)) {
+      const saved = this._getWishlistItems();
+      if (saved.length) {
+        const items = saved.map(i => {
+          const c = lookupCourse(this.courseIndex, i.course_code);
+          const name = c ? c.course_name : '';
+          return `<button type="button" class="home-dock-item" onclick="App.selectCourseFromTree('${esc(i.course_code)}')">${esc(i.course_code)}${name ? ' · ' + esc(name) : ''}</button>`;
+        }).join('');
+        pills.push(`
+          <div class="home-dock-pill" data-dock="saved">
+            <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('saved')">
+              ${this._iconBookmarkFilled()} <span>Saved ${saved.length}</span>
+            </button>
+            <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showWishlistView()">Open saved list →</button></div>
+          </div>`);
+      }
+
+      if (this.authMode === 'authed') {
+        const st = this._studentFlagsState;
+        if (st && st.loaded && (st.items || []).length) {
+          const flags = st.items;
+          const items = flags.map(f =>
+            `<button type="button" class="home-dock-item" onclick="App.showStudentFlagsView()">${esc(f.course_code)}</button>`
+          ).join('');
+          pills.push(`
+            <div class="home-dock-pill" data-dock="flagged">
+              <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('flagged')">
+                <span aria-hidden="true">⚑</span> <span>Flagged ${flags.length}</span>
+              </button>
+              <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showStudentFlagsView()">View all →</button></div>
+            </div>`);
+        }
+      }
+    }
+
+    if (canFlagCourses(this.profile) && this.authMode === 'authed') {
+      const st = this._myFlagsState;
+      if (st && st.loaded && !st.error && st.counts) {
+        const pending = st.counts.pending || 0;
+        if (pending > 0) {
+          const items = (st.items || []).filter(f => f.status === 'pending').slice(0, 8).map(f =>
+            `<button type="button" class="home-dock-item" onclick="App.showFlagReview()">${esc(f.course_code)}</button>`
+          ).join('');
+          pills.push(`
+            <div class="home-dock-pill" data-dock="flags">
+              <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('flags')">
+                <span aria-hidden="true">⚑</span> <span>Flags ${pending}</span>
+              </button>
+              <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showFlagReview()">Review queue →</button></div>
+            </div>`);
+        }
+      }
+    }
+
+    if (!pills.length) return '';
+    return `<nav class="home-dock" aria-label="Saved and flagged">${pills.join('')}</nav>`;
+  },
+
+  _getIsGenedCategories() {
+    const idx = this._buildCategoryIndex();
+    const seen = new Set();
+    const out = [];
+    for (const e of idx) {
+      if (e.major !== 'IS' || !e.path.includes('GenEd')) continue;
+      const key = e.path;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (e.parts.length >= 4) out.push(e);
+    }
+    out.sort((a, b) => a.leaf.localeCompare(b.leaf));
+    return out;
+  },
+
+  _renderQuickStart(browseMajor) {
+    const cards = [];
+
+    const popular = HOME_POPULAR_COURSES.map(code => {
+      const c = lookupCourse(this.courseIndex, code);
+      return c ? { code, name: c.course_name } : null;
+    }).filter(Boolean);
+    if (popular.length) {
+      cards.push(`
+        <article class="home-qs-card">
+          <h3 class="home-qs-title">Popular this semester</h3>
+          <ul class="home-qs-list">
+            ${popular.map(p => `<li><button type="button" class="home-qs-link" onclick="App.selectCourseFromTree('${esc(p.code)}')"><span class="home-qs-code">${esc(p.code)}</span>${esc(p.name)}</button></li>`).join('')}
+          </ul>
+        </article>`);
+    }
+
+    const gened = this._getIsGenedCategories();
+    if (gened.length) {
+      cards.push(`
+        <article class="home-qs-card">
+          <h3 class="home-qs-title">GenEd categories at a glance</h3>
+          <div class="home-qs-chips">
+            ${gened.slice(0, 12).map(g =>
+              `<button type="button" class="home-qs-chip" onclick="App.enterExplorer('IS', '${esc(g.path).replace(/'/g, "\\'")}')">${esc(g.leaf)}</button>`
+            ).join('')}
+          </div>
+        </article>`);
+    }
+
+    if (HOME_RECENT_MAPPINGS.length) {
+      cards.push(`
+        <article class="home-qs-card">
+          <h3 class="home-qs-title">Recently updated mappings</h3>
+          <ul class="home-qs-list">
+            ${HOME_RECENT_MAPPINGS.map(m =>
+              `<li><button type="button" class="home-qs-link" onclick="App.enterExplorer('${m.major}', '${esc(m.path).replace(/'/g, "\\'")}')"><span class="home-qs-code">${esc(m.courses)}</span>${esc(m.label)}</button></li>`
+            ).join('')}
+          </ul>
+        </article>`);
+    }
+
+    if (!cards.length) return '';
+    return `<section class="home-quickstart" aria-label="Quick start"><h2 class="home-quickstart-label">Quick start</h2><div class="home-quickstart-grid">${cards.join('')}</div></section>`;
   },
 
   _navbarWishlistHtml() {
@@ -2054,8 +2351,7 @@ const App = {
       this.serverFlags = this._studentFlagsState.items;
     }
     if (this._homeView === 'home') {
-      const node = document.getElementById('homeStudentFlags');
-      if (node) node.outerHTML = this._renderStudentFlaggedPanel();
+      this._refreshHomeDock();
     }
   },
 
@@ -2126,8 +2422,7 @@ const App = {
       this._myFlagsState = { loaded: true, error: false, counts: summarizeFlagsByStatus(items), items };
     }
     if (this._homeView === 'home') {
-      const node = document.getElementById('homeMyFlags');
-      if (node) node.outerHTML = this._renderMyFlagsPanel();
+      this._refreshHomeDock();
     }
   },
 
@@ -2885,9 +3180,8 @@ const App = {
     this.renderTree();
     // Update the navbar count chip in place
     this._refreshNavWishCount();
-    // Re-render home if it's the wishlist view or shows the entry tile
     if (this._homeView === 'wishlist') this.showWishlistView();
-    else if (this._homeView === 'home') this.renderLeftEmpty();
+    else if (this._homeView === 'home') this._refreshHomeDock();
   },
 
   showWishlistView() {
