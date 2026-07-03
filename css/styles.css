@@ -2895,6 +2895,13 @@ body {
 .home-flagged-list { margin: 8px 0 0; padding-left: 18px; font-size: 12px; color: var(--text-secondary); }
 .home-flagged-status { font-size: 10px; text-transform: uppercase; font-weight: 700; color: var(--cmu-red); }
 
+.cc-wishlist-note {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: var(--cf-parchment, #F5F0EA);
+  border: 1px solid var(--border-light);
+}
 .wl-note-wrap { display: block; margin-top: 8px; }
 .wl-note-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: var(--text-tertiary); }
 .wl-note-input {

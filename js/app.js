@@ -1366,16 +1366,19 @@ const App = {
         if (major && path) this.toggleNode(major, path);
       }
 
-      // Handle tree course click
+      // Handle tree course click (not wishlist note rows — those reuse course codes)
       const treeCourse = e.target.closest('[data-course-code]');
-      if (treeCourse && !e.target.closest('[data-action]')) {
+      if (treeCourse && !e.target.closest('[data-action]') && !e.target.closest('.wl-view')) {
         this.selectCourseFromTree(treeCourse.dataset.courseCode);
       }
     });
 
-    // ESC closes the flag modal
+    // ESC closes modals / overlays
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.closeFlagModal();
+      if (e.key === 'Escape') {
+        this.closeFlagModal();
+        this.closeDirectoryPanel();
+      }
     });
   },
 
@@ -1896,7 +1899,7 @@ const App = {
     const count = this._getWishlistItems().length;
     const subtext = count === 0
       ? 'Tap the bookmark on any course to add it here.'
-      : `${count} course${count === 1 ? '' : 's'} saved for planning later.`;
+      : `${count} course${count === 1 ? '' : 's'} saved — open to add notes.`;
     return `
       <div class="home-wishlist-card" onclick="App.showWishlistView()" role="button" tabindex="0">
         <span class="home-wishlist-icon">${this._iconBookmarkFilled()}</span>
@@ -2227,6 +2230,15 @@ const App = {
 
     // Top-right card actions (role-gated)
     const cardActions = this._renderCardActions(course);
+    const wishlistNoteHtml = (isStudent(this.profile) && this._isInWishlist(course.course_code))
+      ? `
+        <div class="cc-wishlist-note">
+          <label class="wl-note-wrap">
+            <span class="wl-note-label">Your note on this course</span>
+            <textarea class="wl-note-input" data-wl-note="${esc(course.course_code)}" placeholder="Why you saved this course…" rows="2">${esc(this._getWishlistNote(course.course_code))}</textarea>
+          </label>
+        </div>`
+      : '';
 
     el.innerHTML = `
       <div class="cc-card">
@@ -2238,6 +2250,7 @@ const App = {
           </div>
           ${cardActions}
         </div>
+        ${wishlistNoteHtml}
 
         <div class="cc-cols">
           <div class="cc-section">
@@ -2268,6 +2281,7 @@ const App = {
     const explBtn = document.getElementById('exploreInlineBtn');
     if (explBtn) explBtn.style.display = this.layoutMode === 'focused' ? 'flex' : 'none';
 
+    this._bindWishlistNoteInputs(el);
     this._schedSections = filtered;  // used by expand handler
   },
 
@@ -2764,8 +2778,23 @@ const App = {
         <div class="wl-list">${rowsHtml}</div>
       </div>
     `;
-    el.querySelectorAll('.wl-note-input').forEach(ta => {
-      ta.addEventListener('blur', () => this._saveWishlistNote(ta.dataset.wlNote, ta.value));
+    this._bindWishlistNoteInputs(el);
+  },
+
+  _bindWishlistNoteInputs(container) {
+    if (!container) return;
+    container.querySelectorAll('.wl-note-input').forEach(ta => {
+      if (ta.dataset.wlBound) return;
+      ta.dataset.wlBound = '1';
+      ta.addEventListener('click', e => e.stopPropagation());
+      ta.addEventListener('mousedown', e => e.stopPropagation());
+      let timer;
+      const persist = () => this._saveWishlistNote(ta.dataset.wlNote, ta.value);
+      ta.addEventListener('blur', persist);
+      ta.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(persist, 700);
+      });
     });
   },
 
@@ -2776,7 +2805,11 @@ const App = {
     items[idx].note = (note || '').trim();
     this._saveWishlistItems(items);
     if (this.authMode === 'authed') {
-      await apiUpdateWishlistNote(code, items[idx].note);
+      const r = await apiUpdateWishlistNote(code, items[idx].note);
+      if (!r.ok) {
+        try { localStorage.removeItem('cf_synced'); } catch {}
+        showToast('Note saved on this device — could not sync to server.');
+      }
     }
   },
 
@@ -3048,18 +3081,30 @@ const App = {
 
   _directoryPanelOpen: false,
 
-  toggleDirectoryPanel() {
-    if (!canManageDirectory(this.profile) || this.authMode !== 'authed') return;
-    this._directoryPanelOpen = !this._directoryPanelOpen;
+  closeDirectoryPanel() {
+    if (!this._directoryPanelOpen) return;
+    this._directoryPanelOpen = false;
     const root = document.getElementById('directoryPanelRoot');
     if (!root) return;
-    if (!this._directoryPanelOpen) {
-      root.hidden = true;
-      root.innerHTML = '';
+    root.hidden = true;
+    root.innerHTML = '';
+    root.onclick = null;
+  },
+
+  toggleDirectoryPanel() {
+    if (!canManageDirectory(this.profile) || this.authMode !== 'authed') return;
+    if (this._directoryPanelOpen) {
+      this.closeDirectoryPanel();
       return;
     }
+    this._directoryPanelOpen = true;
+    const root = document.getElementById('directoryPanelRoot');
+    if (!root) return;
     root.hidden = false;
     root.innerHTML = '<div class="directory-panel"><div class="empty-state"><div class="spinner"></div></div></div>';
+    root.onclick = (e) => {
+      if (!e.target.closest('.directory-panel')) this.closeDirectoryPanel();
+    };
     this._loadDirectoryPanel();
   },
 
