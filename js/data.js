@@ -360,6 +360,40 @@ function lookupCourse(index, code) {
   return index[normalizeCourseCode(code)] || index[code] || null;
 }
 
+/** Find a requirement node by its --- delimited path. */
+function findTreeNode(tree, path) {
+  if (!tree || !path) return null;
+  const stack = [tree];
+  while (stack.length) {
+    const node = stack.pop();
+    if (node.path === path) return node;
+    for (const child of (node.children || [])) stack.push(child);
+  }
+  return null;
+}
+
+/**
+ * Collect unique courses mapped to a requirement node (includes descendants).
+ * filterFn receives the tree leaf object { code, name, units, ... }.
+ */
+function collectCoursesForRequirement(node, filterFn) {
+  const byCode = new Map();
+  function walk(n) {
+    for (const c of (n.courses || [])) {
+      if (filterFn && !filterFn(c)) continue;
+      if (!byCode.has(c.code)) byCode.set(c.code, c);
+    }
+    for (const child of (n.children || [])) walk(child);
+  }
+  walk(node);
+  return Array.from(byCode.values()).sort((a, b) => a.code.localeCompare(b.code));
+}
+
+function formatRequirementPath(path) {
+  if (!path) return '';
+  return path.split('---').map(p => (LABEL_OVERRIDES[p] || p)).join(' > ');
+}
+
 // ── Get display-ready mappings for a course ─────────────────
 // opts.full → faculty view: show a deeper breadcrumb (last 3 path segments
 // instead of 2) so faculty maintaining mappings see more of the path.

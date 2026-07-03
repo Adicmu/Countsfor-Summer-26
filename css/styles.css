@@ -361,13 +361,52 @@ body {
 
 /* ── Split Mode (on demand) ── */
 .layout-split {
-  grid-template-columns:minmax(320px,40%) 1fr;
+  grid-template-columns:var(--split-left, minmax(320px, 40%)) 6px minmax(280px, 1fr);
 }
 .layout-split .panel-right {
   display:flex;
 }
 .layout-split .panel-left {
-  border-right:var(--panel-divider);
+  border-right:none;
+}
+
+/* ── Draggable split handle ── */
+.panel-resizer {
+  display:none;
+  position:relative;
+  z-index:6;
+  cursor:col-resize;
+  touch-action:none;
+  background:transparent;
+}
+.layout-split .panel-resizer {
+  display:block;
+}
+.panel-resizer::before {
+  content:'';
+  position:absolute;
+  top:0;
+  bottom:0;
+  left:50%;
+  width:1px;
+  transform:translateX(-50%);
+  background:var(--border-light);
+  transition:background 0.15s ease, width 0.15s ease;
+}
+.panel-resizer:hover::before,
+.panel-resizer.is-dragging::before {
+  width:3px;
+  background:var(--cmu-red);
+}
+body.is-resizing-panels {
+  cursor:col-resize !important;
+  user-select:none !important;
+}
+body.is-resizing-panels * {
+  cursor:col-resize !important;
+}
+body.is-resizing-panels .main-layout {
+  transition:none;
 }
 
 /* ── Panels ── */
@@ -975,6 +1014,26 @@ body {
   text-transform: uppercase; letter-spacing: 0.04em;
 }
 .tr-count { font-size: 11px; color: var(--text-secondary); font-weight: 600; }
+.tr-download {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border-light);
+  border-radius: 7px;
+  background: var(--bg-card);
+  color: var(--cmu-red);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+}
+.tr-download:hover {
+  background: color-mix(in srgb, var(--cmu-red) 10%, var(--bg-card));
+  border-color: color-mix(in srgb, var(--cmu-red) 35%, var(--border-light));
+}
 
 .tr-card-body { padding: 6px 12px 10px; }
 
@@ -1231,6 +1290,9 @@ body {
   }
   .layout-split .panel-left {
     border-right:none;
+  }
+  .layout-split .panel-resizer {
+    display:none !important;
   }
   .layout-split .panel.hidden-mobile {
     display:none !important;

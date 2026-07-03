@@ -251,3 +251,31 @@ test('lookupCourse: 82-101 and 82101 resolve to same record', () => {
   assertEqual(lookupCourse(index, '82-101').course_name, 'Elementary French I');
   assertEqual(lookupCourse(index, '82101').course_name, 'Elementary French I');
 });
+
+test('findTreeNode and collectCoursesForRequirement gather descendant courses', () => {
+  const tree = {
+    path: '',
+    children: [{
+      path: 'GenEd---Foundations',
+      label: 'Foundations',
+      children: [{
+        path: 'GenEd---Foundations---IGI',
+        label: 'IGI',
+        children: [],
+        courses: [
+          { code: '82-101', name: 'French I', units: 12, type: true, offered_qatar: true, offered_pitts: false },
+          { code: '82-102', name: 'French II', units: 12, type: true, offered_qatar: true, offered_pitts: false },
+        ],
+      }],
+      courses: [],
+    }],
+    courses: [],
+  };
+  const parent = findTreeNode(tree, 'GenEd---Foundations');
+  const leaf = findTreeNode(tree, 'GenEd---Foundations---IGI');
+  assertEqual(parent.label, 'Foundations');
+  assertEqual(collectCoursesForRequirement(parent).length, 2);
+  assertEqual(collectCoursesForRequirement(leaf).length, 2);
+  assertEqual(collectCoursesForRequirement(leaf, c => c.offered_qatar).length, 2);
+  assertEqual(collectCoursesForRequirement(leaf, c => c.offered_pitts).length, 0);
+});

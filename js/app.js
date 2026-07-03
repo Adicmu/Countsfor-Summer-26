@@ -1288,6 +1288,8 @@ const App = {
           <div class="panel-body" id="leftBody"></div>
         </div>
 
+        <div class="panel-resizer" id="panelResizer" role="separator" aria-orientation="vertical" aria-label="Resize panels" tabindex="0"></div>
+
         <div class="panel panel-right ${isSplit && this.mobileLens==='lookup'?'hidden-mobile':''}" id="panelRight">
           <div class="major-tabs" id="majorTabs">
             <div class="major-tabs-scroll">
@@ -1307,6 +1309,95 @@ const App = {
       ` : ''}
     `;
     this.applyTheme();
+    this._initPanelResizer();
+  },
+
+  _initPanelResizer() {
+    const resizer = document.getElementById('panelResizer');
+    const layout = document.getElementById('mainLayout');
+    if (!resizer || !layout || resizer.dataset.bound) return;
+    resizer.dataset.bound = '1';
+
+    const saved = loadStore('cf_split_left_px', null);
+    if (saved && Number(saved) > 0) {
+      layout.style.setProperty('--split-left', saved + 'px');
+    }
+
+    const minPanel = 280;
+    let dragging = false;
+
+    const clampSplit = (px) => {
+      const max = layout.getBoundingClientRect().width - minPanel - 6;
+      return Math.max(minPanel, Math.min(max, px));
+    };
+
+    const applySplit = (px) => {
+      const clamped = clampSplit(px);
+      layout.style.setProperty('--split-left', clamped + 'px');
+      return clamped;
+    };
+
+    const onMove = (e) => {
+      if (!dragging || this.layoutMode !== 'split') return;
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const rect = layout.getBoundingClientRect();
+      applySplit(clientX - rect.left);
+    };
+
+    const stopDrag = () => {
+      if (!dragging) return;
+      dragging = false;
+      resizer.classList.remove('is-dragging');
+      document.body.classList.remove('is-resizing-panels');
+      const val = layout.style.getPropertyValue('--split-left');
+      const px = parseInt(val, 10);
+      if (px > 0) saveStore('cf_split_left_px', px);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', stopDrag);
+      document.removeEventListener('touchmove', onMove);
+      document.removeEventListener('touchend', stopDrag);
+      document.removeEventListener('touchcancel', stopDrag);
+    };
+
+    const startDrag = (e) => {
+      if (this.layoutMode !== 'split' || window.innerWidth <= 860) return;
+      e.preventDefault();
+      dragging = true;
+      resizer.classList.add('is-dragging');
+      document.body.classList.add('is-resizing-panels');
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const rect = layout.getBoundingClientRect();
+      applySplit(clientX - rect.left);
+      document.addEventListener('mousemove', onMove);
+      document.addEventListener('mouseup', stopDrag);
+      document.addEventListener('touchmove', onMove, { passive: false });
+      document.addEventListener('touchend', stopDrag);
+      document.addEventListener('touchcancel', stopDrag);
+    };
+
+    resizer.addEventListener('mousedown', startDrag);
+    resizer.addEventListener('touchstart', startDrag, { passive: false });
+
+    resizer.addEventListener('keydown', (e) => {
+      if (this.layoutMode !== 'split') return;
+      const step = e.shiftKey ? 48 : 16;
+      const current = parseInt(layout.style.getPropertyValue('--split-left'), 10)
+        || Math.round(layout.getBoundingClientRect().width * 0.4);
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const px = applySplit(current - step);
+        saveStore('cf_split_left_px', px);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const px = applySplit(current + step);
+        saveStore('cf_split_left_px', px);
+      }
+    });
+
+    resizer.addEventListener('dblclick', () => {
+      layout.style.removeProperty('--split-left');
+      saveStore('cf_split_left_px', null);
+    });
   },
 
   // ── Events ────────────────────────────────────────────────
@@ -1345,6 +1436,10 @@ const App = {
         e.stopPropagation();
         const action = actionBtn.dataset.action;
         const code = actionBtn.dataset.courseCode;
+        if (action === 'download-req') {
+          this.downloadRequirementExcel(actionBtn.dataset.treeMajor, actionBtn.dataset.treePath);
+          return;
+        }
         if (action === 'wishlist') this.toggleWishlist(code);
         if (action === 'flag')     this.openFlagModal(code);
         return;
@@ -2448,6 +2543,9 @@ const App = {
       ? `<span class="tr-count">${filteredTotalCourses} course${filteredTotalCourses === 1 ? '' : 's'}</span>`
       : '';
     const safePath = node.path.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const downloadBtn = filteredTotalCourses > 0
+      ? this._renderReqDownloadBtn(major, safePath)
+      : '';
 
     // ── Depth 0: render as a card ─────────────────────────────
     if (depth === 0) {
@@ -2458,7 +2556,7 @@ const App = {
           <span class="tr-arrow ${expanded ? 'expanded' : ''}">▶</span>
           <span class="tr-accent" style="background:${accent}"></span>
           <span class="tr-card-title">${esc(node.label)}</span>
-          <span class="tr-card-meta">${ruleHtml}${countHtml}</span>
+          <span class="tr-card-meta">${ruleHtml}${countHtml}${downloadBtn}</span>
         </div>`;
       let body = '';
       if (isExpandable && expanded) {
@@ -2482,6 +2580,7 @@ const App = {
     html += `<span class="tr-sub-label">${esc(node.label)}</span>`;
     html += ruleHtml;
     html += countHtml;
+    html += downloadBtn;
     html += `</div>`;
     if (isExpandable) {
       html += `<div class="tr-children ${expanded ? '' : 'collapsed'}">`;
@@ -2495,6 +2594,59 @@ const App = {
     }
     html += `</div>`;
     return html;
+  },
+
+  _renderReqDownloadBtn(major, safePath) {
+    return `<button type="button" class="tr-download" data-action="download-req" data-tree-major="${esc(major)}" data-tree-path="${safePath}" title="Download courses for Excel" aria-label="Download courses for Excel">⬇</button>`;
+  },
+
+  downloadRequirementExcel(major, path) {
+    const node = findTreeNode(this.trees[major], path);
+    if (!node) {
+      showToast('Requirement not found.');
+      return;
+    }
+    const filterFn = (leaf) => {
+      const full = lookupCourse(this.courseIndex, leaf.code) || leaf;
+      return this.filterByLocation(full);
+    };
+    const courses = collectCoursesForRequirement(node, filterFn);
+    if (!courses.length) {
+      showToast('No courses match your current campus filter.');
+      return;
+    }
+
+    const pathLabel = formatRequirementPath(node.path);
+    const majorLabel = (MAJOR_META[major] && MAJOR_META[major].label) || major;
+    const headers = ['Course Code', 'Course Name', 'Units', 'Department', 'Type', 'Qatar', 'Pittsburgh', 'Prerequisites'];
+    const rows = courses.map(leaf => {
+      const full = lookupCourse(this.courseIndex, leaf.code) || leaf;
+      return [
+        leaf.code,
+        leaf.name || full.course_name || '',
+        leaf.units || full.units || '',
+        typeof getDeptName === 'function' ? getDeptName(leaf.code) : (full.department || ''),
+        leaf.type ? 'GenEd' : 'Core',
+        full.offered_qatar ? 'Yes' : 'No',
+        full.offered_pitts ? 'Yes' : 'No',
+        full.prerequisites || '',
+      ];
+    });
+
+    const filterNote = this.locationFilter === 'all'
+      ? 'All campuses'
+      : (this.locationFilter === 'qatar' ? 'Qatar only' : 'Pittsburgh only');
+    const metaRows = [
+      ['CountsFor course export'],
+      ['Major', majorLabel],
+      ['Requirement', pathLabel],
+      ['Campus filter', filterNote],
+      ['Courses', String(courses.length)],
+      ['Exported', new Date().toLocaleString()],
+    ];
+    const filename = `CountsFor_${major}_${slugifyFilename(node.label)}.xls`;
+    downloadExcelSheet(filename, node.label, headers, rows, metaRows);
+    showToast(`Downloaded ${courses.length} courses`);
   },
 
   _renderLeafCourse(c, major) {
