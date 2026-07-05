@@ -1,0 +1,23 @@
+{
+  "description": "Manual requirement overlays applied after SOC reconcile. Additive only — never removes existing mappings.",
+  "overlays": [
+    {
+      "id": "is-igi-modern-languages",
+      "note": "Per 2026-07-03 meeting: Modern Languages elementary courses count for IS GenEd Intercultural and Global Inquiry.",
+      "course_codes": ["82-101", "82-102", "82-111", "82-112", "82-141", "82-142"],
+      "requirements": {
+        "IS": [
+          {
+            "requirement": "GenEd---GenEd---Foundations---Intercultural and Global Inquiry",
+            "type": true,
+            "major": "IS"
+          }
+        ]
+      },
+      "ensure_course_defaults": {
+        "department": "82",
+        "offered_qatar": true
+      }
+    }
+  ]
+}

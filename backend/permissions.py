@@ -1,35 +1,49 @@
-"""Role-based authorization decorators.
+"""Role-based authorization — always key off role_group, not job title.
 
-The frontend's `isFaculty()` (js/profile.js) is the canonical mapping for
-UI gating; this module enforces the same on the server. Frontend gating is
-not sufficient — a student could otherwise inspect the DOM and POST a flag.
+role_group values:
+  student — student
+  faculty — advisor, professor, area_head, associate_area_head (identical permissions)
+  admin   — admin (faculty permissions + user management)
 """
 from functools import wraps
 from typing import Iterable
 
-from flask import jsonify, session, g
+from flask import jsonify, request, session, g
 
 from .db import db
-from .models import User
+from .models import User, FACULTY_ROLES
+from .tokens import verify_auth_token
+
+ROLE_GROUP_STUDENT = "student"
+ROLE_GROUP_FACULTY = "faculty"
+ROLE_GROUP_ADMIN = "admin"
+
+# Exact role strings still used where a specific title matters (e.g. flag review).
+FACULTY_OR_ADMIN = FACULTY_ROLES | {ROLE_GROUP_ADMIN}
 
 
-FACULTY_ROLES = {"professor", "area_head", "associate_area_head", "advisor"}
-FACULTY_OR_ADMIN = FACULTY_ROLES | {"admin"}
+def role_group_for(user: User) -> str:
+    return user.role_group()
 
 
 def _load_user() -> User | None:
-    """Resolve the current user from the signed session cookie. Cached on
-    `g` so multiple decorators in one request don't re-query the DB."""
     if hasattr(g, "_current_user"):
         return g._current_user
+    user = None
     uid = session.get("uid")
-    user = db.session.get(User, uid) if uid else None
+    if uid:
+        user = db.session.get(User, uid)
+    if user is None:
+        auth = request.headers.get("Authorization", "")
+        if auth.startswith("Bearer "):
+            token_uid = verify_auth_token(auth[7:])
+            if token_uid:
+                user = db.session.get(User, token_uid)
     g._current_user = user
     return user
 
 
 def require_login(fn):
-    """401 if not logged in. Sets `g.user` for the wrapped view."""
     @wraps(fn)
     def wrapper(*args, **kwargs):
         user = _load_user()
@@ -40,9 +54,33 @@ def require_login(fn):
     return wrapper
 
 
+def require_role_group(*groups: str | Iterable[str]):
+    """403 unless the user's role_group is in `groups`."""
+    if len(groups) == 1 and not isinstance(groups[0], str):
+        allowed = set(groups[0])
+    else:
+        allowed = set(groups)
+
+    def decorator(fn):
+        @wraps(fn)
+        def wrapper(*args, **kwargs):
+            user = _load_user()
+            if user is None:
+                return jsonify(error="unauthenticated", message="Sign in required."), 401
+            if user.role_group() not in allowed:
+                return jsonify(
+                    error="forbidden",
+                    message=f"This action requires role_group: {', '.join(sorted(allowed))}.",
+                ), 403
+            g.user = user
+            return fn(*args, **kwargs)
+        return wrapper
+
+    return decorator
+
+
 def require_role(*roles: str | Iterable[str]):
-    """403 unless the user's role is in `roles`. Accepts a single role,
-    multiple positional roles, or one iterable of roles."""
+    """403 unless the user's exact role string is in `roles` (narrow checks only)."""
     if len(roles) == 1 and not isinstance(roles[0], str):
         allowed = set(roles[0])
     else:
@@ -67,5 +105,4 @@ def require_role(*roles: str | Iterable[str]):
 
 
 def current_user() -> User | None:
-    """Convenience for routes that handle the unauthenticated case manually."""
     return _load_user()

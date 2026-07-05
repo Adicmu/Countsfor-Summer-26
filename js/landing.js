@@ -22,10 +22,24 @@
     const meta = document.querySelector('meta[name="cf-backend-url"]');
     const fromMeta = (meta && meta.getAttribute('content') || '').trim();
     if (fromMeta) return fromMeta.replace(/\/$/, '');
-    return 'https://countsfor-backend.onrender.com';
+    return 'https://countsfor-summer-26.onrender.com';
   }
 
   const BACKEND_URL = getBackendUrl();
+  const AUTH_TOKEN_KEY = 'cf_auth_token';
+
+  function getAuthToken() {
+    try { return sessionStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; }
+  }
+
+  function saveAuthToken(token) {
+    if (!token) return;
+    try { sessionStorage.setItem(AUTH_TOKEN_KEY, token); } catch {}
+  }
+
+  function clearAuthToken() {
+    try { sessionStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+  }
 
   function getGoogleClientId() {
     const meta = document.querySelector('meta[name="cf-google-client-id"]');
@@ -39,6 +53,8 @@
       credentials: 'include',
       headers: { Accept: 'application/json' },
     };
+    const authToken = getAuthToken();
+    if (authToken) init.headers['Authorization'] = 'Bearer ' + authToken;
     if (opts && opts.body !== undefined) {
       init.headers['Content-Type'] = 'application/json';
       init.body = JSON.stringify(opts.body);
@@ -53,6 +69,7 @@
           data = null;
         }
       }
+      if (data && data.auth_token) saveAuthToken(data.auth_token);
       return {
         ok: res.ok,
         status: res.status,
@@ -102,9 +119,23 @@
     backendUnreachable: false,
   };
 
-  function isAndrewEmail(raw) {
+  function normalizeCmuEmailLocal(raw) {
+    if (typeof normalizeCmuEmail === 'function') return normalizeCmuEmail(raw);
     const e = (raw || '').trim().toLowerCase();
-    return /^[^\s@]+@andrew\.cmu\.edu$/.test(e);
+    if (!/^[^\s@]+@[^\s@]+$/.test(e)) return null;
+    const local = e.split('@')[0];
+    const domain = e.split('@')[1];
+    if (domain === 'cmu.edu' || domain === 'qatar.cmu.edu') return local + '@andrew.cmu.edu';
+    if (domain === 'andrew.cmu.edu') return e;
+    return null;
+  }
+
+  function isCmuEmail(raw) {
+    return normalizeCmuEmailLocal(raw) !== null;
+  }
+
+  function isAndrewEmail(raw) {
+    return isCmuEmail(raw);
   }
 
   function setFieldMsg(inputId, msgId, text, kind) {
@@ -133,7 +164,7 @@
       clearFieldMsg(inputId, msgId);
       return false;
     }
-    if (!isAndrewEmail(val)) {
+    if (!isCmuEmail(val)) {
       setFieldMsg(inputId, msgId, 'Use your @andrew.cmu.edu email address.', 'error');
       return false;
     }
@@ -380,7 +411,12 @@
   }
 
   function panelWrap(content, view) {
-    const labelledBy = 'panel-title-' + view;
+    const labelledBy =
+      view === 'register'
+        ? 'tab-register'
+        : view === 'signin'
+          ? 'panel-title-signin'
+          : 'panel-title-' + view;
     const role =
       view === 'signin' || view === 'register' ? 'tabpanel' : 'region';
     return (
@@ -416,14 +452,10 @@
       inner = panelWrap(
         '<div class="landing-card__top">' +
         tabsHtml('register') +
-        '<div class="landing-panel-head">' +
-        '<h2 class="landing-panel-title" id="panel-title-register">Create your account</h2>' +
-        '<p class="landing-panel-lead">Use your <strong>@andrew.cmu.edu</strong> email. Faculty in our directory are recognized automatically; everyone else starts as a student.</p>' +
-        '</div>' +
         backendWarnHtml() +
         '</div>' +
         '<div class="landing-card__body">' +
-        '<form class="landing-form landing-form--scrollable" id="cfAuthForm" novalidate>' +
+        '<form class="landing-form" id="cfAuthForm" novalidate>' +
         formErrorHtml() +
         '<div class="landing-form-fields">' +
         '<div class="landing-field-group">' +
@@ -451,7 +483,7 @@
         '</div>' +
         backendWarnHtml() +
         '</div>' +
-        '<div class="landing-card__body">' +
+        '<div class="landing-card__body" id="cfForgotBody">' +
         '<form class="landing-form" id="cfAuthForm" novalidate>' +
         formErrorHtml() +
         emailField('cfForgotEmail', 'Andrew email') +
@@ -585,16 +617,27 @@
       return;
     }
     setLoading(true, 'Sign in →');
-    const r = await apiLogin({ email, password });
+    const r = await apiLogin({ email: normalizeCmuEmailLocal(email) || email, password });
     setLoading(false, 'Sign in →');
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Email or password is incorrect.';
-      if (r.status === 401) {
+      if (r.data && r.data.error === 'no_password_set') {
+        setFormError(msg);
+        state.view = 'register';
+        renderPanel({ focus: false });
+      } else if (r.status === 401) {
         setFieldMsg('cfLoginPass', 'cfLoginPassMsg', msg, 'error');
       } else {
         setFormError(msg);
       }
       updateSubmitState('signin');
+      return;
+    }
+    if (r.data && r.data.auth_token) saveAuthToken(r.data.auth_token);
+    const me = await apiGetMe();
+    if (!me.ok) {
+      clearAuthToken();
+      setFormError('Sign-in succeeded but could not start a session. Try again.');
       return;
     }
     goToApp();
@@ -615,7 +658,7 @@
     if (!validatePasswordMatch('cfRegPass', 'cfRegPass2', 'cfRegPass2Msg')) return;
     setLoading(true, 'Create account →');
     const r = await apiRegister({
-      email,
+      email: normalizeCmuEmailLocal(email) || email,
       password,
       confirm_password: confirm,
       name: name || undefined,
@@ -629,6 +672,15 @@
         setFormError(msg);
       }
       updateSubmitState('register');
+      return;
+    }
+    if (r.data && r.data.auth_token) saveAuthToken(r.data.auth_token);
+    const me = await apiGetMe();
+    if (!me.ok) {
+      clearAuthToken();
+      setFormError('Account created but sign-in could not be verified. Try signing in.');
+      state.view = 'signin';
+      renderPanel({ focus: false });
       return;
     }
     goToApp();
@@ -692,7 +744,7 @@
     const email = (document.getElementById('cfForgotEmail')?.value || '').trim();
     if (!validateAndrewField('cfForgotEmail', 'cfForgotEmailMsg')) return;
     setLoading(true, 'Send reset link →');
-    const r = await apiForgotPassword(email);
+    const r = await apiForgotPassword(normalizeCmuEmailLocal(email) || email);
     setLoading(false, 'Send reset link →');
     if (!r.ok) {
       if (r.status === 503) {
@@ -713,31 +765,23 @@
       updateSubmitState('forgot');
       return;
     }
-    const box = document.getElementById('cfResetLinkBox');
-    if (box && r.data && r.data.reset_token) {
-      const url =
-        location.origin +
-        location.pathname +
-        '?reset=' +
-        encodeURIComponent(r.data.reset_token) +
-        '&email=' +
-        encodeURIComponent(r.data.email);
-      box.hidden = false;
-      box.innerHTML =
-        '<p class="landing-reset-msg">' +
-        esc(r.data.message || 'Use this link to reset your password:') +
-        '</p>' +
-        '<a class="landing-reset-link" href="' +
-        esc(url) +
-        '">Reset my password →</a>';
-      state.resetToken = r.data.reset_token;
-      state.resetEmail = r.data.email;
-    } else if (box) {
-      box.hidden = false;
-      box.innerHTML =
-        '<p class="landing-reset-msg">' +
-        esc(r.data.message || 'If that email is registered, check for a reset link.') +
-        '</p>';
+    const msg = (r.data && r.data.message) || 'If an account exists for that email, a reset link has been sent.';
+    const body = document.getElementById('cfForgotBody');
+    if (body) {
+      let extra = '';
+      if (r.data && r.data.reset_url) {
+        extra = '<a class="landing-reset-link" href="' + esc(r.data.reset_url) + '">Reset my password →</a>';
+        state.resetToken = r.data.reset_token || '';
+      } else if (r.data && r.data.reset_token) {
+        const url =
+          location.origin +
+          location.pathname.replace(/[^/]+$/, '') +
+          'index.html?token=' +
+          encodeURIComponent(r.data.reset_token);
+        extra = '<a class="landing-reset-link" href="' + esc(url) + '">Reset my password →</a>';
+        state.resetToken = r.data.reset_token;
+      }
+      body.innerHTML = '<p class="landing-reset-msg">' + esc(msg) + '</p>' + extra;
     }
   }
 
@@ -753,10 +797,10 @@
     if (!validatePasswordMatch('cfResetPass', 'cfResetPass2', 'cfResetPass2Msg')) return;
     setLoading(true, 'Update password →');
     // Recovery via Google: the user is already authenticated, so set the
-    // password directly. Legacy email-link path still uses the token.
+    // password directly. The email-link path uses the one-time token.
     const r = state.recovered
       ? await apiSetPassword(password)
-      : await apiResetPassword({ email: state.resetEmail, token: state.resetToken, password });
+      : await apiResetPassword({ token: state.resetToken, password });
     setLoading(false, 'Update password →');
     if (!r.ok) {
       setFormError((r.data && r.data.message) || 'Reset failed.');
@@ -796,11 +840,9 @@
     }
 
     const params = new URLSearchParams(location.search);
-    const resetTok = params.get('reset') || '';
-    const resetEmail = params.get('email') || '';
-    if (resetTok && resetEmail) {
+    const resetTok = params.get('token') || params.get('reset') || '';
+    if (resetTok) {
       state.resetToken = resetTok;
-      state.resetEmail = resetEmail;
       state.view = 'reset';
     }
 

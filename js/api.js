@@ -122,7 +122,7 @@ function getBackendUrl() {
     : null;
   const fromMeta = (meta && meta.getAttribute('content') || '').trim();
   if (fromMeta) return fromMeta.replace(/\/$/, '');
-  return 'https://countsfor-backend.onrender.com';
+  return 'https://countsfor-summer-26.onrender.com';
 }
 
 /** True when index.html sets a production backend URL (not demo-only GH Pages). */
@@ -134,6 +134,21 @@ function isBackendConfigured() {
 }
 
 const CF_BACKEND_URL = getBackendUrl();
+
+const CF_AUTH_TOKEN_KEY = 'cf_auth_token';
+
+function getAuthToken() {
+  try { return sessionStorage.getItem(CF_AUTH_TOKEN_KEY) || ''; } catch { return ''; }
+}
+
+function saveAuthToken(token) {
+  if (!token) return;
+  try { sessionStorage.setItem(CF_AUTH_TOKEN_KEY, token); } catch {}
+}
+
+function clearAuthToken() {
+  try { sessionStorage.removeItem(CF_AUTH_TOKEN_KEY); } catch {}
+}
 
 // Public Google OAuth client ID. Set this in index.html via
 // `<meta name="cf-google-client-id" content="…">` so it can ship to the
@@ -158,6 +173,8 @@ async function apiFetch(path, opts = {}) {
     credentials: 'include',
     headers: { 'Accept': 'application/json' },
   };
+  const authToken = getAuthToken();
+  if (authToken) init.headers['Authorization'] = 'Bearer ' + authToken;
   if (opts.body !== undefined) {
     init.headers['Content-Type'] = 'application/json';
     init.body = typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body);
@@ -172,6 +189,7 @@ async function apiFetch(path, opts = {}) {
   if (res.status !== 204) {
     try { data = await res.json(); } catch { data = null; }
   }
+  if (data && data.auth_token) saveAuthToken(data.auth_token);
   return {
     ok: res.ok,
     status: res.status,
@@ -201,7 +219,11 @@ async function apiResetPassword(body) {
 async function apiSignInWithEmail(email, name) {
   return apiFetch('/api/auth/email', { method: 'POST', body: { email, name: name || undefined } });
 }
-async function apiLogout()  { return apiFetch('/api/auth/logout', { method: 'POST' }); }
+async function apiLogout()  {
+  const r = await apiFetch('/api/auth/logout', { method: 'POST' });
+  clearAuthToken();
+  return r;
+}
 async function apiGetMe()   { return apiFetch('/api/me'); }
 async function apiPatchMe(patch) {
   return apiFetch('/api/me', { method: 'PATCH', body: patch });
@@ -213,6 +235,25 @@ async function apiListUsers(query = '') {
 }
 async function apiPatchUser(id, patch) {
   return apiFetch('/api/users/' + encodeURIComponent(id), { method: 'PATCH', body: patch });
+}
+
+async function apiListStaffDirectory() {
+  return apiFetch('/api/directory/entries');
+}
+async function apiAddStaffMember(body) {
+  return apiFetch('/api/directory/entries', { method: 'POST', body });
+}
+async function apiUpdateDirectoryEntry(id, body) {
+  return apiFetch('/api/directory/entries/' + encodeURIComponent(id), { method: 'PATCH', body });
+}
+async function apiUpsertDirectoryByEmail(body) {
+  return apiFetch('/api/directory/entries/by-email', { method: 'PATCH', body });
+}
+async function apiRevokeDirectoryAccess(body) {
+  return apiFetch('/api/directory/entries/revoke', { method: 'POST', body });
+}
+async function apiDeleteDirectoryEntry(id) {
+  return apiFetch('/api/directory/entries/' + encodeURIComponent(id), { method: 'DELETE' });
 }
 
 async function fetchMinorCourses() {
@@ -235,5 +276,13 @@ async function apiUpdateFlag(id, patch)   { return apiFetch('/api/flags/' + enco
 
 // ── Wishlist ─────────────────────────────────────────────────
 async function apiGetWishlist()                 { return apiFetch('/api/wishlist'); }
-async function apiAddWishlist(course_code)      { return apiFetch('/api/wishlist', { method: 'POST', body: { course_code } }); }
+async function apiGetWishlistRoster()           { return apiFetch('/api/wishlist/roster'); }
+async function apiAddWishlist(course_code, note) {
+  const body = { course_code };
+  if (note !== undefined) body.note = note;
+  return apiFetch('/api/wishlist', { method: 'POST', body });
+}
+async function apiUpdateWishlistNote(course_code, note) {
+  return apiFetch('/api/wishlist/' + encodeURIComponent(course_code), { method: 'PATCH', body: { note } });
+}
 async function apiRemoveWishlist(course_code)   { return apiFetch('/api/wishlist/' + encodeURIComponent(course_code), { method: 'DELETE' }); }

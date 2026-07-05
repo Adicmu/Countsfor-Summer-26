@@ -2,6 +2,12 @@
 // CountsFor — Main Application (Progressive Disclosure)
 // ============================================================
 
+const HOME_POPULAR_COURSES = ['15-122', '21-120', '36-200', '67-250', '82-112'];
+const HOME_SEARCH_CHIPS = ['15-122', 'Contextual Thinking', 'Intercultural and Global Inquiry', 'Probability'];
+const HOME_RECENT_MAPPINGS = [
+  { courses: '82-101 – 82-142', label: 'Modern Languages → IS GenEd IGI', major: 'IS', path: 'GenEd---GenEd---Foundations---Intercultural and Global Inquiry' },
+];
+
 const App = {
   // State
   courses: [],
@@ -38,14 +44,17 @@ const App = {
   authView: 'signin',           // signin | register | forgot | reset
   resetEmail: '',
   resetToken: '',
+  serverFlags: [],
   async init() {
     this.applyTheme();
 
     const params = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
-    const resetTok = params.get('reset') || '';
-    const resetEmail = params.get('email') || '';
-    if (resetTok && resetEmail) {
-      location.href = `index.html?reset=${encodeURIComponent(resetTok)}&email=${encodeURIComponent(resetEmail)}`;
+    const resetTok = params.get('token') || params.get('reset') || '';
+    if (resetTok) {
+      const qs = params.get('token')
+        ? `token=${encodeURIComponent(resetTok)}`
+        : `reset=${encodeURIComponent(resetTok)}`;
+      location.href = `index.html?${qs}`;
       return;
     }
 
@@ -114,11 +123,13 @@ const App = {
   // The server endpoints are idempotent so re-running this is safe.
   async _syncLocalToServer() {
     if (this.authMode !== 'authed' || !this.authedUser) return;
+    const roleGroup = this.authedUser.role_group
+      || (this.authedUser.role === 'student' ? 'student' : 'faculty');
     const role = this.authedUser.role;
     const synced = loadStore('cf_synced', false);
 
-    // Flags — faculty / admin only
-    if ((role !== 'student') && !synced) {
+    // Flags — faculty / admin only (server assigns role_group; never trust client storage)
+    if (roleGroup === 'faculty' && role !== 'student' && !synced) {
       const flags = this._getFlags();
       for (const f of flags) {
         const r = await apiCreateFlag(f);
@@ -130,31 +141,42 @@ const App = {
     }
 
     // Wishlist — student only
-    if (role === 'student' && !synced) {
-      const list = this._getWishlist();
-      for (const code of list) {
-        await apiAddWishlist(code);  // idempotent
+    if (roleGroup === 'student' && role === 'student' && !synced) {
+      const items = this._getWishlistItems();
+      for (const item of items) {
+        await apiAddWishlist(item.course_code, item.note);
       }
       // Pull the canonical server list back so future renders reflect any
       // additions from another device.
       const r = await apiGetWishlist();
       if (r.ok && Array.isArray(r.data.items)) {
-        this._saveWishlist(r.data.items.map(i => i.course_code));
+        this._saveWishlistItems(r.data.items.map(i => ({
+          course_code: i.course_code,
+          note: i.note || '',
+        })));
       }
+    }
+
+    if (this.authMode === 'authed') {
+      await this._loadServerFlags();
     }
 
     saveStore('cf_synced', true);
   },
 
+  async _loadServerFlags() {
+    if (this.authMode !== 'authed') return;
+    const r = await apiListFlags('limit=200');
+    if (r.ok && Array.isArray(r.data.items)) {
+      this.serverFlags = r.data.items;
+    }
+  },
+
   _needsOnboarding(u) {
     if (!u || !u.role) return true;
     if (!u.profile_completed) return true;
-    // Recover rows that were auto-marked complete without program data.
-    if (u.role === 'student' && !u.primary_program) return true;
-    if (u.role === 'professor' && !u.primary_program) return true;
-    if (u.role === 'advisor' && !u.advisor_scope) return true;
-    if ((u.role === 'area_head' || u.role === 'associate_area_head') && !u.primary_program) return true;
-    if (u.role === 'admin' && !u.primary_program) return true;
+    if (getRoleGroup(u) === 'student' && !u.primary_program) return true;
+    if (getRoleGroup(u) !== 'student' && (!u.department || !u.primary_program)) return true;
     return false;
   },
 
@@ -168,16 +190,21 @@ const App = {
     if (!u) { this.profile = null; return; }
     const scope = u.advisor_scope || null;
     let primary = u.primary_program || null;
-    let secondary = u.minor_code || null;
+    let secondary = null;
+    let secondaries = Array.isArray(u.minor_codes) ? u.minor_codes.filter(Boolean) : [];
+    if (!secondaries.length && u.minor_code) secondaries = [u.minor_code];
+    secondary = secondaries[0] || null;
     // Advisor-minor scope stores the minor code in `primary` (per profile.js).
     if (u.role === 'advisor' && scope === 'minor' && u.minor_code) {
       primary = u.minor_code;
       secondary = null;
+      secondaries = [];
     }
     this.profile = {
       role: u.role,
       primary,
       secondary,
+      secondaries,
       scope,
     };
     // Server is source of truth in authed mode — keep localStorage aligned.
@@ -249,12 +276,13 @@ const App = {
   // ══════════════════════════════════════════════════════════
 
   _onboardingState: {
-    role: null,         // precise role (area_head vs associate_area_head distinct)
-    roleGroup: null,    // 'student' | 'faculty' — top-level toggle
-    facultyGroup: null, // 'professor' | 'area_lead' | 'advisor' — under faculty
-    scope: null,        // advisor scope: 'major'|'minor'|'arts_sciences'|'all_programs'
+    role: null,
+    roleGroup: null,
+    facultyGroup: null,
+    scope: null,
     primary: null,
     secondary: null,
+    secondaries: [],
     isEdit: false,
   },
 
@@ -272,7 +300,8 @@ const App = {
       facultyGroup: null,
       scope:        null,
       primary:      keepStudent ? p.primary : null,
-      secondary:    keepStudent ? p.secondary : null,
+      secondary:    keepStudent ? (getProfileMinors(p)[0] || null) : null,
+      secondaries:  keepStudent ? getProfileMinors(p) : [],
       isEdit: !!isEdit,
     };
     this._renderOnboardingScreen();
@@ -293,7 +322,8 @@ const App = {
     const candidate = {
       role: s.role,
       primary: s.primary,
-      secondary: s.roleGroup === 'student' ? s.secondary : null,
+      secondary: s.secondaries[0] || null,
+      secondaries: s.roleGroup === 'student' ? s.secondaries : [],
       scope: s.scope,
     };
     const valid = !!s.role && validateProfile(candidate);
@@ -313,16 +343,23 @@ const App = {
       asOptionHtml = `<button class="ob-pill ob-pill-wide ${isASSelected ? 'selected' : ''}" onclick="App._obPickMajor('AS')">Arts &amp; Sciences<span class="ob-pill-sub">Cross-program grouping</span></button>`;
     }
 
-    // Minor picker — same select used by student and advisor-minor scope
-    const minorOptions = MINOR_LIST.map(m => {
-      // Only disable matching minor for students (collision rule).
-      const disabled = (s.roleGroup === 'student' && MAJOR_TO_MINOR_CODE[s.primary] === m.code) ? 'disabled' : '';
-      const value = s.roleGroup === 'student' ? s.secondary : s.primary;
-      const sel = value === m.code ? 'selected' : '';
-      return `<option value="${m.code}" ${disabled} ${sel}>${esc(m.label)}</option>`;
-    }).join('');
+    // Minor(s) — multi-add for students; single select for advisor-minor scope
+    const studentMinors = s.secondaries || [];
+    const minorPickOptions = MINOR_LIST.filter(m => {
+      if (s.roleGroup !== 'student') return true;
+      if (MAJOR_TO_MINOR_CODE[s.primary] === m.code) return false;
+      return !studentMinors.includes(m.code);
+    }).map(m => `<option value="${m.code}">${esc(m.label)}</option>`).join('');
 
-    const minorOnChange = 'App._obPickMinor(this.value)';
+    const minorChips = studentMinors.map(mc => `
+      <span class="ob-minor-chip">${esc(getMinorLabel(mc))}
+        <button type="button" class="ob-minor-chip-x" aria-label="Remove minor" onclick="App._obRemoveMinor('${mc}')">×</button>
+      </span>`).join('');
+
+    const advisorMinorOptions = MINOR_LIST.map(m => {
+      const sel = s.primary === m.code ? 'selected' : '';
+      return `<option value="${m.code}" ${sel}>${esc(m.label)}</option>`;
+    }).join('');
 
     const majorLabel = 'MAJORING IN';
 
@@ -344,13 +381,26 @@ const App = {
         </div>
       ` : ''}
 
-      ${showMinorSelect ? `
+      ${showMinorSelect && s.roleGroup === 'student' ? `
         <div class="ob-section">
-          <div class="ob-section-label">${s.roleGroup === 'student' ? 'WITH A MINOR IN <span class="ob-optional">— optional</span>' : 'WHICH MINOR'}</div>
+          <div class="ob-section-label">MINOR(S) <span class="ob-optional">— optional</span></div>
+          ${minorChips ? `<div class="ob-minor-chips">${minorChips}</div>` : ''}
+          <div class="ob-select-wrap ob-minor-add-row">
+            <select class="ob-select" id="obMinorPick" onchange="App._obAddMinor(this.value); this.value='';">
+              <option value="">Add a minor…</option>
+              ${minorPickOptions}
+            </select>
+          </div>
+        </div>
+      ` : ''}
+
+      ${showMinorSelect && s.roleGroup !== 'student' ? `
+        <div class="ob-section">
+          <div class="ob-section-label">WHICH MINOR</div>
           <div class="ob-select-wrap">
-            <select class="ob-select" onchange="${minorOnChange}">
-              <option value="" ${(s.roleGroup === 'student' ? !s.secondary : !s.primary) ? 'selected' : ''}>— ${s.roleGroup === 'student' ? 'No minor' : 'Choose a minor'} —</option>
-              ${minorOptions}
+            <select class="ob-select" onchange="App._obPickMinor(this.value)">
+              <option value="" ${!s.primary ? 'selected' : ''}>— Choose a minor —</option>
+              ${advisorMinorOptions}
             </select>
           </div>
         </div>
@@ -392,6 +442,7 @@ const App = {
     if (group !== prev) {
       s.primary = null;
       s.secondary = null;
+      s.secondaries = [];
     }
     this._renderOnboardingScreen();
   },
@@ -403,6 +454,7 @@ const App = {
     if (group !== prev) {
       s.primary = null;
       s.secondary = null;
+      s.secondaries = [];
       s.scope = null;
       // Set the precise role for groups that don't need a sub-pick.
       if (group === 'professor')      s.role = 'professor';
@@ -421,19 +473,38 @@ const App = {
   _obPickScope(scope) {
     const s = this._onboardingState;
     s.scope = scope;
-    // Reset target since the picker shape changed.
     s.primary = null;
     s.secondary = null;
+    s.secondaries = [];
     this._renderOnboardingScreen();
   },
 
   _obPickMajor(program) {
     const s = this._onboardingState;
     s.primary = program;
-    // Drop colliding minor for students.
-    if (s.roleGroup === 'student' && s.secondary && MAJOR_TO_MINOR_CODE[s.primary] === s.secondary) {
-      s.secondary = null;
+    if (s.roleGroup === 'student') {
+      const blocked = MAJOR_TO_MINOR_CODE[s.primary];
+      s.secondaries = (s.secondaries || []).filter(mc => mc !== blocked);
+      s.secondary = s.secondaries[0] || null;
     }
+    this._renderOnboardingScreen();
+  },
+
+  _obAddMinor(code) {
+    const s = this._onboardingState;
+    if (!code || s.roleGroup !== 'student') return;
+    if (MAJOR_TO_MINOR_CODE[s.primary] === code) return;
+    s.secondaries = s.secondaries || [];
+    if (s.secondaries.includes(code)) return;
+    s.secondaries.push(code);
+    s.secondary = s.secondaries[0] || null;
+    this._renderOnboardingScreen();
+  },
+
+  _obRemoveMinor(code) {
+    const s = this._onboardingState;
+    s.secondaries = (s.secondaries || []).filter(mc => mc !== code);
+    s.secondary = s.secondaries[0] || null;
     this._renderOnboardingScreen();
   },
 
@@ -451,10 +522,12 @@ const App = {
 
   async _finishOnboarding() {
     const s = this._onboardingState;
+    const minors = s.roleGroup === 'student' ? (s.secondaries || []) : [];
     const profile = {
       role:      s.role,
       primary:   s.primary,
-      secondary: s.roleGroup === 'student' ? s.secondary : null,
+      secondary: minors[0] || null,
+      secondaries: minors,
       scope:     s.role === 'advisor' ? s.scope : null,
     };
     if (!validateProfile(profile)) {
@@ -478,7 +551,8 @@ const App = {
         serverPatch.minor_code = null;
       } else if (profile.role === 'student') {
         serverPatch.primary_program = profile.primary;
-        serverPatch.minor_code = profile.secondary;
+        serverPatch.minor_codes = getProfileMinors(profile);
+        serverPatch.minor_code = null;
         serverPatch.advisor_scope = null;
       } else {
         serverPatch.primary_program = profile.primary;
@@ -798,17 +872,15 @@ const App = {
           <div class="auth-panel-head">
             <button type="button" class="auth-back" onclick="App._switchAuthView('signin')">← Back to sign in</button>
             <h2 class="auth-panel-title">Forgot password</h2>
-            <p class="auth-panel-lead">Enter your <strong>@andrew.cmu.edu</strong> email and we'll send you a reset link.</p>
           </div>
           ${backendWarn}
         </div>
-        <div class="auth-form-body">
+        <div class="auth-form-body" id="cfForgotBody">
           <form class="auth-form" onsubmit="App._onForgotPassword(event)">
             ${formError}
             ${this._authEmailField('cfForgotEmail', 'Andrew email')}
             <button type="submit" class="auth-submit" id="cfAuthSubmit" disabled>Send reset link →</button>
           </form>
-          <div id="cfResetLinkBox" class="auth-reset-box" hidden></div>
         </div>`;
     } else if (v === 'reset') {
       panel = `
@@ -866,11 +938,15 @@ const App = {
       return;
     }
     this._setAuthLoading(true, 'Sign in →');
-    const r = await apiLogin({ email, password });
+    const normalizedEmail = (typeof normalizeCmuEmail === 'function' ? normalizeCmuEmail(email) : null) || email;
+    const r = await apiLogin({ email: normalizedEmail, password });
     this._setAuthLoading(false, 'Sign in →');
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Email or password is incorrect.';
-      if (r.status === 401) {
+      if (r.data && r.data.error === 'no_password_set') {
+        this._setAuthFormError(msg);
+        this._switchAuthView('register');
+      } else if (r.status === 401) {
         this._setFieldMsg('cfLoginPass', 'cfLoginPassMsg', msg, 'error');
       } else {
         this._setAuthFormError(msg);
@@ -895,7 +971,8 @@ const App = {
     }
     if (!this._validatePasswordMatch('cfRegPass', 'cfRegPass2', 'cfRegPass2Msg')) return;
     this._setAuthLoading(true, 'Create account →');
-    const r = await apiRegister({ email, password, confirm_password: confirm, name: name || undefined });
+    const normalizedEmail = (typeof normalizeCmuEmail === 'function' ? normalizeCmuEmail(email) : null) || email;
+    const r = await apiRegister({ email: normalizedEmail, password, confirm_password: confirm, name: name || undefined });
     this._setAuthLoading(false, 'Create account →');
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Registration failed.';
@@ -916,25 +993,28 @@ const App = {
     const email = (document.getElementById('cfForgotEmail')?.value || '').trim();
     if (!this._validateAndrewField('cfForgotEmail', 'cfForgotEmailMsg')) return;
     this._setAuthLoading(true, 'Send reset link →');
-    const r = await apiForgotPassword(email);
+    const normalizedEmail = (typeof normalizeCmuEmail === 'function' ? normalizeCmuEmail(email) : null) || email;
+    const r = await apiForgotPassword(normalizedEmail);
     this._setAuthLoading(false, 'Send reset link →');
     if (!r.ok) {
       this._setAuthFormError((r.data && r.data.message) || 'Request failed.');
       this._updateAuthSubmitState('forgot');
       return;
     }
-    const box = document.getElementById('cfResetLinkBox');
-    if (box && r.data && r.data.reset_token) {
-      const url = `${location.origin}${location.pathname}?reset=${encodeURIComponent(r.data.reset_token)}&email=${encodeURIComponent(r.data.email)}`;
-      box.hidden = false;
-      box.innerHTML = `
-        <p class="auth-reset-msg">${esc(r.data.message || 'Use this link to reset your password:')}</p>
-        <a class="auth-reset-link" href="${esc(url)}">Reset my password →</a>`;
-      this.resetToken = r.data.reset_token;
-      this.resetEmail = r.data.email;
-    } else if (box) {
-      box.hidden = false;
-      box.innerHTML = `<p class="auth-reset-msg">${esc(r.data.message || 'If that email is registered, check for a reset link.')}</p>`;
+    const msg = (r.data && r.data.message) || 'If an account exists for that email, a reset link has been sent.';
+    const body = document.getElementById('cfForgotBody');
+    if (body) {
+      let extra = '';
+      if (r.data && r.data.reset_token) {
+        const url = `${location.origin}${location.pathname}?reset=${encodeURIComponent(r.data.reset_token)}&email=${encodeURIComponent(r.data.email || email)}`;
+        extra = `<a class="auth-reset-link" href="${esc(url)}">Reset my password →</a>`;
+        this.resetToken = r.data.reset_token;
+        this.resetEmail = r.data.email || email;
+      } else if (r.data && r.data.reset_url) {
+        extra = `<a class="auth-reset-link" href="${esc(r.data.reset_url)}">Reset my password →</a>`;
+        this.resetToken = r.data.reset_token || '';
+      }
+      body.innerHTML = `<p class="auth-reset-msg">${esc(msg)}</p>${extra}`;
     }
   },
 
@@ -973,6 +1053,7 @@ const App = {
   _afterSignIn(user) {
     this.authedUser = user;
     this.authMode = 'authed';
+    // Server is source of truth for role / role_group — UI branches via isFaculty(profile).
     if (this._needsOnboarding(user)) {
       clearProfile();
       this.profile = null;
@@ -1045,6 +1126,8 @@ const App = {
     }
 
     await apiLogout();
+    if (typeof clearAuthToken === 'function') clearAuthToken();
+    try { sessionStorage.removeItem('cf_auth_token'); } catch {}
     clearProfile();
     // Clear per-user local caches so a different account on the same browser
     // doesn't inherit them. The cf_synced flag must reset for next sign-in.
@@ -1106,15 +1189,26 @@ const App = {
     const primaryLower = (p.primary || '').toLowerCase();
     const secondaryLower = (p.secondary || '').toLowerCase();
 
-    // Student with minor: two-segment badge (major + minor)
-    if (p.role === 'student' && p.secondary) {
-      const cls = 'rb-' + primaryLower + '-' + secondaryLower;
-      const minorLabel = getMinorLabel(p.secondary);
-      return `
+    // Student with one or more minors
+    const studentMinors = getProfileMinors(p);
+    if (p.role === 'student' && studentMinors.length) {
+      const cls = 'rb-' + primaryLower + (studentMinors.length === 1 ? '-' + studentMinors[0] : '-multi');
+      if (studentMinors.length === 1) {
+        const minorLabel = getMinorLabel(studentMinors[0]);
+        return `
         <button class="role-badge rb-${primaryLower} ${cls}" onclick="App.editRole()" title="Click to change role">
           <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">major</span></span>
           <span class="rb-divider"></span>
           <span class="rb-segment rb-secondary">${esc(minorLabel)} <span class="rb-suffix">minor</span></span>
+          <span class="rb-edit-hint">Edit</span>
+        </button>`;
+      }
+      const minorLabels = studentMinors.map(mc => esc(getMinorLabel(mc))).join('<span class="rb-minor-sep"> · </span>');
+      return `
+        <button class="role-badge rb-${primaryLower} ${cls}" onclick="App.editRole()" title="Click to change role">
+          <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">major</span></span>
+          <span class="rb-divider"></span>
+          <span class="rb-segment rb-secondary rb-secondary-compact">${minorLabels} <span class="rb-suffix">minors</span></span>
           <span class="rb-edit-hint">Edit</span>
         </button>`;
     }
@@ -1140,11 +1234,12 @@ const App = {
         </button>`;
     }
 
-    // Faculty-with-assigned-major (professor/area_head/associate_area_head)
-    if (isFaculty(p) && p.primary) {
+    // Faculty-with-assigned-program (not "major")
+    if (isFaculty(p) && p.primary && getRoleGroup(p) !== 'student') {
+      const progLabel = getProgramLabel(p.primary) || p.primary;
       return `
         <button class="role-badge rb-${primaryLower}" onclick="App.editRole()" title="Click to change role">
-          <span class="rb-segment rb-primary">${PROGRAM_LABEL[p.primary]} <span class="rb-suffix">${esc(roleLabel)}</span></span>
+          <span class="rb-segment rb-primary">${esc(progLabel)} <span class="rb-suffix">${esc(roleLabel)}</span></span>
           <span class="rb-edit-hint">Edit</span>
         </button>`;
     }
@@ -1235,28 +1330,35 @@ const App = {
     document.getElementById('app').innerHTML = `
       ${this.isGuest ? this._guestBannerHtml() : ''}
       <nav class="navbar">
-        <div class="navbar-brand" onclick="App.reset()"><img class="navbar-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" /><span class="navbar-wordmark">CountsFor</span> <span class="subtitle">CMU-Q</span></div>
-        ${this._roleBadgeHtml()}
-        ${this._navbarWishlistHtml()}
+        <div class="navbar-left-group">
+          <div class="navbar-brand" onclick="App.reset()"><img class="navbar-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" /><span class="navbar-wordmark">CountsFor</span> <span class="subtitle">CMU-Q</span></div>
+          ${this._roleBadgeHtml()}
+          ${this._navbarWishlistHtml()}
+        </div>
         <div class="navbar-right">
-          <div class="navbar-semester">
-            <label class="sr-only" for="semesterSelect">Semester</label>
-            <select id="semesterSelect" class="semester-select" onchange="App.setSemester(this.value)">
-              ${SEMESTER_OPTIONS.map(s => `<option value="${s.code}" ${this.activeSemester===s.code?'selected':''}>${esc(s.label)}</option>`).join('')}
-            </select>
-          </div>
-          <div class="navbar-location-toggle">
-            <button class="loc-btn ${this.locationFilter==='all'?'active':''}" onclick="App.setLocation('all')">All</button>
-            <button class="loc-btn ${this.locationFilter==='qatar'?'active':''}" onclick="App.setLocation('qatar')">🇶🇦 Qatar</button>
-            <button class="loc-btn ${this.locationFilter==='pittsburgh'?'active':''}" onclick="App.setLocation('pittsburgh')">🇺🇸 Pittsburgh</button>
-          </div>
-          <div class="navbar-modality-toggle">
-            ${MODALITY_OPTIONS.map(m => `<button class="mod-btn ${this.modalityFilter===m.id?'active':''}" onclick="App.setModalityFilter('${m.id}')">${esc(m.label)}</button>`).join('')}
+          <div class="navbar-filters-wrap">
+            <button type="button" class="navbar-filters-toggle" id="filtersToggle" onclick="App.toggleFiltersPopover()" aria-expanded="false" aria-controls="navbarFiltersPanel">Filters ▾</button>
+            <div class="navbar-filters navbar-filters-panel" id="navbarFiltersPanel">
+              <div class="navbar-semester">
+                <label class="sr-only" for="semesterSelect">Semester</label>
+                <select id="semesterSelect" class="semester-select" onchange="App.setSemester(this.value)">
+                  ${SEMESTER_OPTIONS.map(s => `<option value="${s.code}" ${this.activeSemester===s.code?'selected':''}>${esc(s.label)}</option>`).join('')}
+                </select>
+              </div>
+              <div class="navbar-location-toggle">
+                <button class="loc-btn ${this.locationFilter==='all'?'active':''}" onclick="App.setLocation('all')">All</button>
+                <button class="loc-btn ${this.locationFilter==='qatar'?'active':''}" onclick="App.setLocation('qatar')">🇶🇦 Qatar</button>
+                <button class="loc-btn ${this.locationFilter==='pittsburgh'?'active':''}" onclick="App.setLocation('pittsburgh')">🇺🇸 Pittsburgh</button>
+              </div>
+              <div class="navbar-modality-toggle">
+                ${MODALITY_OPTIONS.map(m => `<button class="mod-btn ${this.modalityFilter===m.id?'active':''}" onclick="App.setModalityFilter('${m.id}')">${esc(m.label)}</button>`).join('')}
+              </div>
+            </div>
           </div>
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
-          ${(this.authedUser && (this.authedUser.role === 'admin' || this.authedUser.role === 'area_head' || this.authedUser.role === 'associate_area_head')) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
-          ${(this.authedUser && this.authedUser.role === 'admin') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review submitted course flags">Flag review</button>' : ''}
-          ${(isFaculty(this.profile) && this.authMode === 'authed' && !(this.authedUser && this.authedUser.role === 'admin')) ? '<button class="nav-admin" onclick="App.showMyFlagsView(\'pending\')" title="See the status of course issues you reported">My flags</button>' : ''}
+          ${canManageUsers(this.authedUser) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
+          ${(canFlagCourses(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review and resolve course flags">Flag review</button>' : ''}
+          ${(isFaculty(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showStudentFavorites()" title="View student saved courses and notes">Student favorites</button>' : ''}
           ${this.authMode === 'authed' ? '<button class="nav-signout" onclick="App.signOut()" title="Sign out" aria-label="Sign out">Sign out</button>' : ''}
         </div>
       </nav>
@@ -1272,6 +1374,10 @@ const App = {
           <div class="panel-body" id="leftBody"></div>
         </div>
 
+        <div class="panel-resizer" id="panelResizer" role="separator" aria-orientation="vertical" aria-label="Resize panels — drag left or right" tabindex="0">
+          <span class="panel-resizer-grip" aria-hidden="true"></span>
+        </div>
+
         <div class="panel panel-right ${isSplit && this.mobileLens==='lookup'?'hidden-mobile':''}" id="panelRight">
           <div class="major-tabs" id="majorTabs">
             <div class="major-tabs-scroll">
@@ -1285,8 +1391,106 @@ const App = {
           <div class="panel-body" id="rightBody"></div>
         </div>
       </div>
+      ${(canManageDirectory(this.profile) && this.authMode === 'authed') ? `
+        <button type="button" class="directory-fab" onclick="App.toggleDirectoryPanel()" title="Directory — manage faculty access">📋 Directory</button>
+        <div id="directoryPanelRoot" class="directory-panel-root" hidden></div>
+      ` : ''}
     `;
     this.applyTheme();
+    this._initPanelResizer();
+  },
+
+  _initPanelResizer() {
+    const resizer = document.getElementById('panelResizer');
+    const layout = document.getElementById('mainLayout');
+    if (!resizer || !layout) return;
+
+    const saved = loadStore('cf_split_left_px', null);
+    if (saved && Number(saved) > 0) {
+      layout.style.setProperty('--split-left-width', saved + 'px');
+    }
+    if (resizer._panelResizeBound) return;
+
+    const minPanel = 280;
+    const resizerWidth = 12;
+    let dragging = false;
+
+    const clampSplit = (px) => {
+      const max = layout.getBoundingClientRect().width - minPanel - resizerWidth;
+      return Math.max(minPanel, Math.min(max, px));
+    };
+
+    const applySplit = (px) => {
+      const clamped = clampSplit(px);
+      layout.style.setProperty('--split-left-width', clamped + 'px');
+      return clamped;
+    };
+
+    const onMove = (clientX) => {
+      if (!dragging || this.layoutMode !== 'split') return;
+      const rect = layout.getBoundingClientRect();
+      applySplit(clientX - rect.left);
+    };
+
+    const stopDrag = () => {
+      if (!dragging) return;
+      dragging = false;
+      resizer.classList.remove('is-dragging');
+      document.body.classList.remove('is-resizing-panels');
+      const val = layout.style.getPropertyValue('--split-left-width');
+      const px = parseInt(val, 10);
+      if (px > 0) saveStore('cf_split_left_px', px);
+      document.removeEventListener('pointermove', onPointerMove);
+      document.removeEventListener('pointerup', stopDrag);
+      document.removeEventListener('pointercancel', stopDrag);
+    };
+
+    const onPointerMove = (e) => {
+      if (e.pointerId !== resizer._dragPointerId) return;
+      e.preventDefault();
+      onMove(e.clientX);
+    };
+
+    const startDrag = (e) => {
+      if (this.layoutMode !== 'split' || window.innerWidth <= 860) return;
+      if (e.button !== undefined && e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      dragging = true;
+      resizer._dragPointerId = e.pointerId;
+      resizer.classList.add('is-dragging');
+      document.body.classList.add('is-resizing-panels');
+      onMove(e.clientX);
+      try { resizer.setPointerCapture(e.pointerId); } catch {}
+      document.addEventListener('pointermove', onPointerMove);
+      document.addEventListener('pointerup', stopDrag);
+      document.addEventListener('pointercancel', stopDrag);
+    };
+
+    resizer._panelResizeBound = true;
+
+    resizer.addEventListener('pointerdown', startDrag);
+
+    resizer.addEventListener('keydown', (e) => {
+      if (this.layoutMode !== 'split') return;
+      const step = e.shiftKey ? 48 : 16;
+      const current = parseInt(layout.style.getPropertyValue('--split-left-width'), 10)
+        || Math.round(layout.getBoundingClientRect().width * 0.42);
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        const px = applySplit(current - step);
+        saveStore('cf_split_left_px', px);
+      } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        const px = applySplit(current + step);
+        saveStore('cf_split_left_px', px);
+      }
+    });
+
+    resizer.addEventListener('dblclick', () => {
+      layout.style.removeProperty('--split-left-width');
+      saveStore('cf_split_left_px', null);
+    });
   },
 
   // ── Events ────────────────────────────────────────────────
@@ -1295,8 +1499,11 @@ const App = {
     if (this._globalEventsBound) return;
     this._globalEventsBound = true;
     document.addEventListener('input', (e) => {
+      if (e.target.id === 'homeSearch') {
+        this._setHomeSearchLoading(true);
+        this.handleUnifiedSearch(e.target.value);
+      }
       if (e.target.id === 'courseSearch') this.handleSearch(e.target.value);
-      if (e.target.id === 'categorySearch') this.handleCategorySearch(e.target.value);
       if (e.target.id === 'treeSearchInput') {
         this.treeSearchQuery = e.target.value.trim().toLowerCase();
         this.renderTree();
@@ -1304,18 +1511,29 @@ const App = {
     });
 
     document.addEventListener('keydown', (e) => {
+      if (e.target.id === 'homeSearch') this.handleUnifiedSearchKeydown(e);
       if (e.target.id === 'courseSearch') this.handleSearchKeydown(e);
-      if (e.target.id === 'categorySearch') this.handleCategoryKeydown(e);
     });
 
     document.addEventListener('click', (e) => {
       // Close typeaheads if clicking outside any search bar
-      const insideSearch = e.target.closest('.search-wrapper, .home-search');
+      const insideSearch = e.target.closest('.search-wrapper, .home-hero-search');
       if (!insideSearch) {
         const ta = document.getElementById('typeahead');
         if (ta) ta.classList.remove('visible');
-        const cta = document.getElementById('categoryTypeahead');
-        if (cta) cta.classList.remove('visible');
+        const hta = document.getElementById('homeTypeahead');
+        if (hta) hta.classList.remove('visible');
+      }
+
+      if (!e.target.closest('.home-dock, .home-dock-pill')) {
+        document.querySelectorAll('.home-dock-pill.open').forEach(p => p.classList.remove('open'));
+      }
+
+      if (!e.target.closest('.navbar-filters-wrap')) {
+        const pop = document.getElementById('navbarFiltersPanel');
+        const toggle = document.getElementById('filtersToggle');
+        if (pop) pop.classList.remove('open');
+        if (toggle) toggle.setAttribute('aria-expanded', 'false');
       }
 
       // Per-row action buttons (wishlist / flag) — intercept BEFORE course-row click
@@ -1325,6 +1543,10 @@ const App = {
         e.stopPropagation();
         const action = actionBtn.dataset.action;
         const code = actionBtn.dataset.courseCode;
+        if (action === 'download-req') {
+          this.downloadRequirementExcel(actionBtn.dataset.treeMajor, actionBtn.dataset.treePath);
+          return;
+        }
         if (action === 'wishlist') this.toggleWishlist(code);
         if (action === 'flag')     this.openFlagModal(code);
         return;
@@ -1346,16 +1568,19 @@ const App = {
         if (major && path) this.toggleNode(major, path);
       }
 
-      // Handle tree course click
+      // Handle tree course click (not wishlist note rows — those reuse course codes)
       const treeCourse = e.target.closest('[data-course-code]');
-      if (treeCourse && !e.target.closest('[data-action]')) {
+      if (treeCourse && !e.target.closest('[data-action]') && !e.target.closest('.wl-view')) {
         this.selectCourseFromTree(treeCourse.dataset.courseCode);
       }
     });
 
-    // ESC closes the flag modal
+    // ESC closes modals / overlays
     document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') this.closeFlagModal();
+      if (e.key === 'Escape') {
+        this.closeFlagModal();
+        this.closeDirectoryPanel();
+      }
     });
   },
 
@@ -1406,7 +1631,7 @@ const App = {
 
   filterByLocation(courseOrLeaf) {
     if (!courseOrLeaf) return true;
-    const full = this.courseIndex[courseOrLeaf.course_code || courseOrLeaf.code] || courseOrLeaf;
+    const full = lookupCourse(this.courseIndex, courseOrLeaf.course_code || courseOrLeaf.code) || courseOrLeaf;
     return courseHasMatchingOffering(full, this._filterParams());
   },
 
@@ -1450,6 +1675,7 @@ const App = {
     // Show right panel
     const rightPanel = document.getElementById('panelRight');
     if (rightPanel) rightPanel.style.display = 'flex';
+    this._initPanelResizer();
     // Hide inline explore button in split mode
     const explBtn = document.getElementById('exploreInlineBtn');
     if (explBtn) explBtn.style.display = 'none';
@@ -1712,6 +1938,188 @@ const App = {
     this.enterExplorer(r.major, r.path);
   },
 
+  toggleFiltersPopover() {
+    const panel = document.getElementById('navbarFiltersPanel');
+    const toggle = document.getElementById('filtersToggle');
+    if (!panel || !toggle) return;
+    const open = panel.classList.toggle('open');
+    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  },
+
+  // ── Unified home search (courses + categories) ────────────
+  _unifiedResults: [],
+  _unifiedIdx: -1,
+  _unifiedBrowseMajor: 'CS',
+
+  _isCourseCodeQuery(q) {
+    const t = q.trim();
+    return /^\d{1,2}-?\d{0,4}$/.test(t) || /^\d{2}-\d{3}/.test(t);
+  },
+
+  _setHomeSearchLoading(on) {
+    const sp = document.getElementById('homeSearchSpinner');
+    const wrap = document.querySelector('.home-hero-search');
+    if (sp) sp.hidden = !on;
+    if (wrap) wrap.classList.toggle('is-loading', !!on);
+  },
+
+  handleUnifiedSearch: debounce(function(query) {
+    const ta = document.getElementById('homeTypeahead');
+    if (!ta) return;
+    App._setHomeSearchLoading(false);
+
+    const q = query.trim().toLowerCase();
+    const qNorm = q.replace(/-/g, '');
+    if (q.length < 2) { ta.classList.remove('visible'); return; }
+
+    const codeQuery = App._isCourseCodeQuery(query);
+    let courseResults = App.courses.filter(c => {
+      const code = c.course_code.replace(/-/g, '').toLowerCase();
+      const name = (c.course_name || '').toLowerCase();
+      if (code.includes(qNorm) || name.includes(q)) return true;
+      const dept = getDeptName(c.course_code).toLowerCase();
+      return dept.includes(q);
+    }).filter(c => App.filterByLocation(c));
+
+    if (!codeQuery) {
+      courseResults = courseResults.filter(c => {
+        if (c.course_code.replace(/-/g, '').toLowerCase().includes(qNorm)) return true;
+        if ((c.course_name || '').toLowerCase().includes(q)) return true;
+        return false;
+      });
+    }
+
+    courseResults = courseResults.slice(0, 6);
+    App._searchResults = courseResults;
+
+    const idx = App._buildCategoryIndex();
+    let catResults = idx.filter(entry => {
+      if (entry.leaf.toLowerCase().includes(q)) return true;
+      return entry.parts.some(p => p.toLowerCase().includes(q));
+    });
+    catResults.sort((a, b) => {
+      const aLeaf = a.leaf.toLowerCase().includes(q) ? 0 : 1;
+      const bLeaf = b.leaf.toLowerCase().includes(q) ? 0 : 1;
+      if (aLeaf !== bLeaf) return aLeaf - bLeaf;
+      return b.count - a.count;
+    });
+    catResults = catResults.slice(0, 6);
+    App._categoryResults = catResults;
+
+    const flat = [];
+    courseResults.forEach((c, i) => flat.push({ kind: 'course', idx: i }));
+    catResults.forEach((r, i) => flat.push({ kind: 'category', idx: i }));
+    App._unifiedResults = flat;
+    App._unifiedIdx = -1;
+
+    if (flat.length === 0) {
+      const bm = App._unifiedBrowseMajor || 'CS';
+      ta.innerHTML = '<div class="typeahead-empty">No matches, try the <button type="button" class="typeahead-browse-link" onclick="App.enterExplorer(\'' + bm + '\')">category browser</button></div>';
+    } else {
+      let html = '';
+      if (courseResults.length) {
+        html += '<div class="typeahead-group-label">Courses</div>';
+        html += courseResults.map((c, i) => {
+          return '<div class="typeahead-item" data-unified-idx="' + flat.findIndex(f => f.kind === 'course' && f.idx === i) + '" onclick="App.selectUnifiedResult(' + flat.findIndex(f => f.kind === 'course' && f.idx === i) + ')">' +
+            '<span class="typeahead-code">' + esc(c.course_code) + '</span>' +
+            '<span class="typeahead-name">' + esc(c.course_name) + '</span>' +
+            '<span class="typeahead-units">' + (c.units || '?') + ' u</span>' +
+          '</div>';
+        }).join('');
+      }
+      if (catResults.length) {
+        html += '<div class="typeahead-group-label">Categories</div>';
+        html += catResults.map((r, i) => {
+          const uidx = flat.findIndex(f => f.kind === 'category' && f.idx === i);
+          const breadcrumb = r.parts.length > 1 ? esc(r.parts.slice(0, -1).join(' › ')) : '';
+          return '<div class="typeahead-item" data-unified-idx="' + uidx + '" onclick="App.selectUnifiedResult(' + uidx + ')">' +
+            '<span class="typeahead-cat-major typeahead-cat-major-' + r.major.toLowerCase() + '">' + r.major + '</span>' +
+            '<span class="typeahead-name"><strong>' + esc(r.leaf) + '</strong>' +
+              (breadcrumb ? '<span class="typeahead-cat-crumb"> · ' + breadcrumb + '</span>' : '') +
+            '</span>' +
+            '<span class="typeahead-units">' + r.count + ' ' + (r.count === 1 ? 'course' : 'courses') + '</span>' +
+          '</div>';
+        }).join('');
+      }
+      ta.innerHTML = html;
+    }
+    ta.classList.add('visible');
+  }, 180),
+
+  handleUnifiedSearchKeydown(e) {
+    const ta = document.getElementById('homeTypeahead');
+    if (!ta || !ta.classList.contains('visible')) return;
+    const items = ta.querySelectorAll('.typeahead-item[data-unified-idx]');
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      this._unifiedIdx = Math.min(this._unifiedIdx + 1, items.length - 1);
+      items.forEach((it, i) => it.classList.toggle('focused', i === this._unifiedIdx));
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      this._unifiedIdx = Math.max(this._unifiedIdx - 1, 0);
+      items.forEach((it, i) => it.classList.toggle('focused', i === this._unifiedIdx));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (this._unifiedIdx >= 0 && this._unifiedIdx < this._unifiedResults.length) {
+        this.selectUnifiedResult(this._unifiedIdx);
+      } else if (this._unifiedResults.length > 0) {
+        this.selectUnifiedResult(0);
+      }
+    } else if (e.key === 'Escape') {
+      ta.classList.remove('visible');
+    }
+  },
+
+  selectUnifiedResult(uidx) {
+    const item = this._unifiedResults[uidx];
+    if (!item) return;
+    const ta = document.getElementById('homeTypeahead');
+    if (ta) ta.classList.remove('visible');
+    if (item.kind === 'course') {
+      this.selectSearchResult(item.idx);
+      const input = document.getElementById('homeSearch');
+      const course = this._searchResults[item.idx];
+      if (input && course) input.value = course.course_code;
+    } else {
+      this.selectCategoryResult(item.idx);
+      const input = document.getElementById('homeSearch');
+      const cat = this._categoryResults[item.idx];
+      if (input && cat) input.value = cat.leaf;
+    }
+  },
+
+  runHomeSearchChip(text) {
+    const input = document.getElementById('homeSearch');
+    if (!input) return;
+    input.value = text;
+    input.focus();
+    this._setHomeSearchLoading(true);
+    this.handleUnifiedSearch(text);
+  },
+
+  toggleHomeDock(kind) {
+    const pill = document.querySelector('.home-dock-pill[data-dock="' + kind + '"]');
+    if (!pill) return;
+    const wasOpen = pill.classList.contains('open');
+    document.querySelectorAll('.home-dock-pill.open').forEach(p => p.classList.remove('open'));
+    if (!wasOpen) pill.classList.add('open');
+  },
+
+  _refreshHomeDock() {
+    if (this._homeView !== 'home') return;
+    const slot = document.getElementById('homeDock');
+    if (!slot) return;
+    const html = this._renderHomeDock();
+    if (!html) {
+      slot.innerHTML = '';
+      slot.classList.remove('has-dock');
+    } else {
+      slot.innerHTML = html;
+      slot.classList.add('has-dock');
+    }
+  },
+
   renderLeftEmpty() {
     const el = document.getElementById('leftBody');
     if (!el) return;
@@ -1719,11 +2127,11 @@ const App = {
     if (explBtn) explBtn.style.display = 'none';
     this._homeView = 'home';
     el.innerHTML = this._renderHome();
-    // Faculty home shows a "My flags" summary — fetch counts async and swap
-    // the placeholder in place. Admins use the dedicated Flag-review surface.
-    if (isFaculty(this.profile) && this.authMode === 'authed'
-        && !(this.authedUser && this.authedUser.role === 'admin')) {
+    // Faculty home — flag queue summary; students — flagged courses read-only
+    if (canFlagCourses(this.profile) && this.authMode === 'authed') {
       this._loadMyFlagsSummary();
+    } else if (isStudent(this.profile) && this.authMode === 'authed') {
+      this._loadStudentFlagsSummary();
     }
   },
 
@@ -1733,7 +2141,6 @@ const App = {
     const minorMajor = getMinorAsMajorCode(this.profile);
     const minorLabel = (this.profile && this.profile.secondary) ? getMinorLabel(this.profile.secondary) : null;
 
-    // Lead sentence per spec § 4.3
     let lead;
     if (vm === 'focused-dual') {
       lead = `See what it counts for in your ${p} major and ${esc(minorLabel)} minor.`;
@@ -1747,97 +2154,191 @@ const App = {
       lead = `See what it counts for across CS, IS, BA, and BS.`;
     }
 
-    // Browse-button subtitle
     let browseSub;
-    if (vm === 'focused-dual') browseSub = `${p} + ${minorMajor} requirement tree — find courses by slot`;
+    if (vm === 'focused-dual') browseSub = `${p} + ${minorMajor} requirement tree`;
     else if (vm === 'focused-single') browseSub = `${p} requirement tree`;
     else browseSub = `CS · IS · BA · BS requirement tree`;
 
-    // The major to open when Browse is clicked
     const browseMajor = (vm === 'cross-program') ? this.activeMajor : (p || this.activeMajor);
+    this._unifiedBrowseMajor = browseMajor;
 
-    // Double-counter banner (focused-dual only)
-    let dcBannerHtml = '';
-    if (vm === 'focused-dual') {
-      const dcCount = this.courses.filter(c => c._doubleCounter).length;
-      dcBannerHtml = `
-        <div class="home-insight" onclick="App.showDoubleCounterList()">
-          <div class="home-insight-num">${dcCount}</div>
-          <div class="home-insight-col">
-            <div class="home-insight-label">${p} MAJOR + ${minorMajor} MINOR</div>
-            <div class="home-insight-text">courses count for both — pick these first</div>
-          </div>
-          <span class="home-insight-cta">See all →</span>
-        </div>
-      `;
-    }
+    const chipsHtml = HOME_SEARCH_CHIPS.map(c =>
+      `<button type="button" class="home-chip" onclick="App.runHomeSearchChip(${JSON.stringify(c)})">${esc(c)}</button>`
+    ).join('');
 
-    // Multi-program lane (cross-program only) replaces the dc banner
-    let mpBannerHtml = '';
-    if (vm === 'cross-program') {
-      const mpCount = this.courses.filter(c => (c._programCount || 0) >= 3).length;
-      const majorForBrowse = this.activeMajor || 'CS';
-      mpBannerHtml = `
-        <div class="home-insight home-insight-mp" onclick="App.enterExplorer('${majorForBrowse}')">
-          <div class="home-insight-num">${mpCount}</div>
-          <div class="home-insight-col">
-            <div class="home-insight-label">CROSS-PROGRAM</div>
-            <div class="home-insight-text">courses count for 3+ programs</div>
-          </div>
-          <span class="home-insight-cta">Browse →</span>
-        </div>
-      `;
-    }
+    const compareBtn = vm === 'cross-program'
+      ? `<button type="button" class="home-ghost-btn" onclick="App.enterExplorer('${browseMajor}')"><span>Compare majors</span><span aria-hidden="true">→</span></button>`
+      : '';
+
+    const dockHtml = this._renderHomeDock();
+    const quickStartHtml = this._renderQuickStart(browseMajor);
 
     return `
-      <div class="home">
-        <h1 class="home-hero">Find a course.</h1>
-        <p class="home-lead">${lead}</p>
+      <div class="home-page">
+        <div class="home-plaid" aria-hidden="true"></div>
+        <div class="home-main">
+          <div class="home-main-spacer" aria-hidden="true"></div>
+          <section class="home-hero" aria-label="Course search">
+            <header class="home-hero-head">
+              <h1 class="home-hero-title">Find a course.</h1>
+              <span class="home-hero-accent" aria-hidden="true"></span>
+              <p class="home-hero-lead">${lead}</p>
+            </header>
 
-        <div class="home-search-grid">
-          <div class="home-search-cell">
-            <label class="home-search-label" for="courseSearch">Search by course</label>
-            <div class="home-search">
-              <span class="home-search-icon">🔍</span>
-              <input type="text" class="home-search-input" id="courseSearch" placeholder='Try "15-122" or "Probability"' autocomplete="off" />
-              <div class="typeahead" id="typeahead"></div>
+            <div class="home-hero-search">
+              <span class="home-search-icon" aria-hidden="true">🔍</span>
+              <input type="search" class="home-search-input" id="homeSearch" placeholder="Search a course number, title, or category, e.g. 15-122 or Probability" autocomplete="off" enterkeyhint="search" />
+              <span class="home-search-spinner" id="homeSearchSpinner" hidden aria-hidden="true"></span>
+              <div class="typeahead home-typeahead" id="homeTypeahead"></div>
             </div>
-          </div>
 
-          <div class="home-search-cell">
-            <label class="home-search-label" for="categorySearch">Search by category</label>
-            <div class="home-search">
-              <span class="home-search-icon">🔍</span>
-              <input type="text" class="home-search-input" id="categorySearch" placeholder='Try "Contextual Thinking" or "Arts"' autocomplete="off" />
-              <div class="typeahead" id="categoryTypeahead"></div>
+            <div class="home-chips" aria-label="Example searches">${chipsHtml}</div>
+
+            <div class="home-ghost-actions">
+              <button type="button" class="home-ghost-btn" onclick="App.enterExplorer('${browseMajor}')" title="Browse ${browseSub}">
+                <span>Browse ${browseSub}</span><span aria-hidden="true">→</span>
+              </button>
+              ${compareBtn}
             </div>
-          </div>
 
-          <div class="home-search-cell">
-            <span class="home-search-label">Browse by major</span>
-            <button class="home-browse" onclick="App.enterExplorer('${browseMajor}')">
-              <span class="home-browse-icon">🗂</span>
-              <span class="home-browse-text">
-                <span class="home-browse-title">Browse requirements</span>
-                <span class="home-browse-sub">${browseSub}</span>
-              </span>
-              <span class="home-browse-arrow">→</span>
-            </button>
-          </div>
+            <div class="home-dock-slot ${dockHtml ? 'has-dock' : ''}" id="homeDock">${dockHtml}</div>
+          </section>
+
+          ${quickStartHtml}
+
+          <div class="home-main-spacer home-main-spacer-bottom" aria-hidden="true"></div>
         </div>
 
-        ${this._renderWishlistEntry()}
-        ${this._renderMyFlagsPanel()}
-        ${dcBannerHtml}${mpBannerHtml}
-
-        <footer class="home-footer">
-          <a class="home-footer-cmuq" href="https://www.qatar.cmu.edu/" target="_blank" rel="noopener" aria-label="Carnegie Mellon University Qatar">
-            <img src="assets/img/cmuq-wordmark.png" alt="Carnegie Mellon University Qatar" />
+        <footer class="home-foot">
+          <a class="home-foot-logo" href="https://www.qatar.cmu.edu/" target="_blank" rel="noopener" aria-label="Carnegie Mellon University Qatar">
+            <img src="assets/img/cmuq-wordmark.png" alt="" />
           </a>
-          <span class="home-footer-note">A curriculum explorer for the CMU-Q community.</span>
+          <span class="home-foot-note">A curriculum explorer for the CMU-Q community.</span>
         </footer>
       </div>
     `;
+  },
+
+  _renderHomeDock() {
+    const pills = [];
+
+    if (isStudent(this.profile)) {
+      const saved = this._getWishlistItems();
+      if (saved.length) {
+        const items = saved.map(i => {
+          const c = lookupCourse(this.courseIndex, i.course_code);
+          const name = c ? c.course_name : '';
+          return `<button type="button" class="home-dock-item" onclick="App.selectCourseFromTree('${esc(i.course_code)}')">${esc(i.course_code)}${name ? ' · ' + esc(name) : ''}</button>`;
+        }).join('');
+        pills.push(`
+          <div class="home-dock-pill" data-dock="saved">
+            <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('saved')">
+              ${this._iconBookmarkFilled()} <span>Saved ${saved.length}</span>
+            </button>
+            <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showWishlistView()">Open saved list →</button></div>
+          </div>`);
+      }
+
+      if (this.authMode === 'authed') {
+        const st = this._studentFlagsState;
+        if (st && st.loaded && (st.items || []).length) {
+          const flags = st.items;
+          const items = flags.map(f =>
+            `<button type="button" class="home-dock-item" onclick="App.showStudentFlagsView()">${esc(f.course_code)}</button>`
+          ).join('');
+          pills.push(`
+            <div class="home-dock-pill" data-dock="flagged">
+              <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('flagged')">
+                <span aria-hidden="true">⚑</span> <span>Flagged ${flags.length}</span>
+              </button>
+              <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showStudentFlagsView()">View all →</button></div>
+            </div>`);
+        }
+      }
+    }
+
+    if (canFlagCourses(this.profile) && this.authMode === 'authed') {
+      const st = this._myFlagsState;
+      if (st && st.loaded && !st.error && st.counts) {
+        const pending = st.counts.pending || 0;
+        if (pending > 0) {
+          const items = (st.items || []).filter(f => f.status === 'pending').slice(0, 8).map(f =>
+            `<button type="button" class="home-dock-item" onclick="App.showFlagReview()">${esc(f.course_code)}</button>`
+          ).join('');
+          pills.push(`
+            <div class="home-dock-pill" data-dock="flags">
+              <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('flags')">
+                <span aria-hidden="true">⚑</span> <span>Flags ${pending}</span>
+              </button>
+              <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showFlagReview()">Review queue →</button></div>
+            </div>`);
+        }
+      }
+    }
+
+    if (!pills.length) return '';
+    return `<nav class="home-dock" aria-label="Saved and flagged">${pills.join('')}</nav>`;
+  },
+
+  _getIsGenedCategories() {
+    const idx = this._buildCategoryIndex();
+    const seen = new Set();
+    const out = [];
+    for (const e of idx) {
+      if (e.major !== 'IS' || !e.path.includes('GenEd')) continue;
+      const key = e.path;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      if (e.parts.length >= 4) out.push(e);
+    }
+    out.sort((a, b) => a.leaf.localeCompare(b.leaf));
+    return out;
+  },
+
+  _renderQuickStart(browseMajor) {
+    const cards = [];
+
+    const popular = HOME_POPULAR_COURSES.map(code => {
+      const c = lookupCourse(this.courseIndex, code);
+      return c ? { code, name: c.course_name } : null;
+    }).filter(Boolean);
+    if (popular.length) {
+      cards.push(`
+        <article class="home-qs-card">
+          <h3 class="home-qs-title">Popular this semester</h3>
+          <ul class="home-qs-list">
+            ${popular.map(p => `<li><button type="button" class="home-qs-link" onclick="App.selectCourseFromTree('${esc(p.code)}')"><span class="home-qs-code">${esc(p.code)}</span>${esc(p.name)}</button></li>`).join('')}
+          </ul>
+        </article>`);
+    }
+
+    const gened = this._getIsGenedCategories();
+    if (gened.length) {
+      cards.push(`
+        <article class="home-qs-card">
+          <h3 class="home-qs-title">GenEd categories at a glance</h3>
+          <div class="home-qs-chips">
+            ${gened.slice(0, 12).map(g =>
+              `<button type="button" class="home-qs-chip" onclick="App.enterExplorer('IS', '${esc(g.path).replace(/'/g, "\\'")}')">${esc(g.leaf)}</button>`
+            ).join('')}
+          </div>
+        </article>`);
+    }
+
+    if (HOME_RECENT_MAPPINGS.length) {
+      cards.push(`
+        <article class="home-qs-card">
+          <h3 class="home-qs-title">Recently updated mappings</h3>
+          <ul class="home-qs-list">
+            ${HOME_RECENT_MAPPINGS.map(m =>
+              `<li><button type="button" class="home-qs-link" onclick="App.enterExplorer('${m.major}', '${esc(m.path).replace(/'/g, "\\'")}')"><span class="home-qs-code">${esc(m.courses)}</span>${esc(m.label)}</button></li>`
+            ).join('')}
+          </ul>
+        </article>`);
+    }
+
+    if (!cards.length) return '';
+    return `<section class="home-quickstart" aria-label="Quick start"><h2 class="home-quickstart-label">Quick start</h2><div class="home-quickstart-grid">${cards.join('')}</div></section>`;
   },
 
   _navbarWishlistHtml() {
@@ -1872,34 +2373,69 @@ const App = {
 
   _renderWishlistEntry() {
     if (!isStudent(this.profile)) return '';
-    const count = this._getWishlist().length;
+    const count = this._getWishlistItems().length;
     const subtext = count === 0
       ? 'Tap the bookmark on any course to add it here.'
-      : `${count} course${count === 1 ? '' : 's'} saved for planning later.`;
+      : `${count} course${count === 1 ? '' : 's'} saved — open to add notes.`;
     return `
-      <div class="home-wishlist-card" onclick="App.showWishlistView()" role="button" tabindex="0">
-        <span class="home-wishlist-icon">${this._iconBookmarkFilled()}</span>
-        <span class="home-wishlist-text">
-          <span class="home-wishlist-title">Your saved courses</span>
-          <span class="home-wishlist-sub">${subtext}</span>
+      <button type="button" class="home-tile home-tile-wish" onclick="App.showWishlistView()">
+        <span class="home-tile-icon">${this._iconBookmarkFilled()}</span>
+        <span class="home-tile-body">
+          <span class="home-tile-title">Saved courses</span>
+          <span class="home-tile-sub">${subtext}</span>
         </span>
-        <span class="home-wishlist-arrow">→</span>
-      </div>`;
+        <span class="home-tile-arrow">→</span>
+      </button>`;
   },
 
-  // ── Faculty "My flags" ────────────────────────────────────
-  _myFlagsState: null,                 // { loaded, error, counts, items }
+  // ── Faculty flag queue (all faculty + admin) ───────────────
+  _myFlagsState: null,
   _myFlagsView:  { status: 'pending', items: [], total: 0 },
+  _studentFlagsState: null,
+
+  _renderStudentFlaggedPanel() {
+    if (!isStudent(this.profile) || this.authMode !== 'authed') return '';
+    const st = this._studentFlagsState;
+    if (!st || !st.loaded) {
+      return `<div class="home-tile home-tile-flag" id="homeStudentFlags"><span class="home-tile-title">Flagged courses</span><span class="home-tile-sub">Loading…</span></div>`;
+    }
+    const n = (st.items || []).length;
+    if (n === 0) {
+      return `<div class="home-tile home-tile-flag home-tile-muted" id="homeStudentFlags"><span class="home-tile-title">Flagged courses</span><span class="home-tile-sub">No open flags right now</span></div>`;
+    }
+    const preview = st.items.slice(0, 2).map(f => f.course_code).join(' · ');
+    return `
+      <button type="button" class="home-tile home-tile-flag" id="homeStudentFlags" onclick="App.showStudentFlagsView()">
+        <span class="home-tile-icon">⚑</span>
+        <span class="home-tile-body">
+          <span class="home-tile-title">Flagged <span class="home-tile-badge">${n}</span></span>
+          <span class="home-tile-sub">${esc(preview)}</span>
+        </span>
+        <span class="home-tile-arrow">→</span>
+      </button>`;
+  },
+
+  async _loadStudentFlagsSummary() {
+    const r = await apiListFlags('limit=100');
+    if (!r.ok) {
+      this._studentFlagsState = { loaded: true, items: [] };
+    } else {
+      this._studentFlagsState = { loaded: true, items: (r.data && r.data.items) || [] };
+      this.serverFlags = this._studentFlagsState.items;
+    }
+    if (this._homeView === 'home') {
+      this._refreshHomeDock();
+    }
+  },
 
   _renderMyFlagsPanel() {
-    if (!isFaculty(this.profile)) return '';
-    if (this.authedUser && this.authedUser.role === 'admin') return '';  // admins use Flag review
+    if (!canFlagCourses(this.profile)) return '';
 
     if (this.authMode !== 'authed') {
       return `
         <div class="home-myflags home-myflags-offline">
-          <span class="home-myflags-title">Your flags</span>
-          <span class="home-myflags-sub">Sign in to see the status of course issues you've reported.</span>
+          <span class="home-myflags-title">Course flags</span>
+          <span class="home-myflags-sub">Sign in to review and resolve faculty-reported course issues.</span>
         </div>`;
     }
 
@@ -1907,15 +2443,15 @@ const App = {
     if (!st || !st.loaded) {
       return `
         <div class="home-myflags" id="homeMyFlags">
-          <span class="home-myflags-title">Your flags</span>
+          <span class="home-myflags-title">Course flags</span>
           <span class="home-myflags-sub">Loading…</span>
         </div>`;
     }
     if (st.error) {
       return `
         <div class="home-myflags" id="homeMyFlags">
-          <span class="home-myflags-title">Your flags</span>
-          <span class="home-myflags-sub">Couldn't load your flags right now.</span>
+          <span class="home-myflags-title">Course flags</span>
+          <span class="home-myflags-sub">Couldn't load flags right now.</span>
         </div>`;
     }
 
@@ -1924,13 +2460,13 @@ const App = {
     if (total === 0) {
       return `
         <div class="home-myflags" id="homeMyFlags">
-          <span class="home-myflags-title">Your flags</span>
-          <span class="home-myflags-sub">You haven't reported any course issues yet. Use “Flag course issue” on a course to report one.</span>
+          <span class="home-myflags-title">Course flags</span>
+          <span class="home-myflags-sub">No flags yet. Use “Flag course issue” on a course to report one.</span>
         </div>`;
     }
 
     const chip = (n, label, status, cls) => `
-      <button class="home-myflags-chip ${cls}" onclick="App.showMyFlagsView('${status}')">
+      <button class="home-myflags-chip ${cls}" onclick="App.showFlagReview(); App._switchFlagStatus('${status}')">
         <span class="home-myflags-num">${n}</span>
         <span class="home-myflags-label">${label}</span>
       </button>`;
@@ -1938,8 +2474,8 @@ const App = {
     return `
       <div class="home-myflags" id="homeMyFlags">
         <div class="home-myflags-head">
-          <span class="home-myflags-title">Your flags</span>
-          <button class="home-myflags-all" onclick="App.showMyFlagsView('pending')">View all →</button>
+          <span class="home-myflags-title">Course flags</span>
+          <button class="home-myflags-all" onclick="App.showFlagReview()">Review queue →</button>
         </div>
         <div class="home-myflags-chips">
           ${chip(c.pending,   'Pending',   'pending',   'mf-pending')}
@@ -1951,7 +2487,7 @@ const App = {
   },
 
   async _loadMyFlagsSummary() {
-    const r = await apiGetMyFlags('limit=100');
+    const r = await apiListFlags('limit=200');
     if (!r.ok) {
       this._myFlagsState = { loaded: true, error: true, counts: summarizeFlagsByStatus([]), items: [] };
     } else {
@@ -1959,8 +2495,7 @@ const App = {
       this._myFlagsState = { loaded: true, error: false, counts: summarizeFlagsByStatus(items), items };
     }
     if (this._homeView === 'home') {
-      const node = document.getElementById('homeMyFlags');
-      if (node) node.outerHTML = this._renderMyFlagsPanel();
+      this._refreshHomeDock();
     }
   },
 
@@ -2171,6 +2706,15 @@ const App = {
 
     // Top-right card actions (role-gated)
     const cardActions = this._renderCardActions(course);
+    const wishlistNoteHtml = (isStudent(this.profile) && this._isInWishlist(course.course_code))
+      ? `
+        <div class="cc-wishlist-note">
+          <label class="wl-note-wrap">
+            <span class="wl-note-label">Your note on this course</span>
+            <textarea class="wl-note-input" data-wl-note="${esc(course.course_code)}" placeholder="Why you saved this course…" rows="2">${esc(this._getWishlistNote(course.course_code))}</textarea>
+          </label>
+        </div>`
+      : '';
 
     el.innerHTML = `
       <div class="cc-card">
@@ -2182,6 +2726,7 @@ const App = {
           </div>
           ${cardActions}
         </div>
+        ${wishlistNoteHtml}
 
         <div class="cc-cols">
           <div class="cc-section">
@@ -2212,6 +2757,7 @@ const App = {
     const explBtn = document.getElementById('exploreInlineBtn');
     if (explBtn) explBtn.style.display = this.layoutMode === 'focused' ? 'flex' : 'none';
 
+    this._bindWishlistNoteInputs(el);
     this._schedSections = filtered;  // used by expand handler
   },
 
@@ -2378,6 +2924,9 @@ const App = {
       ? `<span class="tr-count">${filteredTotalCourses} course${filteredTotalCourses === 1 ? '' : 's'}</span>`
       : '';
     const safePath = node.path.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    const downloadBtn = filteredTotalCourses > 0
+      ? this._renderReqDownloadBtn(major, safePath)
+      : '';
 
     // ── Depth 0: render as a card ─────────────────────────────
     if (depth === 0) {
@@ -2388,7 +2937,7 @@ const App = {
           <span class="tr-arrow ${expanded ? 'expanded' : ''}">▶</span>
           <span class="tr-accent" style="background:${accent}"></span>
           <span class="tr-card-title">${esc(node.label)}</span>
-          <span class="tr-card-meta">${ruleHtml}${countHtml}</span>
+          <span class="tr-card-meta">${ruleHtml}${countHtml}${downloadBtn}</span>
         </div>`;
       let body = '';
       if (isExpandable && expanded) {
@@ -2412,6 +2961,7 @@ const App = {
     html += `<span class="tr-sub-label">${esc(node.label)}</span>`;
     html += ruleHtml;
     html += countHtml;
+    html += downloadBtn;
     html += `</div>`;
     if (isExpandable) {
       html += `<div class="tr-children ${expanded ? '' : 'collapsed'}">`;
@@ -2427,8 +2977,61 @@ const App = {
     return html;
   },
 
+  _renderReqDownloadBtn(major, safePath) {
+    return `<button type="button" class="tr-download" data-action="download-req" data-tree-major="${esc(major)}" data-tree-path="${safePath}" title="Download courses for Excel" aria-label="Download courses for Excel">⬇</button>`;
+  },
+
+  downloadRequirementExcel(major, path) {
+    const node = findTreeNode(this.trees[major], path);
+    if (!node) {
+      showToast('Requirement not found.');
+      return;
+    }
+    const filterFn = (leaf) => {
+      const full = lookupCourse(this.courseIndex, leaf.code) || leaf;
+      return this.filterByLocation(full);
+    };
+    const courses = collectCoursesForRequirement(node, filterFn);
+    if (!courses.length) {
+      showToast('No courses match your current campus filter.');
+      return;
+    }
+
+    const pathLabel = formatRequirementPath(node.path);
+    const majorLabel = (MAJOR_META[major] && MAJOR_META[major].label) || major;
+    const headers = ['Course Code', 'Course Name', 'Units', 'Department', 'Type', 'Qatar', 'Pittsburgh', 'Prerequisites'];
+    const rows = courses.map(leaf => {
+      const full = lookupCourse(this.courseIndex, leaf.code) || leaf;
+      return [
+        leaf.code,
+        leaf.name || full.course_name || '',
+        leaf.units || full.units || '',
+        typeof getDeptName === 'function' ? getDeptName(leaf.code) : (full.department || ''),
+        leaf.type ? 'GenEd' : 'Core',
+        full.offered_qatar ? 'Yes' : 'No',
+        full.offered_pitts ? 'Yes' : 'No',
+        full.prerequisites || '',
+      ];
+    });
+
+    const filterNote = this.locationFilter === 'all'
+      ? 'All campuses'
+      : (this.locationFilter === 'qatar' ? 'Qatar only' : 'Pittsburgh only');
+    const metaRows = [
+      ['CountsFor course export'],
+      ['Major', majorLabel],
+      ['Requirement', pathLabel],
+      ['Campus filter', filterNote],
+      ['Courses', String(courses.length)],
+      ['Exported', new Date().toLocaleString()],
+    ];
+    const filename = `CountsFor_${major}_${slugifyFilename(node.label)}.xls`;
+    downloadExcelSheet(filename, node.label, headers, rows, metaRows);
+    showToast(`Downloaded ${courses.length} courses`);
+  },
+
   _renderLeafCourse(c, major) {
-    const fullCourse = this.courseIndex[c.code] || c;
+    const fullCourse = lookupCourse(this.courseIndex, c.code) || c;
     const isActive = this.selectedCourse && this.selectedCourse.course_code === c.code;
     const vm = computeViewMode(this.profile);
     const minorMajor = getMinorAsMajorCode(this.profile);
@@ -2466,8 +3069,10 @@ const App = {
       const saved = this._isInWishlist(course.course_code);
       acts.push(`<button class="tr-leaf-action tr-leaf-wishlist ${saved ? 'is-saved' : ''}" data-action="wishlist" data-course-code="${esc(course.course_code)}" title="${saved ? 'Remove from wishlist' : 'Save for later'}" aria-label="${saved ? 'Remove from wishlist' : 'Save for later'}">${saved ? this._iconBookmarkFilled() : this._iconBookmarkOutline()}</button>`);
     }
-    if (isFaculty(this.profile) && (this.authMode === 'authed' || this.isGuest)) {
+    if (canFlagCourses(this.profile) && (this.authMode === 'authed' || this.isGuest)) {
       acts.push(`<button class="tr-leaf-action tr-leaf-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Flag course data issue" aria-label="Flag course data issue">${this._iconFlag()}</button>`);
+    } else if (isStudent(this.profile) && this._courseHasVisibleFlag(course.course_code)) {
+      acts.push(`<span class="tr-leaf-flag-badge" title="Faculty-flagged course">${this._iconFlag()}</span>`);
     }
     if (!acts.length) return '';
     return `<span class="tr-leaf-actions">${acts.join('')}</span>`;
@@ -2498,12 +3103,14 @@ const App = {
           <span>${saved ? 'Saved ✓' : 'Save course'}</span>
         </button>`);
     }
-    if (isFaculty(this.profile) && (this.authMode === 'authed' || this.isGuest)) {
+    if (canFlagCourses(this.profile) && (this.authMode === 'authed' || this.isGuest)) {
       parts.push(`
         <button class="cc-action cc-action-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Report a data issue with this course" aria-label="Flag course issue">
           ${this._iconFlag()}
           <span>Flag course issue</span>
         </button>`);
+    } else if (isStudent(this.profile) && this._courseHasVisibleFlag(course.course_code)) {
+      parts.push(`<span class="cc-flag-badge">Faculty flagged · ${esc(this._courseFlagStatus(course.course_code))}</span>`);
     }
     if (!parts.length) return '';
     return `<div class="cc-head-actions">${parts.join('')}</div>`;
@@ -2557,7 +3164,7 @@ const App = {
 
   // ── Cross-linking ─────────────────────────────────────────
   selectCourseFromTree(code) {
-    const course = this.courseIndex[code];
+    const course = lookupCourse(this.courseIndex, code);
     if (!course) return;
     this._selectCourse(course);
 
@@ -2574,19 +3181,36 @@ const App = {
   // ══════════════════════════════════════════════════════════
   // WISHLIST (students only)
   // ══════════════════════════════════════════════════════════
-  // Storage: localStorage['cf_wishlist'] = [course_code, ...]
-  // No backend yet — clean local persistence with clear integration points.
+  // Storage: localStorage['cf_wishlist'] = [{ course_code, note }, ...]
 
-  _getWishlist() {
-    return loadStore('cf_wishlist', []);
+  _getWishlistItems() {
+    const raw = loadStore('cf_wishlist', []);
+    return raw.map(x => (typeof x === 'string'
+      ? { course_code: x, note: '' }
+      : { course_code: x.course_code, note: x.note || '' }));
   },
 
-  _saveWishlist(list) {
+  _saveWishlistItems(list) {
     saveStore('cf_wishlist', list);
   },
 
+  _getWishlist() {
+    return this._getWishlistItems().map(i => i.course_code);
+  },
+
+  _saveWishlist(list) {
+    const notes = {};
+    this._getWishlistItems().forEach(i => { notes[i.course_code] = i.note; });
+    this._saveWishlistItems(list.map(code => ({ course_code: code, note: notes[code] || '' })));
+  },
+
+  _getWishlistNote(code) {
+    const item = this._getWishlistItems().find(i => i.course_code === code);
+    return item ? (item.note || '') : '';
+  },
+
   _isInWishlist(code) {
-    return this._getWishlist().indexOf(code) !== -1;
+    return this._getWishlistItems().some(i => i.course_code === code);
   },
 
   async toggleWishlist(code) {
@@ -2595,11 +3219,11 @@ const App = {
       return;
     }
     if (!code) return;
-    const list = this._getWishlist();
-    const idx = list.indexOf(code);
+    const list = this._getWishlistItems();
+    const idx = list.findIndex(i => i.course_code === code);
     if (idx === -1) {
-      list.push(code);
-      this._saveWishlist(list);
+      list.push({ course_code: code, note: '' });
+      this._saveWishlistItems(list);
       if (this.authMode === 'authed') {
         const r = await apiAddWishlist(code);
         if (!r.ok) {
@@ -2611,7 +3235,7 @@ const App = {
       showToast('Saved for later');
     } else {
       list.splice(idx, 1);
-      this._saveWishlist(list);
+      this._saveWishlistItems(list);
       if (this.authMode === 'authed') {
         const r = await apiRemoveWishlist(code);
         if (!r.ok && r.status !== 404) {
@@ -2629,9 +3253,8 @@ const App = {
     this.renderTree();
     // Update the navbar count chip in place
     this._refreshNavWishCount();
-    // Re-render home if it's the wishlist view or shows the entry tile
     if (this._homeView === 'wishlist') this.showWishlistView();
-    else if (this._homeView === 'home') this.renderLeftEmpty();
+    else if (this._homeView === 'home') this._refreshHomeDock();
   },
 
   showWishlistView() {
@@ -2640,10 +3263,10 @@ const App = {
     const el = document.getElementById('leftBody');
     if (!el) return;
 
-    const list = this._getWishlist();
-    const courses = list
-      .map(code => this.courseIndex[code])
-      .filter(Boolean);
+    const items = this._getWishlistItems();
+    const courses = items
+      .map(i => ({ item: i, course: lookupCourse(this.courseIndex, i.course_code) }))
+      .filter(x => x.course);
 
     let rowsHtml;
     if (courses.length === 0) {
@@ -2654,8 +3277,7 @@ const App = {
           <div class="wl-empty-hint">Tap the bookmark on any course to save it here for planning later.</div>
         </div>`;
     } else {
-      rowsHtml = courses.map(c => {
-        // Surface a warning if any faculty member flagged this course as no-longer-offered
+      rowsHtml = courses.map(({ item, course: c }) => {
         const flagWarn = this._hasUnavailabilityFlag(c.course_code)
           ? `<span class="wl-warn" title="Flagged by a faculty member as possibly no longer offered">${this._iconWarn()} Possibly unavailable</span>`
           : '';
@@ -2668,6 +3290,10 @@ const App = {
             <span class="wl-main">
               <span class="wl-name">${esc(c.course_name)}</span>
               <span class="wl-meta">${c.units || '?'} units${where.length ? ' · ' + where.join(' & ') : ''}${flagWarn ? ' · ' + flagWarn : ''}</span>
+              <label class="wl-note-wrap">
+                <span class="wl-note-label">Your note</span>
+                <textarea class="wl-note-input" data-wl-note="${esc(c.course_code)}" placeholder="Why you saved this course…" rows="2">${esc(item.note || '')}</textarea>
+              </label>
             </span>
             <button class="wl-remove" data-action="wishlist" data-course-code="${esc(c.course_code)}" title="Remove from wishlist" aria-label="Remove from wishlist">Remove</button>
           </div>`;
@@ -2679,10 +3305,105 @@ const App = {
         <div class="wl-header">
           <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
           <div class="wl-title">Saved courses${courses.length ? ` <span class="wl-count">· ${courses.length}</span>` : ''}</div>
+          <p class="wl-hint">Add a note on each course — faculty advisors can read these when you share favorites.</p>
         </div>
         <div class="wl-list">${rowsHtml}</div>
       </div>
     `;
+    this._bindWishlistNoteInputs(el);
+  },
+
+  _bindWishlistNoteInputs(container) {
+    if (!container) return;
+    container.querySelectorAll('.wl-note-input').forEach(ta => {
+      if (ta.dataset.wlBound) return;
+      ta.dataset.wlBound = '1';
+      ta.addEventListener('click', e => e.stopPropagation());
+      ta.addEventListener('mousedown', e => e.stopPropagation());
+      let timer;
+      const persist = () => this._saveWishlistNote(ta.dataset.wlNote, ta.value);
+      ta.addEventListener('blur', persist);
+      ta.addEventListener('input', () => {
+        clearTimeout(timer);
+        timer = setTimeout(persist, 700);
+      });
+    });
+  },
+
+  async _saveWishlistNote(code, note) {
+    const items = this._getWishlistItems();
+    const idx = items.findIndex(i => i.course_code === code);
+    if (idx === -1) return;
+    items[idx].note = (note || '').trim();
+    this._saveWishlistItems(items);
+    if (this.authMode === 'authed') {
+      const r = await apiUpdateWishlistNote(code, items[idx].note);
+      if (!r.ok) {
+        try { localStorage.removeItem('cf_synced'); } catch {}
+        showToast('Note saved on this device — could not sync to server.');
+      }
+    }
+  },
+
+  async showStudentFlagsView() {
+    if (!isStudent(this.profile) || this.authMode !== 'authed') return;
+    this._homeView = 'studentflags';
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    await this._loadServerFlags();
+    const items = this.serverFlags || [];
+    const rows = items.length
+      ? items.map(f => `
+        <div class="adm-row adm-row-readonly">
+          <div class="adm-course"><span class="adm-course-code">${esc(f.course_code)}</span><span class="adm-course-name">${esc(f.course_name)}</span></div>
+          <span class="adm-status adm-status-${esc(f.status)}">${esc(f.status)}</span>
+          <div class="adm-reason">${esc(f.reason_label)}</div>
+          ${f.admin_notes ? `<div class="adm-notes adm-notes-admin">${esc(f.admin_notes)}</div>` : ''}
+        </div>`).join('')
+      : '<div class="empty-state"><div class="empty-text">No flagged courses right now.</div></div>';
+    el.innerHTML = `
+      <div class="adm-view">
+        <div class="adm-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <div class="adm-title">Flagged courses <span class="adm-count">· ${items.length}</span></div>
+        </div>
+        <p class="adm-hint">Read-only — students cannot submit flags. Faculty report and resolve issues.</p>
+        <div class="adm-list">${rows}</div>
+      </div>`;
+  },
+
+  async showStudentFavorites() {
+    if (!isFaculty(this.profile) || this.authMode !== 'authed') {
+      showToast('Faculty access required.');
+      return;
+    }
+    this._homeView = 'studentfavs';
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="spinner"></div><div class="empty-text" style="margin-top:12px">Loading student favorites…</div></div>';
+    const r = await apiGetWishlistRoster();
+    if (!r.ok) {
+      el.innerHTML = `<div class="empty-state"><div class="empty-text">Could not load favorites: ${esc((r.data && r.data.message) || 'error')}</div></div>`;
+      return;
+    }
+    const students = (r.data && r.data.students) || [];
+    const blocks = students.length ? students.map(s => {
+      const rows = (s.items || []).map(i => `
+        <li><strong>${esc(i.course_code)}</strong>${i.note ? ` — <em>${esc(i.note)}</em>` : ''}</li>`).join('') || '<li class="sf-empty">No saved courses</li>';
+      return `
+        <div class="sf-student">
+          <div class="sf-student-head"><strong>${esc(s.name)}</strong> <span class="sf-email">${esc(s.email)}</span>${s.primary_program ? ` · ${esc(s.primary_program)}` : ''}</div>
+          <ul class="sf-courses">${rows}</ul>
+        </div>`;
+    }).join('') : '<div class="empty-state"><div class="empty-text">No students have saved courses yet.</div></div>';
+    el.innerHTML = `
+      <div class="adm-view">
+        <div class="adm-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <div class="adm-title">Student favorites <span class="adm-count">· ${students.length} students</span></div>
+        </div>
+        <div class="sf-list">${blocks}</div>
+      </div>`;
   },
 
   // ══════════════════════════════════════════════════════════
@@ -2696,6 +3417,7 @@ const App = {
     { code: 'metadata_outdated',   label: 'Course title, number, or units are outdated' },
     { code: 'prereq_wrong',        label: 'Prerequisites or corequisites are incorrect/missing' },
     { code: 'requirement_mismatch',label: 'Course is mapped to the wrong requirement/category', hint: 'Counting under the wrong major/minor requirement.' },
+    { code: 'requirement_newly_counts', label: 'This course now counts toward a requirement it did not count for previously.' },
     { code: 'should_be_equivalent',label: 'Course should be added as an equivalent/substitute option' },
     { code: 'wrong_semester',      label: 'Course is listed as available in the wrong semester/year' },
     { code: 'restrictions_missing',label: 'Course restrictions are missing or incorrect',     hint: 'Permission required, major-only, class-year restriction, etc.' },
@@ -2710,19 +3432,36 @@ const App = {
     saveStore('cf_flags', list);
   },
   _hasUnavailabilityFlag(code) {
-    return this._getFlags().some(f =>
+    const flags = (this.serverFlags && this.serverFlags.length)
+      ? this.serverFlags
+      : this._getFlags();
+    return flags.some(f =>
       f.course_code === code &&
       (f.reason_code === 'not_offered' || f.reason_code === 'campus_wrong') &&
       f.status !== 'dismissed'
     );
   },
 
+  _courseHasVisibleFlag(code) {
+    const flags = this.serverFlags || [];
+    return flags.some(f => f.course_code === code && f.status !== 'dismissed');
+  },
+
+  _courseFlagStatus(code) {
+    const f = (this.serverFlags || []).find(x => x.course_code === code && x.status !== 'dismissed');
+    return f ? f.status : '';
+  },
+
   openFlagModal(courseCode) {
-    if (!isFaculty(this.profile) || (this.authMode !== 'authed' && !this.isGuest)) {
+    if (!canFlagCourses(this.profile) || (this.authMode !== 'authed' && !this.isGuest)) {
       showToast('Course flagging is available to signed-in faculty only.');
       return;
     }
-    const course = this.courseIndex[courseCode];
+    if (this.authMode !== 'authed') {
+      showToast('Sign in to flag a course.');
+      return;
+    }
+    const course = lookupCourse(this.courseIndex, courseCode);
     if (!course) return;
     this._flagModalState = { courseCode, reason: null, notes: '' };
 
@@ -2744,7 +3483,7 @@ const App = {
         <header class="cf-modal-head">
           <div>
             <h3 id="cfFlagTitle" class="cf-modal-title">Flag a course</h3>
-            <div class="cf-modal-sub">Help us keep course data accurate. Admins review flags before changes.</div>
+            <div class="cf-modal-sub">Help us keep course data accurate. Any faculty member can review and resolve flags.</div>
           </div>
           <button class="cf-modal-x" aria-label="Close" onclick="App.closeFlagModal()">×</button>
         </header>
@@ -2798,7 +3537,7 @@ const App = {
   async submitFlag() {
     const s = this._flagModalState;
     if (!s || !s.reason) return;
-    const course = this.courseIndex[s.courseCode];
+    const course = lookupCourse(this.courseIndex, s.courseCode);
     if (!course) return;
 
     const reasonMeta = this.FLAG_REASONS.find(r => r.code === s.reason);
@@ -2842,14 +3581,177 @@ const App = {
   },
 
   // ══════════════════════════════════════════════════════════
-  // ADMIN / AREA HEAD — User role management
+  // FACULTY — Staff directory (Postgres + JSON merge)
+  // ══════════════════════════════════════════════════════════
+  _staffDirState: { items: [], form: { name: '', email: '', role: 'professor', department: '', primary_program: '' } },
+
+  _staffInitials(name, email) {
+    const src = (name || email || '?').trim();
+    const parts = src.split(/\s+/).filter(Boolean);
+    if (parts.length >= 2) return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
+    return src.slice(0, 2).toUpperCase();
+  },
+
+  _avatarHtml(name, email, pictureUrl) {
+    const initials = this._staffInitials(name, email);
+    if (pictureUrl) {
+      return `<div class="person-avatar" aria-hidden="true">
+        <img class="person-avatar-img" src="${esc(pictureUrl)}" alt="" loading="lazy" decoding="async"
+          onerror="this.classList.add('person-avatar-img--hidden'); this.nextElementSibling.classList.add('person-avatar-fallback--show');">
+        <span class="person-avatar-fallback">${esc(initials)}</span>
+      </div>`;
+    }
+    const imgSrc = 'https://ui-avatars.com/api/?name=' + encodeURIComponent(name || email) + '&background=C41230&color=fff&size=80&bold=true';
+    return `<div class="person-avatar" aria-hidden="true">
+      <img class="person-avatar-img" src="${esc(imgSrc)}" alt="" loading="lazy" decoding="async"
+        onerror="this.classList.add('person-avatar-img--hidden'); this.nextElementSibling.classList.add('person-avatar-fallback--show');">
+      <span class="person-avatar-fallback">${esc(initials)}</span>
+    </div>`;
+  },
+
+  _staffAvatarHtml(name, email, pictureUrl) {
+    return this._avatarHtml(name, email, pictureUrl);
+  },
+
+  _directoryPanelOpen: false,
+
+  closeDirectoryPanel() {
+    if (!this._directoryPanelOpen) return;
+    this._directoryPanelOpen = false;
+    const root = document.getElementById('directoryPanelRoot');
+    if (!root) return;
+    root.hidden = true;
+    root.innerHTML = '';
+    root.onclick = null;
+  },
+
+  toggleDirectoryPanel() {
+    if (!canManageDirectory(this.profile) || this.authMode !== 'authed') return;
+    if (this._directoryPanelOpen) {
+      this.closeDirectoryPanel();
+      return;
+    }
+    this._directoryPanelOpen = true;
+    const root = document.getElementById('directoryPanelRoot');
+    if (!root) return;
+    root.hidden = false;
+    root.innerHTML = '<div class="directory-panel"><div class="empty-state"><div class="spinner"></div></div></div>';
+    root.onclick = (e) => {
+      if (!e.target.closest('.directory-panel')) this.closeDirectoryPanel();
+    };
+    this._loadDirectoryPanel();
+  },
+
+  async _loadDirectoryPanel() {
+    const r = await apiListStaffDirectory();
+    const root = document.getElementById('directoryPanelRoot');
+    if (!root || !this._directoryPanelOpen) return;
+    if (!r.ok) {
+      root.innerHTML = `<div class="directory-panel"><p class="empty-text">${esc((r.data && r.data.message) || 'Could not load directory.')}</p></div>`;
+      return;
+    }
+    this._staffDirState.items = r.data.items || [];
+    this._renderDirectoryPanel();
+  },
+
+  _renderDirectoryPanel() {
+    const root = document.getElementById('directoryPanelRoot');
+    if (!root) return;
+    const items = this._staffDirState.items;
+    const f = this._staffDirState.form;
+    const roleOpts = ['advisor', 'professor', 'area_head', 'associate_area_head', 'admin']
+      .map(r => `<option value="${r}" ${f.role === r ? 'selected' : ''}>${esc((ROLE_META[r] && ROLE_META[r].label) || r)}</option>`).join('');
+    const deptOpts = DEPARTMENT_LIST.map(d => `<option value="${esc(d)}" ${f.department === d ? 'selected' : ''}>${esc(d)}</option>`).join('');
+    const progOpts = VALID_PROGRAMS.map(p => `<option value="${p}" ${f.primary_program === p ? 'selected' : ''}>${esc(getProgramLabel(p))}</option>`).join('');
+    const rows = items.map(row => `
+      <div class="staff-row">
+        ${this._staffAvatarHtml(row.name, row.email, row.picture_url)}
+        <div class="staff-row-body">
+          <div class="staff-row-name">${esc(row.name)}</div>
+          <div class="staff-row-meta">${esc(row.email)} · ${esc((ROLE_META[row.role] && ROLE_META[row.role].label) || row.role)} · ${esc(row.department || '')}${row.primary_program ? ' · ' + esc(getProgramLabel(row.primary_program)) : ''}</div>
+        </div>
+        <div class="staff-row-actions">
+          <button type="button" class="adm-btn" onclick="App._editDirectoryRow('${esc(row.email)}')">Edit</button>
+          <button type="button" class="adm-btn" onclick="App._revokeDirectoryRow('${esc(row.email)}', '${esc(row.name)}')">Remove</button>
+        </div>
+      </div>`).join('') || '<p class="empty-text">No elevated access entries yet.</p>';
+
+    root.innerHTML = `
+      <div class="directory-panel" role="dialog" aria-label="Directory management">
+        <header class="directory-panel-head">
+          <h3>Directory</h3>
+          <button type="button" class="directory-panel-close" onclick="App.toggleDirectoryPanel()" aria-label="Close">×</button>
+        </header>
+        <div class="staff-add-card">
+          <div class="staff-add-title">${f.editEmail ? 'Edit person' : 'Add person'}</div>
+          <div class="staff-add-fields">
+            <label>Name<input class="adm-search" id="staffAddName" value="${esc(f.name)}" placeholder="Full name" /></label>
+            <label>Email<input class="adm-search" id="staffAddEmail" value="${esc(f.email)}" placeholder="name@andrew.cmu.edu" ${f.editEmail ? 'readonly' : ''} /></label>
+            <label>Role<select class="adm-select" id="staffAddRole">${roleOpts}</select></label>
+            <label>Department<select class="adm-select" id="staffAddDept"><option value="">—</option>${deptOpts}</select></label>
+            <label>Program<select class="adm-select" id="staffAddProgram"><option value="">—</option>${progOpts}</select></label>
+          </div>
+          <button class="adm-btn adm-btn-resolve" onclick="App._submitDirectoryForm()">${f.editEmail ? 'Save changes' : 'Add to directory'}</button>
+          ${f.editEmail ? '<button type="button" class="adm-btn" onclick="App._staffDirState.form={name:\'\',email:\'\',role:\'professor\',department:\'\',primary_program:\'\'};App._renderDirectoryPanel()">Cancel edit</button>' : ''}
+        </div>
+        <div class="staff-list">${rows}</div>
+      </div>`;
+  },
+
+  _editDirectoryRow(email) {
+    const row = (this._staffDirState.items || []).find(r => r.email === email);
+    if (!row) return;
+    this._staffDirState.form = {
+      name: row.name,
+      email: row.email,
+      editEmail: row.email,
+      role: row.role,
+      department: row.department || '',
+      primary_program: row.primary_program || '',
+    };
+    this._renderDirectoryPanel();
+  },
+
+  async _revokeDirectoryRow(email, name) {
+    if (!confirm('Remove elevated access for ' + email + '?')) return;
+    const r = await apiRevokeDirectoryAccess({ email, name });
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Could not remove.');
+      return;
+    }
+    showToast('Access updated.');
+    await this._loadDirectoryPanel();
+  },
+
+  async _submitDirectoryForm() {
+    const f = this._staffDirState.form;
+    const body = {
+      name: (document.getElementById('staffAddName')?.value || '').trim(),
+      email: (document.getElementById('staffAddEmail')?.value || '').trim(),
+      role: document.getElementById('staffAddRole')?.value || 'professor',
+      department: document.getElementById('staffAddDept')?.value || '',
+      primary_program: document.getElementById('staffAddProgram')?.value || '',
+    };
+    const r = f.editEmail
+      ? await apiUpsertDirectoryByEmail(body)
+      : await apiAddStaffMember(body);
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Could not save.');
+      return;
+    }
+    showToast(f.editEmail ? 'Directory updated.' : 'Person added — they get faculty access on next login.');
+    this._staffDirState.form = { name: '', email: '', role: 'professor', department: '', primary_program: '' };
+    await this._loadDirectoryPanel();
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // ADMIN — User role management
   // ══════════════════════════════════════════════════════════
   _userAdminState: { items: [], search: '' },
 
   async showUserManagement() {
-    const role = this.authedUser && this.authedUser.role;
-    if (!role || !['admin', 'area_head', 'associate_area_head'].includes(role)) {
-      showToast('Admin or area head access required.');
+    if (!canManageUsers(this.authedUser)) {
+      showToast('Admin access required.');
       return;
     }
     this._homeView = 'users';
@@ -2896,25 +3798,46 @@ const App = {
   },
 
   _renderUserAdminRow(u) {
-    const prog = u.primary_program || '—';
-    const minor = u.minor_code ? getMinorLabel(u.minor_code) : '—';
-    const roleOpts = ['student', 'professor', 'area_head', 'associate_area_head', 'advisor']
-      .concat(this.authedUser.role === 'admin' ? ['admin'] : [])
+    const rg = getRoleGroup(u);
+    const isStudent = rg === 'student';
+    const progLabel = getProgramLabel(u.primary_program) || u.primary_program || '—';
+    const minors = Array.isArray(u.minor_codes) ? u.minor_codes : (u.minor_code ? [u.minor_code] : []);
+    const minorSummary = minors.length ? minors.map(mc => getMinorLabel(mc)).join(', ') : '';
+    const summary = isStudent
+      ? `${esc(u.name)} · student · ${esc(u.primary_program || '—')}${minorSummary ? ' · minors ' + esc(minorSummary) : ''}`
+      : `${esc(u.name)} · ${esc(u.role)} · ${esc(progLabel)}`;
+    const roleOpts = ['student', 'professor', 'area_head', 'associate_area_head', 'advisor', 'admin']
       .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${esc((ROLE_META[r] && ROLE_META[r].label) || r)}</option>`)
       .join('');
     const majorOpts = MAJOR_LIST.map(m => `<option value="${m}" ${u.primary_program === m ? 'selected' : ''}>${m}</option>`).join('');
+    const programOpts = VALID_PROGRAMS.map(p => `<option value="${p}" ${u.primary_program === p ? 'selected' : ''}>${esc(getProgramLabel(p))}</option>`).join('');
+    const deptOpts = DEPARTMENT_LIST.map(d => `<option value="${esc(d)}" ${u.department === d ? 'selected' : ''}>${esc(d)}</option>`).join('');
+    const minorChips = minors.map(mc => `
+      <span class="adm-minor-chip" data-code="${esc(mc)}">${esc(getMinorLabel(mc))}
+        <button type="button" class="adm-minor-chip-x" onclick="App._adminRemoveMinor(${u.id}, '${esc(mc)}')">×</button>
+      </span>`).join('');
+    const minorAddOpts = MINOR_LIST.filter(m => !minors.includes(m.code))
+      .map(m => `<option value="${m.code}">${esc(m.label)}</option>`).join('');
+    const studentFields = `
+          <label>Major<select class="adm-select" id="major-${u.id}"><option value="">—</option>${majorOpts}</select></label>
+          <label>Minor(s)<div class="adm-minor-chips" id="minors-${u.id}">${minorChips || '<span class="adm-minor-empty">—</span>'}</div>
+            <select class="adm-select adm-minor-add" id="minor-add-${u.id}" onchange="App._adminAddMinor(${u.id}, this.value); this.value='';">
+              <option value="">Add minor…</option>${minorAddOpts}
+            </select></label>`;
+    const facultyFields = `
+          <label>Department<select class="adm-select" id="dept-${u.id}"><option value="">—</option>${deptOpts}</select></label>
+          <label>Program<select class="adm-select" id="program-${u.id}"><option value="">—</option>${programOpts}</select></label>`;
     return `
       <div class="adm-row adm-user-row" data-user-id="${u.id}">
         <div class="adm-row-head">
           <div>
             <div class="adm-course-code">${esc(u.email)}</div>
-            <div class="adm-course-name">${esc(u.name)} · ${esc(u.role)} · ${esc(prog)}${u.minor_code ? ' · minor ' + esc(minor) : ''}</div>
+            <div class="adm-course-name">${summary}</div>
           </div>
         </div>
         <div class="adm-user-fields">
           <label>Role<select class="adm-select" id="role-${u.id}">${roleOpts}</select></label>
-          <label>Major<select class="adm-select" id="major-${u.id}"><option value="">—</option>${majorOpts}</select></label>
-          <label>Minor<select class="adm-select" id="minor-${u.id}"><option value="">—</option>${MINOR_LIST.map(m => `<option value="${m.code}" ${u.minor_code === m.code ? 'selected' : ''}>${esc(m.label)}</option>`).join('')}</select></label>
+          <div id="role-fields-${u.id}">${isStudent ? studentFields : facultyFields}</div>
         </div>
         <div class="adm-actions">
           <button class="adm-btn adm-btn-resolve" onclick="App._saveUserAdmin(${u.id})">Save</button>
@@ -2922,15 +3845,55 @@ const App = {
       </div>`;
   },
 
+  _adminMinorCodes(userId) {
+    const chipRoot = document.getElementById('minors-' + userId);
+    if (!chipRoot) return [];
+    return [...chipRoot.querySelectorAll('.adm-minor-chip')].map(el => el.getAttribute('data-code')).filter(Boolean);
+  },
+
+  _adminAddMinor(userId, code) {
+    if (!code) return;
+    const codes = this._adminMinorCodes(userId);
+    if (codes.includes(code)) return;
+    codes.push(code);
+    this._renderAdminMinorChips(userId, codes);
+  },
+
+  _adminRemoveMinor(userId, code) {
+    const codes = this._adminMinorCodes(userId).filter(c => c !== code);
+    this._renderAdminMinorChips(userId, codes);
+  },
+
+  _renderAdminMinorChips(userId, codes) {
+    const chipRoot = document.getElementById('minors-' + userId);
+    if (!chipRoot) return;
+    chipRoot.innerHTML = codes.length
+      ? codes.map(mc => `<span class="adm-minor-chip" data-code="${esc(mc)}">${esc(getMinorLabel(mc))}
+        <button type="button" class="adm-minor-chip-x" onclick="App._adminRemoveMinor(${userId}, '${esc(mc)}')">×</button></span>`).join('')
+      : '<span class="adm-minor-empty">—</span>';
+    const addEl = document.getElementById('minor-add-' + userId);
+    if (addEl) {
+      addEl.innerHTML = '<option value="">Add minor…</option>' + MINOR_LIST.filter(m => !codes.includes(m.code))
+        .map(m => `<option value="${m.code}">${esc(m.label)}</option>`).join('');
+    }
+  },
+
   async _saveUserAdmin(userId) {
     const roleEl = document.getElementById('role-' + userId);
-    const majorEl = document.getElementById('major-' + userId);
-    const minorEl = document.getElementById('minor-' + userId);
-    const patch = {
-      role: roleEl ? roleEl.value : undefined,
-      primary_program: majorEl ? majorEl.value : undefined,
-      minor_code: minorEl ? minorEl.value : undefined,
-    };
+    const role = roleEl ? roleEl.value : 'student';
+    const patch = { role };
+    if (getRoleGroup(role) === 'student') {
+      const majorEl = document.getElementById('major-' + userId);
+      patch.primary_program = majorEl ? majorEl.value : undefined;
+      patch.minor_codes = this._adminMinorCodes(userId);
+      patch.department = null;
+    } else {
+      const deptEl = document.getElementById('dept-' + userId);
+      const progEl = document.getElementById('program-' + userId);
+      patch.department = deptEl ? deptEl.value : undefined;
+      patch.primary_program = progEl ? progEl.value : undefined;
+      patch.minor_codes = [];
+    }
     const r = await apiPatchUser(userId, patch);
     if (!r.ok) {
       showToast((r.data && r.data.message) || 'Could not save user.');
@@ -2946,8 +3909,8 @@ const App = {
   _adminState: { status: 'pending', items: [], total: 0 },
 
   async showFlagReview() {
-    if (!(this.authedUser && this.authedUser.role === 'admin')) {
-      showToast('Admin access required.');
+    if (!canFlagCourses(this.profile)) {
+      showToast('Faculty access required.');
       return;
     }
     this._homeView = 'admin';

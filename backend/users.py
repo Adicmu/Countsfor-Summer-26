@@ -1,20 +1,22 @@
 """User management — list and update roles for admins and area heads."""
 from flask import Blueprint, g, jsonify, request
 
-from .auth import USER_SETTABLE_ROLES, _validate_consistent_profile
+from .auth import USER_SETTABLE_ROLES, _sync_user_minors, _validate_consistent_profile, _minor_codes_for_validation
 from .db import db
 from .models import User
-from .permissions import require_role, FACULTY_OR_ADMIN
+from .permissions import require_role_group, ROLE_GROUP_ADMIN
+from .models import VALID_DEPARTMENTS, FACULTY_ROLES
 
 bp = Blueprint("users", __name__, url_prefix="/api/users")
 
-MANAGER_ROLES = FACULTY_OR_ADMIN  # admin + faculty roles; area heads included
+MANAGER_ROLES = (ROLE_GROUP_ADMIN,)  # user management is admin-only
 
 ALLOWED_PATCH_FIELDS = {
     "name",
     "role",
     "primary_program",
     "minor_code",
+    "minor_codes",
     "advisor_scope",
     "department",
     "department_scope",
@@ -22,11 +24,11 @@ ALLOWED_PATCH_FIELDS = {
 
 
 def _can_manage_users(user: User) -> bool:
-    return user.role in ("admin", "area_head", "associate_area_head")
+    return user.role_group() == ROLE_GROUP_ADMIN
 
 
 @bp.route("", methods=["GET"])
-@require_role("admin", "area_head", "associate_area_head")
+@require_role_group(ROLE_GROUP_ADMIN)
 def list_users():
     q = db.session.query(User).order_by(User.email)
     search = (request.args.get("search") or "").strip().lower()
@@ -42,7 +44,7 @@ def list_users():
 
 
 @bp.route("/<int:user_id>", methods=["PATCH"])
-@require_role("admin", "area_head", "associate_area_head")
+@require_role_group(ROLE_GROUP_ADMIN)
 def update_user(user_id: int):
     actor: User = g.user
     target = db.session.get(User, user_id)
@@ -66,8 +68,11 @@ def update_user(user_id: int):
 
     new_role = _next("role", target.role)
     new_primary = _next("primary_program", target.primary_program)
-    new_minor = _next("minor_code", target.minor_code)
     new_advisor_scope = _next("advisor_scope", target.advisor_scope)
+    new_minor_codes = _minor_codes_for_validation(data, target)
+    if "minor_codes" in data and not isinstance(data["minor_codes"], list):
+        return jsonify(error="invalid_minor_codes", message="minor_codes must be a list."), 400
+    new_department = _next("department", target.department)
 
     if "role" in data:
         if actor.role != "admin" and new_role == "admin":
@@ -77,7 +82,9 @@ def update_user(user_id: int):
         if target.role == "admin" and new_role != "admin" and actor.role != "admin":
             return jsonify(error="forbidden", message="Only admins can change an admin's role."), 403
 
-    err = _validate_consistent_profile(new_role, new_primary, new_minor, new_advisor_scope)
+    validation_minors = new_minor_codes if new_role == "student" else []
+
+    err = _validate_consistent_profile(new_role, new_primary, validation_minors, new_advisor_scope, new_department)
     if err:
         return jsonify(error="inconsistent_profile", message=err), 400
 
@@ -94,6 +101,16 @@ def update_user(user_id: int):
             setattr(target, field, value)
             if field == "department_scope" and value and not target.department:
                 target.department = value
+
+    if new_role == "student":
+        if "minor_codes" in data or "minor_code" in data:
+            sync_err = _sync_user_minors(target, new_minor_codes, role=new_role)
+            if sync_err:
+                return jsonify(error="inconsistent_profile", message=sync_err), 400
+    elif "minor_codes" in data or (new_role != "advisor" and "minor_code" in data):
+        sync_err = _sync_user_minors(target, [], role=new_role)
+        if sync_err:
+            return jsonify(error="inconsistent_profile", message=sync_err), 400
 
     target.profile_completed = target.profile_is_complete()
     db.session.commit()

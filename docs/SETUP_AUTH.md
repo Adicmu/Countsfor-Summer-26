@@ -194,7 +194,7 @@ If any check fails, see **Troubleshooting** below.
 
 ---
 
-## 7. Reset emails via Gmail
+## 7. Reset emails (Gmail SMTP or Resend)
 
 Password reset works two ways: **Google recovery** (zero setup, already
 live — the user proves ownership by signing in with Google, then sets a new
@@ -214,8 +214,8 @@ password) and **email reset links**, which need SMTP credentials once:
    | `SMTP_HOST` | `smtp.gmail.com` |
    | `SMTP_PORT` | `587` |
    | `SMTP_USER` | the Gmail address |
-   | `SMTP_PASSWORD` | the 16-char app password |
-   | `PUBLIC_APP_URL` | `https://adicmu.github.io/Countsfor-Summer-26/` |
+   | `SMTP_PASS` | the 16-char app password |
+   | `FRONTEND_RESET_BASE` | `https://adicmu.github.io/Countsfor-Summer-26/index.html` |
 
    Save — Render redeploys automatically.
 5. Test: open the site → Forgot password → enter your Andrew email → the
@@ -224,6 +224,9 @@ password) and **email reset links**, which need SMTP credentials once:
    the first send, check the account's Security activity page and retry.
    Until these vars are set, the forgot view automatically steers users to
    Google recovery instead — nothing appears broken.
+7. **Resend alternative**: instead of the SMTP vars, set `RESEND_API_KEY`
+   (from resend.com) and `MAIL_FROM` (a verified sender). The backend tries
+   Resend first, then SMTP.
 
 ---
 

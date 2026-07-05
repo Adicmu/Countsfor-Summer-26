@@ -29,24 +29,56 @@ def _csv(env_value: str) -> list[str]:
     return [v.strip() for v in (env_value or "").split(",") if v.strip()]
 
 
+def _resolve_database_url() -> str:
+    """Resolve SQLAlchemy URI. Never silently use SQLite on Render or production."""
+    raw = (os.environ.get("DATABASE_URL") or "").strip()
+    on_render = os.environ.get("RENDER", "").lower() == "true"
+    is_production = os.environ.get("FLASK_ENV", "").strip().lower() == "production"
+
+    if raw:
+        if raw.startswith("postgres://"):
+            raw = raw.replace("postgres://", "postgresql://", 1)
+        return raw
+
+    if on_render:
+        raise RuntimeError(
+            "DATABASE_URL is not set on Render. Link the web service to "
+            "CountsFor_Summer_2026 — refusing SQLite fallback."
+        )
+    if is_production:
+        raise RuntimeError(
+            "DATABASE_URL is required when FLASK_ENV=production. "
+            "Refusing SQLite fallback."
+        )
+
+    allow_sqlite = os.environ.get("ALLOW_SQLITE", "").lower() in ("1", "true", "yes")
+    if allow_sqlite or not is_production:
+        return "sqlite:///countsfor.db"
+
+    raise RuntimeError(
+        "DATABASE_URL is unset. Set DATABASE_URL or ALLOW_SQLITE=1 for local SQLite dev."
+    )
+
+
 class Config:
     # ── Flask core ────────────────────────────────────────────
     SECRET_KEY = os.environ.get("SECRET_KEY", "dev-only-change-me")
 
     # Cookie / session settings — cross-origin (GH Pages → Render) needs
     # SameSite=None + Secure=True over HTTPS.
-    IS_PRODUCTION = os.environ.get("FLASK_ENV", "development") == "production"
+    ON_RENDER = os.environ.get("RENDER", "").lower() == "true"
+    IS_PRODUCTION = (
+        os.environ.get("FLASK_ENV", "development") == "production" or ON_RENDER
+    )
     SESSION_COOKIE_NAME = "cf_session"
     SESSION_COOKIE_SECURE = IS_PRODUCTION
     SESSION_COOKIE_HTTPONLY = True
     SESSION_COOKIE_SAMESITE = "None" if IS_PRODUCTION else "Lax"
+    SESSION_COOKIE_PATH = "/"
     PERMANENT_SESSION_LIFETIME = 60 * 60 * 24 * 30  # 30 days
 
     # ── Database ──────────────────────────────────────────────
-    # Render gives postgres:// — SQLAlchemy 2 wants postgresql://
-    _raw_db = os.environ.get("DATABASE_URL", "sqlite:///countsfor.db")
-    if _raw_db.startswith("postgres://"):
-        _raw_db = _raw_db.replace("postgres://", "postgresql://", 1)
+    _raw_db = _resolve_database_url()
     SQLALCHEMY_DATABASE_URI = _raw_db
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     # Fail fast on Render if Postgres is misconfigured instead of hanging gunicorn.
@@ -58,42 +90,31 @@ class Config:
     # ── Auth ──────────────────────────────────────────────────
     GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_CLIENT_ID", "")
     ALLOWED_EMAIL_DOMAIN = os.environ.get("ALLOWED_EMAIL_DOMAIN", "").strip().lower()
-    # The core admin team is baked in so they're ALWAYS admins on deploy,
-    # regardless of the Render dashboard env var. Any emails set in the
-    # ADMIN_EMAILS env var are merged on top (never replace these).
-    _DEFAULT_ADMINS = {
-        "hjendara@andrew.cmu.edu",   # Hind Jendara
-        "avivek@andrew.cmu.edu",     # Aditya Vivek
-        "hbouamor@andrew.cmu.edu",   # Houda Bouamor
-        "spessoa@andrew.cmu.edu",    # Silvia Pessoa
-    }
-    ADMIN_EMAILS = _DEFAULT_ADMINS | {e.lower() for e in _csv(os.environ.get("ADMIN_EMAILS"))}
+    # Admin emails come ONLY from the directory panel (role=admin).
+    # ADMIN_EMAILS is legacy and ignored by auth sync — kept for backwards-compatible deploy configs.
+    ADMIN_EMAILS = {e.lower() for e in _csv(os.environ.get("ADMIN_EMAILS"))}
     SEED_USERS_PATH = os.environ.get(
         "SEED_USERS_PATH",
         str(Path(__file__).resolve().parent / "seed_users.json"),
     )
+
+    # ── Password reset email ───────────────────────────────────
+    RESET_TOKEN_MINUTES = int(os.environ.get("RESET_TOKEN_MINUTES", "30"))
+    # Override reset link base (default: first FRONTEND_ORIGIN + /index.html)
+    FRONTEND_RESET_BASE = os.environ.get("FRONTEND_RESET_BASE", "").strip()
+    RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
+    MAIL_FROM = os.environ.get("MAIL_FROM", "").strip()
+    SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
+    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
+    SMTP_USER = os.environ.get("SMTP_USER", "").strip()
+    SMTP_PASS = os.environ.get("SMTP_PASS", "")
+    SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
 
     # ── CORS ──────────────────────────────────────────────────
     FRONTEND_ORIGINS = _csv(os.environ.get(
         "FRONTEND_ORIGIN",
         "http://localhost:8765,https://adicmu.github.io"
     ))
-
-    # ── Email (password reset) ────────────────────────────────
-    # Provider-agnostic SMTP. Set these on the host to enable real reset
-    # emails; leave SMTP_HOST empty to disable email sending. Examples:
-    #   Gmail:    SMTP_HOST=smtp.gmail.com  SMTP_PORT=587  SMTP_USER=<addr>  SMTP_PASSWORD=<app password>
-    #   SendGrid: SMTP_HOST=smtp.sendgrid.net SMTP_PORT=587 SMTP_USER=apikey SMTP_PASSWORD=<api key>
-    SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
-    SMTP_PORT = int(os.environ.get("SMTP_PORT", "587") or "587")
-    SMTP_USER = os.environ.get("SMTP_USER", "").strip()
-    SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
-    SMTP_FROM = os.environ.get("SMTP_FROM", "").strip()
-    SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
-    # Public URL of the deployed frontend, used to build the reset link in the
-    # email (e.g. "https://adicmu.github.io/Countsfor-Summer-26/"). Falls back
-    # to the first CORS origin if unset.
-    PUBLIC_APP_URL = os.environ.get("PUBLIC_APP_URL", "").strip()
 
 
 class TestConfig(Config):
@@ -107,7 +128,5 @@ class TestConfig(Config):
     SESSION_COOKIE_SAMESITE = "Lax"
     FRONTEND_ORIGINS = ["http://localhost:8765"]
     SEED_USERS_PATH = ""
-    # SMTP off by default in tests; the email path is tested by overriding these.
-    SMTP_HOST = ""
-    SMTP_USER = ""
-    PUBLIC_APP_URL = "https://countsfor.test/app"
+    # Tests opt in via monkeypatch when they need the raw reset token in responses.
+    EXPOSE_RESET_TOKEN = os.environ.get("EXPOSE_RESET_TOKEN", "")

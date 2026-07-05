@@ -15,38 +15,61 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/landing.css" />
+  <link rel="stylesheet" href="css/landing.css?v=red-guest-v1" />
+  <style>
+    /* Critical layout — keeps GH Pages sizing correct even if the stylesheet is cached late */
+    html, body { height: 100%; margin: 0; }
+    .auth-shell {
+      box-sizing: border-box;
+      width: 100%;
+      min-height: 100dvh;
+      /* scroll instead of clipping when a tall panel + guest row exceed one viewport */
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: clamp(12px, 2vh, 32px) 16px;
+      gap: clamp(8px, 2vh, 24px);
+    }
+    .landing-brand,
+    .landing-card,
+    #landingCard {
+      box-sizing: border-box;
+      width: 100%;
+      max-width: 400px;
+    }
+  </style>
 </head>
 <body>
-  <div class="landing-page wrap">
-    <div class="landing-page__inner">
-      <header class="landing-brand">
-        <img
-          class="landing-brand__scotty"
-          src="docs/scotty-portrait.png"
-          alt="Scotty, the Carnegie Mellon University mascot"
-          width="96"
-          height="96"
-          decoding="async"
-        />
-        <div class="landing-brand__rule" aria-hidden="true"></div>
-        <p class="landing-brand__eyebrow">CMU-Q CURRICULUM EXPLORER</p>
-        <h1 class="landing-brand__wordmark">CountsFor</h1>
-        <p class="landing-brand__tagline">
-          See what courses count for at CMU-Q — in the majors and in General Education.
-        </p>
-      </header>
+  <div class="auth-shell wrap">
+    <header class="landing-brand">
+      <img
+        class="landing-brand__scotty"
+        src="docs/scotty-portrait.png"
+        alt="Scotty, the Carnegie Mellon University mascot"
+        width="96"
+        height="96"
+        decoding="async"
+      />
+      <div class="landing-brand__rule" aria-hidden="true"></div>
+      <p class="landing-brand__eyebrow">CMU-Q CURRICULUM EXPLORER</p>
+      <h1 class="landing-brand__wordmark">CountsFor</h1>
+      <p class="landing-brand__tagline">
+        See what courses count for at CMU-Q — in the majors and in General Education.
+      </p>
+    </header>
 
-      <main class="landing-card" id="landingCard" aria-live="polite">
-        <!-- Sign in / Create account / Forgot / Reset panels rendered by js/landing.js -->
-      </main>
+    <main class="landing-card" id="landingCard" aria-live="polite">
+      <!-- Sign in / Create account / Forgot / Reset panels rendered by js/landing.js -->
+    </main>
 
-      <div class="landing-guest-row">
-        <button type="button" id="cfGuestBtn" class="landing-guest">Continue as guest →</button>
-        <p class="landing-guest-note">Browse every course and requirement — nothing is saved to a server.</p>
-      </div>
+    <div class="landing-guest-row">
+      <button type="button" id="cfGuestBtn" class="landing-guest">Continue as guest →</button>
+      <p class="landing-guest-note">Browse every course and requirement — nothing is saved to a server.</p>
     </div>
   </div>
-  <script src="js/landing.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/landing.js?v=red-guest-v1"></script>
 </body>
 </html>

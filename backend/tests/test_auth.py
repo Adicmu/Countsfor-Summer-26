@@ -51,13 +51,23 @@ def test_google_signin_reuses_existing_user(client):
         assert db.session.query(User).count() == 1
 
 
-def test_google_signin_promotes_admin_via_env(client):
-    with patch("backend.auth.id_token.verify_oauth2_token",
-               return_value=_fake_google_payload(email="admin@andrew.cmu.edu", sub="g-admin")):
-        r = client.post("/api/auth/google", json={"credential": "stub"})
+def test_google_signin_promotes_admin_via_directory(client):
+    directory = {
+        "admin@andrew.cmu.edu": {
+            "email": "admin@andrew.cmu.edu",
+            "name": "Admin",
+            "role": "admin",
+            "department": "Dean's Office",
+            "primary_program": "IS",
+        }
+    }
+    with patch("backend.auth.resolve_directory_entry", side_effect=lambda e: directory.get(e)):
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake_google_payload(email="admin@andrew.cmu.edu", sub="g-admin")):
+            r = client.post("/api/auth/google", json={"credential": "stub"})
     body = r.get_json()
     assert body["role"] == "admin"
-    assert body["profile_completed"] is True
+    assert body["is_admin"] is True
 
 
 def test_google_signin_marks_seeded_faculty_complete(client):
@@ -130,6 +140,19 @@ def test_patch_me_updates_profile(client, student):
     body = r.get_json()
     assert body["primary_program"] == "BA"
     assert body["minor_code"] == "history"
+    assert body["minor_codes"] == ["history"]
+
+
+def test_patch_me_accepts_multiple_minors(client, student):
+    login(client, student)
+    r = client.patch("/api/me", json={
+        "primary_program": "CS",
+        "minor_codes": ["finance", "history"],
+    })
+    assert r.status_code == 200, r.get_json()
+    body = r.get_json()
+    assert body["minor_codes"] == ["finance", "history"]
+    assert body["minor_code"] is None
 
 
 def test_patch_me_rejects_unknown_fields(client, student):
@@ -217,44 +240,38 @@ def test_patch_me_rejects_advisor_all_programs_with_program(client):
 
 # ── Admin demotion / no-demotion via env ───────────────────
 
-def test_google_signin_does_not_demote_existing_non_admin(client):
-    """If a user is a professor and their email isn't in ADMIN_EMAILS,
-    re-login must not silently change their role."""
-    with patch("backend.auth.id_token.verify_oauth2_token",
-               return_value=_fake_google_payload(email="prof@andrew.cmu.edu", sub="g-prof")):
-        # First login — creates as student (default), but we then update role to professor
-        client.post("/api/auth/google", json={"credential": "stub"})
-
-    from backend.db import db
-    from backend.models import User
-    with client.application.app_context():
-        u = db.session.query(User).filter_by(email="prof@andrew.cmu.edu").one()
-        u.role = "professor"
-        u.primary_program = "IS"
-        db.session.commit()
-
-    # Re-login — role must stay professor
-    with patch("backend.auth.id_token.verify_oauth2_token",
-               return_value=_fake_google_payload(email="prof@andrew.cmu.edu", sub="g-prof")):
-        r = client.post("/api/auth/google", json={"credential": "stub"})
+def test_google_signin_syncs_directory_role_on_relogin(client):
+    """Directory-listed faculty keep their role on every login."""
+    directory = {
+        "prof@andrew.cmu.edu": {
+            "email": "prof@andrew.cmu.edu",
+            "role": "professor",
+            "primary_program": "IS",
+        }
+    }
+    with patch("backend.auth.load_merged_directory", return_value=directory):
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake_google_payload(email="prof@andrew.cmu.edu", sub="g-prof")):
+            client.post("/api/auth/google", json={"credential": "stub"})
+            r = client.post("/api/auth/google", json={"credential": "stub"})
     assert r.get_json()["role"] == "professor"
 
 
-def test_google_signin_does_not_demote_admin_when_removed_from_env(client):
-    """If an existing admin's email is later removed from ADMIN_EMAILS,
-    their role stays 'admin' (demotion is manual). Tested by using an email
-    NOT in TestConfig.ADMIN_EMAILS but with role pre-set to admin."""
+def test_login_demotes_non_env_admin_without_directory(client):
+    """Accounts marked admin in DB but not in ADMIN_EMAILS or directory become students."""
     from backend.db import db
     from backend.models import User
     with client.application.app_context():
-        u = User(email="exadmin@andrew.cmu.edu", name="Ex", role="admin", google_sub="g-ex")
-        db.session.add(u); db.session.commit()
+        u = User(email="exadmin@andrew.cmu.edu", name="Ex", role="admin", is_admin=True, google_sub="g-ex")
+        db.session.add(u)
+        db.session.commit()
 
-    # Now they sign in — their email is NOT in ADMIN_EMAILS
     with patch("backend.auth.id_token.verify_oauth2_token",
                return_value=_fake_google_payload(email="exadmin@andrew.cmu.edu", sub="g-ex")):
         r = client.post("/api/auth/google", json={"credential": "stub"})
-    assert r.get_json()["role"] == "admin"  # not demoted
+    body = r.get_json()
+    assert body["role"] == "student"
+    assert body["is_admin"] is False
 
 
 # ── Logout ──────────────────────────────────────────────────
@@ -279,11 +296,20 @@ def test_patch_me_rejects_self_assign_faculty(client, student):
 
 
 def test_admin_skips_onboarding(client):
-    """An admin (via ADMIN_EMAILS) is profile-complete on login and never gets
-    bounced to onboarding — even without a primary_program."""
-    with patch("backend.auth.id_token.verify_oauth2_token",
-               return_value=_fake("admin@andrew.cmu.edu", "g-admin")):
-        r = client.post("/api/auth/google", json={"credential": "stub"})
+    """Admin from directory with department + program is profile-complete on login."""
+    directory = {
+        "admin@andrew.cmu.edu": {
+            "email": "admin@andrew.cmu.edu",
+            "name": "Admin",
+            "role": "admin",
+            "department": "Dean's Office",
+            "primary_program": "IS",
+        }
+    }
+    with patch("backend.auth.resolve_directory_entry", side_effect=lambda e: directory.get(e)):
+        with patch("backend.auth.id_token.verify_oauth2_token",
+                   return_value=_fake("admin@andrew.cmu.edu", "g-admin")):
+            r = client.post("/api/auth/google", json={"credential": "stub"})
     body = r.get_json()
     assert body["role"] == "admin"
     assert body["is_admin"] is True
@@ -296,7 +322,7 @@ def test_seed_user_recognized_as_faculty_on_signin(tmp_path):
     seed = tmp_path / "seed_users.json"
     seed.write_text(json.dumps([
         {"email": "hbouamor@andrew.cmu.edu", "name": "Houda Bouamor",
-         "role": "professor", "primary_program": "IS", "department": "Information Systems"},
+         "role": "associate_area_head", "primary_program": "IS", "department": "Information Systems"},
     ]))
 
     class SeedConfig(TestConfig):
@@ -308,22 +334,35 @@ def test_seed_user_recognized_as_faculty_on_signin(tmp_path):
                    return_value=_fake("hbouamor@andrew.cmu.edu", "g-houda")):
             r = c.post("/api/auth/google", json={"credential": "stub"})
     body = r.get_json()
-    assert body["role"] == "professor"
+    assert body["role"] == "associate_area_head"
     assert body["primary_program"] == "IS"
     assert body["profile_completed"] is True
 
 
-def test_admin_email_overrides_seed_role(tmp_path):
-    """If an email is both seeded as faculty AND in ADMIN_EMAILS, admin wins."""
+def test_admin_directory_overrides_json_seed_role(tmp_path):
+    """Postgres directory entry (role=admin) overrides JSON seed (role=professor)."""
+    from backend.db import db
+    from backend.models import DirectoryEntry
+
     seed = tmp_path / "seed_users.json"
     seed.write_text(json.dumps([
-        {"email": "admin@andrew.cmu.edu", "role": "professor", "primary_program": "IS"},
+        {"email": "admin@andrew.cmu.edu", "role": "professor", "primary_program": "IS",
+         "department": "Information Systems", "name": "Admin"},
     ]))
 
     class SeedConfig(TestConfig):
         SEED_USERS_PATH = str(seed)
 
     app = create_app(SeedConfig)
+    with app.app_context():
+        db.session.add(DirectoryEntry(
+            email="admin@andrew.cmu.edu",
+            name="Admin",
+            role="admin",
+            department="Dean's Office",
+            primary_program="IS",
+        ))
+        db.session.commit()
     with app.test_client() as c:
         with patch("backend.auth.id_token.verify_oauth2_token",
                    return_value=_fake("admin@andrew.cmu.edu", "g-admin")):
@@ -400,6 +439,7 @@ def test_register_and_login(client):
     })
     assert r.status_code == 201, r.get_json()
     assert r.get_json()["role"] == "student"
+    assert r.get_json()["role_group"] == "student"
     assert r.get_json()["profile_completed"] is False
 
     client.post("/api/auth/logout")
@@ -440,7 +480,8 @@ def test_register_faculty_from_seed(client, tmp_path):
     assert body["profile_completed"] is True
 
 
-def test_forgot_and_reset_password(client):
+def test_forgot_and_reset_password(client, monkeypatch):
+    monkeypatch.setenv("EXPOSE_RESET_TOKEN", "1")
     client.post("/api/auth/register", json={
         "email": "resetme@andrew.cmu.edu",
         "password": "oldpass123",
@@ -452,9 +493,10 @@ def test_forgot_and_reset_password(client):
     assert r.status_code == 200
     data = r.get_json()
     assert data.get("reset_token")
+    assert "reset_url" in data
+    assert "reset_token=" in data["reset_url"] or "token=" in data["reset_url"]
 
     r2 = client.post("/api/auth/reset-password", json={
-        "email": "resetme@andrew.cmu.edu",
         "token": data["reset_token"],
         "password": "newpass456",
     })
@@ -467,69 +509,30 @@ def test_forgot_and_reset_password(client):
     assert ok.status_code == 200
 
 
-def test_forgot_password_emails_link_when_smtp_configured(monkeypatch):
-    """With SMTP configured, the reset link is emailed and NOT returned in the
-    response body (no token leak)."""
-    class SmtpConfig(TestConfig):
-        SMTP_HOST = "smtp.example.com"
-        SMTP_USER = "noreply@andrew.cmu.edu"
-        PUBLIC_APP_URL = "https://adicmu.github.io/Countsfor-Summer-26/"
-
-    app = create_app(SmtpConfig)
-    captured = {}
-
-    import backend.auth as auth_mod
-
-    def fake_send(config, to_addr, subject, text_body, html_body=None):
-        captured.update(to=to_addr, subject=subject, text=text_body, html=html_body)
-        return True
-
-    monkeypatch.setattr(auth_mod, "send_email", fake_send)
-
-    with app.test_client() as c:
-        c.post("/api/auth/register", json={
-            "email": "mailme@andrew.cmu.edu",
-            "password": "oldpass123",
-            "confirm_password": "oldpass123",
-        })
-        c.post("/api/auth/logout")
-        r = c.post("/api/auth/forgot-password", json={"email": "mailme@andrew.cmu.edu"})
-
-    assert r.status_code == 200, r.get_json()
+def test_forgot_password_generic_when_unknown(client, monkeypatch):
+    monkeypatch.setenv("EXPOSE_RESET_TOKEN", "1")
+    r = client.post("/api/auth/forgot-password", json={"email": "nobody@andrew.cmu.edu"})
+    assert r.status_code == 200
     body = r.get_json()
-    assert "reset_token" not in body                       # token not leaked to the client
-    assert captured.get("to") == "mailme@andrew.cmu.edu"   # email was sent to the user
-    assert "reset=" in (captured.get("text") or "")        # link carries the token
-    assert "adicmu.github.io" in (captured.get("text") or "")
+    assert body["ok"] is True
+    assert "reset_token" not in body
 
 
-def test_forgot_password_returns_502_when_send_fails(monkeypatch):
-    """A transient SMTP failure surfaces as 502 email_failed, not a fake success."""
-    class SmtpConfig(TestConfig):
-        SMTP_HOST = "smtp.example.com"
-        SMTP_USER = "noreply@andrew.cmu.edu"
-
-    app = create_app(SmtpConfig)
-
-    import backend.auth as auth_mod
-    monkeypatch.setattr(auth_mod, "send_email", lambda *a, **kw: False)
-
-    with app.test_client() as c:
-        c.post("/api/auth/register", json={
-            "email": "failme@andrew.cmu.edu",
-            "password": "oldpass123",
-            "confirm_password": "oldpass123",
-        })
-        c.post("/api/auth/logout")
-        r = c.post("/api/auth/forgot-password", json={"email": "failme@andrew.cmu.edu"})
-
-    assert r.status_code == 502
-    assert r.get_json()["error"] == "email_failed"
+def test_forgot_password_503_when_no_provider(client):
+    """No email provider configured and no dev exposure → honest failure that
+    steers the user to Google recovery, same response for any email (no
+    account enumeration)."""
+    for email in ("resetme@andrew.cmu.edu", "nobody@andrew.cmu.edu"):
+        r = client.post("/api/auth/forgot-password", json={"email": email})
+        assert r.status_code == 503
+        body = r.get_json()
+        assert body["error"] == "email_unavailable"
+        assert body["google_recovery"] is True
 
 
 def test_set_password_when_authenticated(client):
-    """Google-recovery path: an authenticated user can set a new password
-    without any reset token, then sign in with it."""
+    """Google-recovery path: an authenticated user sets a new password with
+    no reset token, then signs in with it."""
     client.post("/api/auth/register", json={
         "email": "recover@andrew.cmu.edu",
         "password": "origpass1",
@@ -561,18 +564,104 @@ def test_set_password_rejects_weak(client):
     assert r.get_json()["error"] == "weak_password"
 
 
-def test_forgot_password_unavailable_in_prod_without_smtp():
-    """In production with no SMTP configured, be honest — don't claim a mail
-    was sent. Same response regardless of account existence (no enumeration)."""
-    class ProdNoSmtp(TestConfig):
-        IS_PRODUCTION = True
-        SMTP_HOST = ""
-        SMTP_USER = ""
+def test_reset_password_works_for_google_only_account(client, monkeypatch):
+    monkeypatch.setenv("EXPOSE_RESET_TOKEN", "1")
+    from backend.db import db
+    from backend.models import User
+    with client.application.app_context():
+        u = User(email="google@andrew.cmu.edu", name="G", role="student", google_sub="g-1")
+        db.session.add(u)
+        db.session.commit()
 
-    app = create_app(ProdNoSmtp)
+    r = client.post("/api/auth/forgot-password", json={"email": "google@andrew.cmu.edu"})
+    token = r.get_json()["reset_token"]
+    r2 = client.post("/api/auth/reset-password", json={"token": token, "password": "newpass789"})
+    assert r2.status_code == 200
+
+    ok = client.post("/api/auth/login", json={"email": "google@andrew.cmu.edu", "password": "newpass789"})
+    assert ok.status_code == 200
+
+
+def test_register_login_normalizes_cmu_domain(client, tmp_path):
+    seed = tmp_path / "seed.json"
+    seed.write_text(json.dumps([
+        {"email": "fac@andrew.cmu.edu", "role": "professor", "primary_program": "CS"},
+    ]))
+
+    class SeedConfig(TestConfig):
+        SEED_USERS_PATH = str(seed)
+
+    app = create_app(SeedConfig)
     with app.test_client() as c:
-        r = c.post("/api/auth/forgot-password", json={"email": "nobody@andrew.cmu.edu"})
-    assert r.status_code == 503
+        c.post("/api/auth/register", json={
+            "email": "fac@cmu.edu",
+            "password": "password12",
+            "confirm_password": "password12",
+        })
+        c.post("/api/auth/logout")
+        ok = c.post("/api/auth/login", json={"email": "fac@cmu.edu", "password": "password12"})
+    body = ok.get_json()
+    assert ok.status_code == 200
+    assert body["email"] == "fac@andrew.cmu.edu"
+    assert body["role"] == "professor"
+    assert body["role_group"] == "faculty"
+
+
+def test_login_passwordless_user_gets_clear_error(client):
+    """Google/legacy users without password_hash need Create account, not generic 401."""
+    client.post("/api/auth/email", json={"email": "googleonly@andrew.cmu.edu", "name": "Google Only"})
+    client.post("/api/auth/logout")
+    r = client.post("/api/auth/login", json={
+        "email": "googleonly@andrew.cmu.edu",
+        "password": "anypassword1",
+    })
+    assert r.status_code == 401
     body = r.get_json()
-    assert body["error"] == "email_unavailable"
-    assert body["google_recovery"] is True  # frontend steers to Google recovery
+    assert body["error"] == "no_password_set"
+    assert "Create account" in body["message"]
+
+
+def test_login_with_bearer_token_without_session_cookie(client):
+    client.post("/api/auth/register", json={
+        "email": "bearer@andrew.cmu.edu",
+        "password": "testpass12",
+        "confirm_password": "testpass12",
+    })
+    login = client.post("/api/auth/login", json={
+        "email": "bearer@andrew.cmu.edu",
+        "password": "testpass12",
+    })
+    token = login.get_json().get("auth_token")
+    assert token
+
+    client.post("/api/auth/logout")
+    me = client.get("/api/me", headers={"Authorization": f"Bearer {token}"})
+    assert me.status_code == 200
+    assert me.get_json()["email"] == "bearer@andrew.cmu.edu"
+
+
+def test_faculty_directory_reapplied_on_login(client, tmp_path):
+    seed = tmp_path / "seed.json"
+    seed.write_text(json.dumps([
+        {"email": "prof@andrew.cmu.edu", "role": "professor", "primary_program": "IS"},
+    ]))
+
+    class SeedConfig(TestConfig):
+        SEED_USERS_PATH = str(seed)
+
+    app = create_app(SeedConfig)
+    with app.test_client() as c:
+        c.post("/api/auth/register", json={
+            "email": "prof@andrew.cmu.edu",
+            "password": "password12",
+            "confirm_password": "password12",
+        })
+        with app.app_context():
+            u = db.session.query(User).filter_by(email="prof@andrew.cmu.edu").one()
+            u.role = "student"
+            u.profile_completed = True
+            db.session.commit()
+        c.post("/api/auth/logout")
+        ok = c.post("/api/auth/login", json={"email": "prof@andrew.cmu.edu", "password": "password12"})
+    assert ok.get_json()["role"] == "professor"
+    assert ok.get_json()["role_group"] == "faculty"

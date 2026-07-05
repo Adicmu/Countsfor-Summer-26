@@ -330,13 +330,68 @@ function splitTreeSections(tree, majorCode) {
   return { degree, gened };
 }
 
+// ── Canonical course code (82101, 82101.0, 82-101 → 82-101) ─
+function normalizeCourseCode(code) {
+  if (code == null || code === '') return '';
+  let s = String(code).trim();
+  if (/^\d+\.0$/.test(s)) s = s.slice(0, -2);
+  const digits = s.replace(/-/g, '');
+  if (/^\d{5}$/.test(digits)) return digits.slice(0, 2) + '-' + digits.slice(2);
+  return s;
+}
+
 // ── Build course index ──────────────────────────────────────
 function buildCourseIndex(courses) {
   const index = {};
   for (const course of courses) {
-    index[course.course_code] = course;
+    const canonical = normalizeCourseCode(course.course_code);
+    if (canonical && canonical !== course.course_code) {
+      course.course_code = canonical;
+    }
+    if (!canonical) continue;
+    index[canonical] = course;
+    index[canonical.replace(/-/g, '')] = course;
   }
   return index;
+}
+
+function lookupCourse(index, code) {
+  if (!code) return null;
+  return index[normalizeCourseCode(code)] || index[code] || null;
+}
+
+/** Find a requirement node by its --- delimited path. */
+function findTreeNode(tree, path) {
+  if (!tree || !path) return null;
+  const stack = [tree];
+  while (stack.length) {
+    const node = stack.pop();
+    if (node.path === path) return node;
+    for (const child of (node.children || [])) stack.push(child);
+  }
+  return null;
+}
+
+/**
+ * Collect unique courses mapped to a requirement node (includes descendants).
+ * filterFn receives the tree leaf object { code, name, units, ... }.
+ */
+function collectCoursesForRequirement(node, filterFn) {
+  const byCode = new Map();
+  function walk(n) {
+    for (const c of (n.courses || [])) {
+      if (filterFn && !filterFn(c)) continue;
+      if (!byCode.has(c.code)) byCode.set(c.code, c);
+    }
+    for (const child of (n.children || [])) walk(child);
+  }
+  walk(node);
+  return Array.from(byCode.values()).sort((a, b) => a.code.localeCompare(b.code));
+}
+
+function formatRequirementPath(path) {
+  if (!path) return '';
+  return path.split('---').map(p => (LABEL_OVERRIDES[p] || p)).join(' > ');
 }
 
 // ── Get display-ready mappings for a course ─────────────────
@@ -621,14 +676,15 @@ function annotateDoubleCounters(courses, profile, minorCourseList) {
     return;
   }
   const p = profile.primary;
-  if (!profile.secondary) {
+  const minors = getProfileMinors(profile);
+  if (!minors.length) {
     for (const c of courses) c._doubleCounter = false;
     return;
   }
   for (const c of courses) {
     const req = c.requirements || {};
     const hasPrimary = Array.isArray(req[p]) && req[p].length > 0;
-    const hasSecondary = courseCountsForMinor(c, profile.secondary, minorCourseList);
+    const hasSecondary = minors.some(mc => courseCountsForMinor(c, mc, minorCourseList));
     c._doubleCounter = hasPrimary && hasSecondary;
   }
 }

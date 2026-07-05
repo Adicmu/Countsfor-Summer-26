@@ -14,9 +14,11 @@ import os
 
 from flask import Flask, jsonify
 from flask_cors import CORS
+from sqlalchemy import inspect, text
 
 from .config import Config
 from .db import db
+from .db_schema import REQUIRED_TABLES, database_host, redact_database_url
 
 
 def init_database(app: Flask) -> list[str]:
@@ -42,11 +44,14 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
     if bootstrap_db:
         init_database(app)
 
-    # CORS — cookies need explicit allow-list + credentials=True
+    # CORS — cookies + bearer token auth from GitHub Pages
     CORS(
         app,
-        resources={r"/api/*": {"origins": app.config["FRONTEND_ORIGINS"]}},
-        supports_credentials=True,
+        resources={r"/api/*": {
+            "origins": app.config["FRONTEND_ORIGINS"],
+            "supports_credentials": True,
+            "allow_headers": ["Content-Type", "Authorization"],
+        }},
     )
 
     # Blueprints
@@ -54,16 +59,48 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
     from .flags import bp as flags_bp
     from .wishlist import bp as wishlist_bp
     from .users import bp as users_bp
+    from .directory_routes import bp as directory_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(flags_bp)
     app.register_blueprint(wishlist_bp)
     app.register_blueprint(users_bp)
+    app.register_blueprint(directory_bp)
 
-    # Health check (Render pings this)
+    # Health check (Render pings this). Fails if Postgres tables are missing.
     @app.route("/health")
     def health():
-        return jsonify(status="ok")
+        uri = app.config.get("SQLALCHEMY_DATABASE_URI") or ""
+        db_target = redact_database_url(uri) if uri else ""
+        db_host = database_host(uri) if uri else ""
+        if uri.startswith("sqlite"):
+            return jsonify(status="ok", database="sqlite", db_host="sqlite")
+        try:
+            with app.app_context():
+                db.session.execute(text("SELECT 1"))
+                present = set(inspect(db.engine).get_table_names())
+                missing = REQUIRED_TABLES - present
+                if missing:
+                    return jsonify(
+                        status="degraded",
+                        database="missing_tables",
+                        db_host=db_host,
+                        db_target=db_target,
+                        missing=sorted(missing),
+                    ), 503
+                return jsonify(
+                    status="ok",
+                    database="connected",
+                    db_host=db_host,
+                    tables=len(present),
+                )
+        except Exception as exc:
+            return jsonify(
+                status="degraded",
+                database="error",
+                db_host=db_host,
+                message=str(exc),
+            ), 503
 
     # Friendly 404 in JSON shape
     @app.errorhandler(404)
