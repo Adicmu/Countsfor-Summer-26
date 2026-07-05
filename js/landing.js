@@ -786,6 +786,14 @@
   }
 
   async function init() {
+    const guestBtn = document.getElementById('cfGuestBtn');
+    if (guestBtn) {
+      guestBtn.addEventListener('click', function () {
+        try { sessionStorage.setItem('cf_guest', '1'); } catch (e) { /* storage blocked */ }
+        location.href = APP_URL;
+      });
+    }
+
     const params = new URLSearchParams(location.search);
     const resetTok = params.get('reset') || '';
     const resetEmail = params.get('email') || '';
