@@ -53,7 +53,20 @@ async function _fetchFromGitHub() {
 
 // ── Main exported function ───────────────────────────────────
 async function fetchAllCourses() {
-  // 1. Try live API
+  // 1. Bundled data first — it ships with every deploy (kept fresh by the
+  //    scrape workflow), so nobody waits on a remote fetch failing.
+  try {
+    const data = await _get(LOCAL_DATA);
+    const courses = data.courses || [];
+    if (courses.length > 0) {
+      console.log(`[API] ✓ Local data — ${courses.length} courses`);
+      return courses;
+    }
+  } catch (e) {
+    console.warn('[API] Local data failed:', e.message);
+  }
+
+  // 2. Live CMU-Q API (future hosting migration path)
   try {
     const data = await _get(`${API_BASE}/courses/search?searchQuery=`);
     const courses = data.courses || [];
@@ -65,26 +78,14 @@ async function fetchAllCourses() {
     console.warn('[API] Live API failed:', e.message);
   }
 
-  // 2. Try GitHub
+  // 3. Last resort: GitHub raw
   try {
     return await _fetchFromGitHub();
   } catch (e) {
-    console.warn('[API] GitHub failed:', e.message);
+    console.error('[API] GitHub failed:', e.message);
   }
 
-  // 3. Fall back to bundled local data
-  try {
-    const data = await _get(LOCAL_DATA);
-    const courses = data.courses || [];
-    if (courses.length > 0) {
-      console.log(`[API] ✓ Local data — ${courses.length} courses`);
-      return courses;
-    }
-  } catch (e) {
-    console.error('[API] Local data failed:', e.message);
-  }
-
-  throw new Error('Could not load course data from any source (API, GitHub, or local file).');
+  throw new Error('Could not load course data from any source (local file, API, or GitHub).');
 }
 
 // ============================================================
