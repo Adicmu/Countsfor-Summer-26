@@ -11,6 +11,11 @@
   --cf-card: #FFFFFF;
   --cf-focus-ring: rgba(196, 18, 48, 0.15);
   --cf-ok: #1a7f4b;
+  /* CMU-red hero — same gradient as the app's onboarding splash */
+  --cf-hero-grad: linear-gradient(135deg, #C41230 0%, #7d0a1f 45%, #4a0612 100%);
+  --cf-on-dark: #FFFFFF;
+  --cf-on-dark-muted: rgba(255, 255, 255, 0.82);
+  --cf-on-dark-faint: rgba(255, 255, 255, 0.55);
 }
 
 *,
@@ -28,30 +33,32 @@ body {
   color: var(--cf-black);
 }
 
-/* parchment base on the page */
+/* CMU-red hero base — matches the app's onboarding splash */
 body{
-  background:#F5F0EA;
+  background:var(--cf-hero-grad);
+  background-attachment:fixed;
   min-height:100vh;
   margin:0;
 }
 
-/* the windowpane plaid — fixed full-page layer behind everything */
+/* the windowpane plaid — fixed full-page layer behind everything,
+   recolored for the dark hero */
 body::before{
   content:"";
   position:fixed;
   inset:0;
   z-index:0;
   pointer-events:none;
-  opacity:.5;
+  opacity:.6;
   background:
     repeating-linear-gradient(90deg, transparent 0 64px,
-      rgba(196,18,48,.15) 64px 68px, transparent 68px 96px,
-      rgba(38,38,38,.12) 96px 97px, transparent 97px 132px,
-      rgba(224,168,46,.13) 132px 133px, transparent 133px 134px),
+      rgba(255,255,255,.05) 64px 68px, transparent 68px 96px,
+      rgba(255,255,255,.03) 96px 97px, transparent 97px 132px,
+      rgba(224,168,46,.06) 132px 133px, transparent 133px 134px),
     repeating-linear-gradient(0deg, transparent 0 64px,
-      rgba(196,18,48,.15) 64px 68px, transparent 68px 96px,
-      rgba(38,38,38,.12) 96px 97px, transparent 97px 132px,
-      rgba(224,168,46,.13) 132px 133px, transparent 133px 134px);
+      rgba(255,255,255,.05) 64px 68px, transparent 68px 96px,
+      rgba(255,255,255,.03) 96px 97px, transparent 97px 132px,
+      rgba(224,168,46,.06) 132px 133px, transparent 133px 134px);
 }
 
 /* all page content must sit above the plaid layer */
@@ -91,6 +98,11 @@ body::before{
   width: auto;
   height: clamp(64px, 9vh, 96px);
   margin: 0 auto 12px;
+  /* white chip so the portrait sits cleanly on the maroon hero */
+  background: #fff;
+  border-radius: 50%;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 .landing-brand__rule {
@@ -98,7 +110,7 @@ body::before{
   height: 3px;
   margin: 0 auto 14px;
   border: none;
-  background: var(--cf-red);
+  background: #E0A82E;
 }
 
 .landing-brand__eyebrow {
@@ -108,7 +120,7 @@ body::before{
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--cf-maroon);
+  color: var(--cf-on-dark-faint);
 }
 
 .landing-brand__wordmark {
@@ -117,7 +129,8 @@ body::before{
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1.05;
-  color: var(--cf-black);
+  color: var(--cf-on-dark);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
 }
 
 .landing-brand__tagline {
@@ -129,16 +142,16 @@ body::before{
   font-size: clamp(14px, 2vh, 16px);
   font-weight: 400;
   line-height: 1.45;
-  color: var(--cf-slate);
+  color: var(--cf-on-dark-muted);
 }
 
 /* ── Auth card ────────────────────────────────────────────── */
 
 .landing-card {
   background: var(--cf-card);
-  border: 1px solid var(--cf-line);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(38, 38, 38, 0.06);
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
   overflow: hidden;
 }
 
