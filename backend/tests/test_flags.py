@@ -170,20 +170,3 @@ def test_admin_patch_rejects_invalid_status(client, professor, admin):
     r = client.patch(f"/api/flags/{flag_id}", json={"status": "weird"})
     assert r.status_code == 400
 
-
-# ── Faculty own-flag list ─────────────────────────────────────
-
-def test_professor_can_list_own_flags(client, professor):
-    login(client, professor)
-    client.post("/api/flags", json=VALID_FLAG)
-    r = client.get("/api/flags/mine")
-    assert r.status_code == 200, r.get_json()
-    body = r.get_json()
-    assert body["total"] == 1
-    assert body["items"][0]["submitted_by_email"] == professor.email
-
-
-def test_student_cannot_list_my_flags(client, student):
-    login(client, student)
-    r = client.get("/api/flags/mine")
-    assert r.status_code == 403

@@ -639,6 +639,25 @@ body::before{
   }
 }
 
+/* Divider between the email-reset form and Google recovery (forgot view) */
+.landing-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 6px;
+  color: var(--cf-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.landing-divider::before,
+.landing-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--cf-line);
+}
+
 /* Google-based password recovery (forgot view) */
 .landing-google-mount {
   display: flex;

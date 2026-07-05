@@ -194,12 +194,43 @@ If any check fails, see **Troubleshooting** below.
 
 ---
 
-## 7. What's NOT done yet
+## 7. Reset emails via Gmail
+
+Password reset works two ways: **Google recovery** (zero setup, already
+live — the user proves ownership by signing in with Google, then sets a new
+password) and **email reset links**, which need SMTP credentials once:
+
+1. Pick the sending Gmail account. A dedicated one (e.g.
+   `countsfor.cmuq@gmail.com`) is cleaner than a personal address.
+2. Enable 2-Step Verification on it: myaccount.google.com → Security →
+   2-Step Verification (app passwords require this).
+3. Create an App Password: https://myaccount.google.com/apppasswords →
+   name it "CountsFor Render" → copy the 16 characters (drop the spaces).
+4. Render dashboard → service **countsfor-backend**
+   (countsfor-summer-26.onrender.com) → **Environment** → add:
+
+   | Key | Value |
+   |---|---|
+   | `SMTP_HOST` | `smtp.gmail.com` |
+   | `SMTP_PORT` | `587` |
+   | `SMTP_USER` | the Gmail address |
+   | `SMTP_PASSWORD` | the 16-char app password |
+   | `PUBLIC_APP_URL` | `https://adicmu.github.io/Countsfor-Summer-26/` |
+
+   Save — Render redeploys automatically.
+5. Test: open the site → Forgot password → enter your Andrew email → the
+   reset link should arrive within a minute and open the site's reset view.
+6. Notes: Gmail SMTP allows ~500 messages/day (plenty). If Google blocks
+   the first send, check the account's Security activity page and retry.
+   Until these vars are set, the forgot view automatically steers users to
+   Google recovery instead — nothing appears broken.
+
+---
+
+## 8. What's NOT done yet
 
 - **Email verification flow** — Google handles this already; no extra
   emails sent by our backend.
-- **Password reset / email + password fallback** — not implemented since
-  SSO covers the CMU community. Add when external advisors need access.
 - **Andrew SSO (Shibboleth)** — would replace Google but require IT
   involvement. Out of scope for v1.
 - **Course offering ML predictor** — current implementation is rule-based

@@ -36,6 +36,19 @@ services:
       - key: SEED_USERS_PATH
         value: ../data/faculty_directory.json
 
+      # ── Password-reset email (Gmail SMTP). Secrets are set in the Render
+      #    dashboard; see docs/SETUP_AUTH.md "Reset emails via Gmail". ──
+      - key: SMTP_HOST
+        value: smtp.gmail.com
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false          # the Gmail address that sends reset emails
+      - key: SMTP_PASSWORD
+        sync: false          # 16-char Google App Password (not the account password)
+      - key: PUBLIC_APP_URL
+        value: https://adicmu.github.io/Countsfor-Summer-26/
+
 databases:
   - name: CountsFor_Summer_2026
     plan: free

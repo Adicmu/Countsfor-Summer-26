@@ -322,6 +322,7 @@ def forgot_password():
     if not can_email and is_prod:
         return jsonify(
             error="email_unavailable",
+            google_recovery=True,  # frontend steers the user to Google recovery
             message="Password reset by email isn't available yet. Please contact an administrator.",
         ), 503
 

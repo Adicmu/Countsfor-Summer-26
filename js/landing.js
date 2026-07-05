@@ -446,14 +446,22 @@
         '<div class="landing-panel-head">' +
         '<button type="button" class="landing-back" data-view="signin">← Back to sign in</button>' +
         '<h2 class="landing-panel-title" id="panel-title-forgot">Forgot password</h2>' +
-        '<p class="landing-panel-lead">No problem — sign in with your <strong>@andrew.cmu.edu</strong> Google account to verify it\'s you, then set a new password.</p>' +
+        '<p class="landing-panel-lead">We\'ll email you a reset link — or verify with your <strong>@andrew.cmu.edu</strong> Google account instead, no email needed.</p>' +
         '</div>' +
         backendWarnHtml() +
         '</div>' +
         '<div class="landing-card__body">' +
+        '<form class="landing-form" id="cfAuthForm" novalidate>' +
         formErrorHtml() +
+        emailField('cfForgotEmail', 'Andrew email') +
+        '<div class="landing-form-actions">' +
+        '<button type="submit" class="landing-submit" id="cfAuthSubmit" disabled>Send reset link →</button>' +
+        '</div>' +
+        '</form>' +
+        '<div class="landing-reset-box" id="cfResetLinkBox" hidden></div>' +
+        '<div class="landing-divider" aria-hidden="true"><span>or</span></div>' +
         '<div id="cfGoogleRecover" class="landing-google-mount"></div>' +
-        '<p class="landing-recover-note">We use your CMU Google sign-in to confirm you own the account — no reset email needed.</p>' +
+        '<p class="landing-recover-note">Sign in with Google to confirm you own the account — no reset email needed.</p>' +
         '</div>',
         'forgot'
       );
@@ -686,7 +694,21 @@
     const r = await apiForgotPassword(email);
     setLoading(false, 'Send reset link →');
     if (!r.ok) {
-      setFormError((r.data && r.data.message) || 'Request failed.');
+      if (r.status === 503) {
+        // email_unavailable — SMTP not configured on the server; steer to Google.
+        const box = document.getElementById('cfResetLinkBox');
+        if (box) {
+          box.hidden = false;
+          box.innerHTML =
+            '<p class="landing-reset-msg">Email reset isn\'t available yet — use ' +
+            '<strong>Continue with Google</strong> below to verify it\'s you and set a new password.</p>';
+        }
+      } else if (r.status === 502) {
+        // email_failed — transient send failure.
+        setFormError((r.data && r.data.message) || 'We couldn\'t send the email right now — try again in a few minutes, or use Google below.');
+      } else {
+        setFormError((r.data && r.data.message) || 'Request failed.');
+      }
       updateSubmitState('forgot');
       return;
     }
