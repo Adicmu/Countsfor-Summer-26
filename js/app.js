@@ -38,9 +38,10 @@ const App = {
   //   3. If 401, render the login screen.
   //   4. If the backend is unreachable, fall back to localStorage demo mode
   //      so the GH-Pages-only deploy keeps working.
-  authedUser: null,
-  authMode: 'demo',
-  authView: 'signin',
+  authedUser: null,             // server-confirmed user, or null in demo mode
+  authMode: 'demo',             // 'authed' | 'demo' | 'login'
+  isGuest: false,               // deliberate guest session (sessionStorage cf_guest)
+  authView: 'signin',           // signin | register | forgot | reset
   resetEmail: '',
   resetToken: '',
   serverFlags: [],
@@ -54,6 +55,18 @@ const App = {
         ? `token=${encodeURIComponent(resetTok)}`
         : `reset=${encodeURIComponent(resetTok)}`;
       location.href = `index.html?${qs}`;
+      return;
+    }
+
+    // Guest mode — entered deliberately from the landing. Skips the /api/me
+    // probe (a sleeping free-tier backend would stall the guest for ~30s)
+    // and boots straight into localStorage-only demo mode.
+    if (this._readGuestFlag()) {
+      this.isGuest = true;
+      this.authMode = 'demo';
+      this.profile = loadProfile() || { role: 'student', primary: 'CS', secondary: null, scope: null };
+      try { saveProfile(this.profile); } catch (e) { /* keep going with the in-memory profile */ }
+      this._afterAuthed();
       return;
     }
 
@@ -1065,6 +1078,45 @@ const App = {
     this._afterSignIn(r.data);
   },
 
+  _readGuestFlag() {
+    try { return sessionStorage.getItem('cf_guest') === '1'; } catch { return false; }
+  },
+
+  // Guest → landing to sign in. Keeps cf_flags / cf_wishlist so the existing
+  // _syncLocalToServer migration picks them up after a real sign-in.
+  exitGuest() {
+    try { sessionStorage.removeItem('cf_guest'); } catch {}
+    location.href = 'index.html';
+  },
+
+  // Guest-only view switcher: flips the local profile between a student and
+  // a cross-program faculty demo persona. Never touches the server.
+  setGuestRole(kind) {
+    if (!this.isGuest) return;
+    const current = this.profile || {};
+    const profile = kind === 'faculty'
+      ? { role: 'professor', primary: 'AS', secondary: null, scope: null }
+      : {
+          role: 'student',
+          primary: (current.role === 'student' && current.primary) || 'CS',
+          secondary: current.role === 'student' ? (current.secondary || null) : null,
+          scope: null,
+        };
+    try { saveProfile(profile); } catch {}
+    this.profile = profile;
+    if (profile.primary && profile.primary !== 'AS' && MAJOR_LIST.includes(profile.primary)) {
+      this.activeMajor = profile.primary;
+    }
+    annotateDoubleCounters(this.courses, this.profile, this.minorCourseList);
+    this.renderShell();
+    this.bindGlobalEvents();
+    this.renderLeftEmpty();
+    this.renderTree();
+    showToast(kind === 'faculty'
+      ? 'Faculty view — you can flag course issues (saved locally in guest mode).'
+      : 'Student view — you can save courses to a wishlist.');
+  },
+
   async signOut() {
     // Best-effort sync of any locally-saved-but-unsynced data BEFORE we
     // clear it. If the user is offline / backend unreachable, the sync
@@ -1083,6 +1135,7 @@ const App = {
       localStorage.removeItem('cf_synced');
       localStorage.removeItem('cf_flags');
       localStorage.removeItem('cf_wishlist');
+      sessionStorage.removeItem('cf_guest');
     } catch {}
     this.authedUser = null;
     this.authMode = 'login';
@@ -1208,6 +1261,10 @@ const App = {
       showToast('Admin role is managed via the ADMIN_EMAILS env var on the server.');
       return;
     }
+    if (this.isGuest && isFaculty(this.profile)) {
+      showToast('Use the Student/Faculty toggle in the guest bar to switch views.');
+      return;
+    }
     if (isFaculty(this.profile)) {
       showToast('Your role is set by the CountsFor admin. Contact them to change it.');
       return;
@@ -1237,6 +1294,21 @@ const App = {
     return MAJOR_ORDER.slice();
   },
 
+  _guestBannerHtml() {
+    const fac = isFaculty(this.profile);
+    return `
+      <div class="guest-banner" role="status">
+        <span class="guest-banner-badge">Guest mode</span>
+        <span class="guest-banner-text">Exploring as</span>
+        <div class="guest-banner-toggle">
+          <button class="guest-role-btn ${!fac ? 'active' : ''}" onclick="App.setGuestRole('student')">Student</button>
+          <button class="guest-role-btn ${fac ? 'active' : ''}" onclick="App.setGuestRole('faculty')">Faculty</button>
+        </div>
+        <span class="guest-banner-note">Saved locally on this device only</span>
+        <button class="guest-banner-signin" onclick="App.exitGuest()">Sign in →</button>
+      </div>`;
+  },
+
   // ── Shell Rendering ───────────────────────────────────────
   renderShell() {
     const isSplit = this.layoutMode === 'split';
@@ -1256,6 +1328,7 @@ const App = {
     ` : '';
 
     document.getElementById('app').innerHTML = `
+      ${this.isGuest ? this._guestBannerHtml() : ''}
       <nav class="navbar">
         <div class="navbar-left-group">
           <div class="navbar-brand" onclick="App.reset()"><img class="navbar-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" /><span class="navbar-wordmark">CountsFor</span> <span class="subtitle">CMU-Q</span></div>
@@ -2996,7 +3069,7 @@ const App = {
       const saved = this._isInWishlist(course.course_code);
       acts.push(`<button class="tr-leaf-action tr-leaf-wishlist ${saved ? 'is-saved' : ''}" data-action="wishlist" data-course-code="${esc(course.course_code)}" title="${saved ? 'Remove from wishlist' : 'Save for later'}" aria-label="${saved ? 'Remove from wishlist' : 'Save for later'}">${saved ? this._iconBookmarkFilled() : this._iconBookmarkOutline()}</button>`);
     }
-    if (canFlagCourses(this.profile)) {
+    if (canFlagCourses(this.profile) && (this.authMode === 'authed' || this.isGuest)) {
       acts.push(`<button class="tr-leaf-action tr-leaf-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Flag course data issue" aria-label="Flag course data issue">${this._iconFlag()}</button>`);
     } else if (isStudent(this.profile) && this._courseHasVisibleFlag(course.course_code)) {
       acts.push(`<span class="tr-leaf-flag-badge" title="Faculty-flagged course">${this._iconFlag()}</span>`);
@@ -3030,7 +3103,7 @@ const App = {
           <span>${saved ? 'Saved ✓' : 'Save course'}</span>
         </button>`);
     }
-    if (canFlagCourses(this.profile)) {
+    if (canFlagCourses(this.profile) && (this.authMode === 'authed' || this.isGuest)) {
       parts.push(`
         <button class="cc-action cc-action-flag" data-action="flag" data-course-code="${esc(course.course_code)}" title="Report a data issue with this course" aria-label="Flag course issue">
           ${this._iconFlag()}
@@ -3380,8 +3453,8 @@ const App = {
   },
 
   openFlagModal(courseCode) {
-    if (!canFlagCourses(this.profile)) {
-      showToast('Only faculty can flag course issues.');
+    if (!canFlagCourses(this.profile) || (this.authMode !== 'authed' && !this.isGuest)) {
+      showToast('Course flagging is available to signed-in faculty only.');
       return;
     }
     if (this.authMode !== 'authed') {
@@ -3496,6 +3569,8 @@ const App = {
         try { localStorage.removeItem('cf_synced'); } catch {}
         toast = 'Saved locally — sync to server failed (will retry next sign-in).';
       }
+    } else if (this.isGuest) {
+      toast = 'Guest mode — flag saved on this device only. Sign in to submit it for review.';
     } else {
       toast = 'Flag saved (offline) — sign in to submit for admin review.';
     }

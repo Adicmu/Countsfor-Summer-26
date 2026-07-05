@@ -101,7 +101,7 @@ cp .env.example .env
 # Edit .env — at minimum set GOOGLE_CLIENT_ID, ADMIN_EMAILS, SECRET_KEY.
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python -m backend.app                # http://localhost:5000
+python -m backend.app                # http://localhost:5050
 
 # Frontend (separate terminal)
 cd /Users/adityavivek/Desktop/CountsFor
@@ -112,8 +112,18 @@ PYTHONPATH=. pytest backend/tests -q                 # backend
 open http://localhost:8765/tests/test.html           # frontend (in browser)
 ```
 
-The frontend auto-detects `localhost` and points at `http://localhost:5000`
-for the API. Production builds point at the Render URL.
+The frontend auto-detects `localhost` and points at `http://localhost:5050`
+for the API — no need to edit the `cf-backend-url` meta tags in
+`index.html`/`app.html` (and never commit them pointing at localhost).
+Production deploys use the meta tag's Render URL.
+
+Odd setups (e.g. local frontend against the production backend, or a backend
+on a different port) can override the resolution from the browser console:
+
+```js
+localStorage.setItem('cf_backend_override', 'https://countsfor-summer-26.onrender.com')
+localStorage.removeItem('cf_backend_override')   // back to auto-detection
+```
 
 ---
 
@@ -184,12 +194,46 @@ If any check fails, see **Troubleshooting** below.
 
 ---
 
-## 7. What's NOT done yet
+## 7. Reset emails (Gmail SMTP or Resend)
+
+Password reset works two ways: **Google recovery** (zero setup, already
+live — the user proves ownership by signing in with Google, then sets a new
+password) and **email reset links**, which need SMTP credentials once:
+
+1. Pick the sending Gmail account. A dedicated one (e.g.
+   `countsfor.cmuq@gmail.com`) is cleaner than a personal address.
+2. Enable 2-Step Verification on it: myaccount.google.com → Security →
+   2-Step Verification (app passwords require this).
+3. Create an App Password: https://myaccount.google.com/apppasswords →
+   name it "CountsFor Render" → copy the 16 characters (drop the spaces).
+4. Render dashboard → service **countsfor-backend**
+   (countsfor-summer-26.onrender.com) → **Environment** → add:
+
+   | Key | Value |
+   |---|---|
+   | `SMTP_HOST` | `smtp.gmail.com` |
+   | `SMTP_PORT` | `587` |
+   | `SMTP_USER` | the Gmail address |
+   | `SMTP_PASS` | the 16-char app password |
+   | `FRONTEND_RESET_BASE` | `https://adicmu.github.io/Countsfor-Summer-26/index.html` |
+
+   Save — Render redeploys automatically.
+5. Test: open the site → Forgot password → enter your Andrew email → the
+   reset link should arrive within a minute and open the site's reset view.
+6. Notes: Gmail SMTP allows ~500 messages/day (plenty). If Google blocks
+   the first send, check the account's Security activity page and retry.
+   Until these vars are set, the forgot view automatically steers users to
+   Google recovery instead — nothing appears broken.
+7. **Resend alternative**: instead of the SMTP vars, set `RESEND_API_KEY`
+   (from resend.com) and `MAIL_FROM` (a verified sender). The backend tries
+   Resend first, then SMTP.
+
+---
+
+## 8. What's NOT done yet
 
 - **Email verification flow** — Google handles this already; no extra
   emails sent by our backend.
-- **Password reset / email + password fallback** — not implemented since
-  SSO covers the CMU community. Add when external advisors need access.
 - **Andrew SSO (Shibboleth)** — would replace Google but require IT
   involvement. Out of scope for v1.
 - **Course offering ML predictor** — current implementation is rule-based

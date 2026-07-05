@@ -115,6 +115,7 @@ if __name__ == "__main__":
     application = create_app()
     application.run(
         host=os.environ.get("HOST", "127.0.0.1"),
-        port=int(os.environ.get("PORT", "5000")),
+        # 5050, not 5000 — macOS AirPlay Receiver squats on 5000 and answers 403.
+        port=int(os.environ.get("PORT", "5050")),
         debug=os.environ.get("FLASK_DEBUG", "1") == "1",
     )
