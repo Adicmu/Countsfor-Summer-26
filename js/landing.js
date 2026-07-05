@@ -6,14 +6,21 @@
 
   const APP_URL = 'app.html';
 
+  // Same resolution order as js/api.js: local override → localhost dev
+  // backend → committed production meta → fallback. Keeping localhost ahead
+  // of the meta means local dev never requires hand-editing index.html.
   function getBackendUrl() {
-    const meta = document.querySelector('meta[name="cf-backend-url"]');
-    const fromMeta = (meta && meta.getAttribute('content') || '').trim();
-    if (fromMeta) return fromMeta.replace(/\/$/, '');
+    try {
+      const override = (localStorage.getItem('cf_backend_override') || '').trim();
+      if (override) return override.replace(/\/$/, '');
+    } catch (e) { /* storage blocked — fall through */ }
     const host = location.hostname;
     if (host === 'localhost' || host === '127.0.0.1' || host === '') {
       return 'http://localhost:5000';
     }
+    const meta = document.querySelector('meta[name="cf-backend-url"]');
+    const fromMeta = (meta && meta.getAttribute('content') || '').trim();
+    if (fromMeta) return fromMeta.replace(/\/$/, '');
     return 'https://countsfor-backend.onrender.com';
   }
 

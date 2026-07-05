@@ -113,7 +113,17 @@ open http://localhost:8765/tests/test.html           # frontend (in browser)
 ```
 
 The frontend auto-detects `localhost` and points at `http://localhost:5000`
-for the API. Production builds point at the Render URL.
+for the API — no need to edit the `cf-backend-url` meta tags in
+`index.html`/`app.html` (and never commit them pointing at localhost).
+Production deploys use the meta tag's Render URL.
+
+Odd setups (e.g. local frontend against the production backend, or a backend
+on a different port) can override the resolution from the browser console:
+
+```js
+localStorage.setItem('cf_backend_override', 'https://countsfor-summer-26.onrender.com')
+localStorage.removeItem('cf_backend_override')   // back to auto-detection
+```
 
 ---
 

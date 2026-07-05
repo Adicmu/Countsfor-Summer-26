@@ -95,11 +95,26 @@ async function fetchAllCourses() {
 // deployed. Override at runtime by setting window.CF_BACKEND_URL before
 // app.js loads.
 
-// Production backend URL. Set in index.html via
-// `<meta name="cf-backend-url" content="https://your-service.onrender.com">`
-// so you do not need to edit this file after deploy. Falls back to the
-// placeholder below when the meta tag is empty.
+// Backend URL resolution, in priority order:
+//   1. localStorage 'cf_backend_override' — manual escape hatch for odd setups
+//      (e.g. localhost frontend against the production backend)
+//   2. window.CF_BACKEND_URL — set before this script loads
+//   3. localhost/127.0.0.1 hostname — local Flask dev server on :5000, so the
+//      committed production meta never needs hand-editing for local dev
+//   4. <meta name="cf-backend-url"> — the deployed production URL
+//   5. hardcoded fallback
 function getBackendUrl() {
+  try {
+    const override = (localStorage.getItem('cf_backend_override') || '').trim();
+    if (override) return override.replace(/\/$/, '');
+  } catch (e) { /* storage blocked — fall through */ }
+  if (typeof window !== 'undefined' && window.CF_BACKEND_URL) {
+    return String(window.CF_BACKEND_URL).replace(/\/$/, '');
+  }
+  const host = (typeof location !== 'undefined' ? location.hostname : '');
+  if (host === 'localhost' || host === '127.0.0.1' || host === '') {
+    return 'http://localhost:5000';
+  }
   const meta = typeof document !== 'undefined'
     ? document.querySelector('meta[name="cf-backend-url"]')
     : null;
@@ -116,14 +131,7 @@ function isBackendConfigured() {
   return !!(meta && (meta.getAttribute('content') || '').trim());
 }
 
-const CF_BACKEND_URL = (() => {
-  if (typeof window !== 'undefined' && window.CF_BACKEND_URL) return window.CF_BACKEND_URL;
-  const host = (typeof location !== 'undefined' ? location.hostname : '');
-  if (host === 'localhost' || host === '127.0.0.1' || host === '') {
-    return 'http://localhost:5000';
-  }
-  return getBackendUrl();
-})();
+const CF_BACKEND_URL = getBackendUrl();
 
 // Public Google OAuth client ID. Set this in index.html via
 // `<meta name="cf-google-client-id" content="…">` so it can ship to the
