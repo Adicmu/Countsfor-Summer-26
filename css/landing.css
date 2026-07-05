@@ -121,8 +121,11 @@ body::before{
 }
 
 .landing-brand__tagline {
+  /* Left-aligned description (per faculty feedback) — kept as a centered block
+     under the wordmark, but the text itself reads left, not centered. */
   margin: 0 auto;
   max-width: 46ch;
+  text-align: left;
   font-size: clamp(14px, 2vh, 16px);
   font-weight: 400;
   line-height: 1.45;

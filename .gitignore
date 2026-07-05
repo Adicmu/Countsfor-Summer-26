@@ -13,3 +13,6 @@ instance/
 __pycache__/
 .pytest_cache/
 backend/.venv/
+
+# Local design source assets — not referenced by the app
+Branding Assets/
