@@ -101,7 +101,7 @@ cp .env.example .env
 # Edit .env — at minimum set GOOGLE_CLIENT_ID, ADMIN_EMAILS, SECRET_KEY.
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python -m backend.app                # http://localhost:5000
+python -m backend.app                # http://localhost:5050
 
 # Frontend (separate terminal)
 cd /Users/adityavivek/Desktop/CountsFor
@@ -112,7 +112,7 @@ PYTHONPATH=. pytest backend/tests -q                 # backend
 open http://localhost:8765/tests/test.html           # frontend (in browser)
 ```
 
-The frontend auto-detects `localhost` and points at `http://localhost:5000`
+The frontend auto-detects `localhost` and points at `http://localhost:5050`
 for the API — no need to edit the `cf-backend-url` meta tags in
 `index.html`/`app.html` (and never commit them pointing at localhost).
 Production deploys use the meta tag's Render URL.

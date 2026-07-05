@@ -113,7 +113,8 @@ function getBackendUrl() {
   }
   const host = (typeof location !== 'undefined' ? location.hostname : '');
   if (host === 'localhost' || host === '127.0.0.1' || host === '') {
-    return 'http://localhost:5000';
+    // 5050, not 5000 — macOS AirPlay Receiver squats on 5000.
+    return 'http://localhost:5050';
   }
   const meta = typeof document !== 'undefined'
     ? document.querySelector('meta[name="cf-backend-url"]')
