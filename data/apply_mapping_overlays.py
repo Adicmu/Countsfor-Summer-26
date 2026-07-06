@@ -23,6 +23,16 @@ DEFAULT_CATALOGS = [
 ]
 
 IS_IGI_PATH = "GenEd---GenEd---Foundations---Intercultural and Global Inquiry"
+IS_CONTEXTUAL_PATH = "GenEd---GenEd---Foundations---Contextual Thinking"
+BA_GLOBAL_PATH = (
+    "EY2022 Qatar Business Administration - University Core Requirements"
+    "---Global, Cultural, and Diverse Perspectives"
+)
+BS_ML_PATH = "GenEd---Cultural/Global Understanding---Modern Languages Course"
+BS_NTB_PATH = "GenEd---Non-Technical Breadth Electives"
+CS_HUMANITIES_PATH = "GenEd---Humanities/Arts Electives"
+CS_CAT3_PATH = "GenEd---Category 3: Cultural Analysis"
+
 MODERN_LANGUAGE_CODES = [
     "82-101",
     "82-102",
@@ -30,7 +40,114 @@ MODERN_LANGUAGE_CODES = [
     "82-112",
     "82-141",
     "82-142",
+    "82-241",
+    "82-242",
+    "82-313",
 ]
+
+# Spreadsheet audit — expected mappings per course (major -> list of requirement paths)
+EXPECTED_GENED_MAPPINGS = {
+    "82-101": {
+        "IS": [IS_IGI_PATH],
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-102": {
+        "IS": [IS_IGI_PATH],
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-111": {
+        "IS": [IS_IGI_PATH],
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-112": {
+        "IS": [IS_IGI_PATH],
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-141": {
+        "IS": [IS_IGI_PATH],
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-142": {
+        "IS": [IS_IGI_PATH],
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-241": {
+        "IS": [IS_IGI_PATH],
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-242": {
+        "IS": [IS_IGI_PATH],
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-313": {
+        "IS": [IS_IGI_PATH],
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_CAT3_PATH, CS_HUMANITIES_PATH],
+    },
+    "82-314": {
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_CAT3_PATH, CS_HUMANITIES_PATH],
+    },
+    "82-355": {
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-412": {
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-414": {
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-511": {
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-512": {
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-277": {
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "82-289": {
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_ML_PATH, BS_NTB_PATH],
+        "CS": [CS_HUMANITIES_PATH],
+    },
+    "79-286": {
+        "IS": [IS_CONTEXTUAL_PATH],
+        "BA": [BA_GLOBAL_PATH],
+        "BS": [BS_NTB_PATH],
+        "CS": [CS_CAT3_PATH, CS_HUMANITIES_PATH],
+    },
+}
 
 
 def _load_json(path: Path):
@@ -171,6 +288,43 @@ def verify_modern_languages(catalog_path: Path) -> dict:
     }
 
 
+def _course_paths_by_major(course: dict) -> dict[str, set[str]]:
+    out: dict[str, set[str]] = {}
+    for major, reqs in (course.get("requirements") or {}).items():
+        paths = set()
+        for req in reqs or []:
+            if isinstance(req, dict) and req.get("type") is True and req.get("requirement"):
+                paths.add(req["requirement"])
+        if paths:
+            out[major] = paths
+    return out
+
+
+def verify_expected_geneds(catalog_path: Path) -> dict:
+    """Verify spreadsheet audit mappings are present (additive overlays may add extras)."""
+    data = _load_json(catalog_path)
+    courses = data["courses"] if isinstance(data, dict) else data
+    by_code = {c.get("course_code"): c for c in courses if c.get("course_code")}
+    missing: list[str] = []
+    for code, expected in EXPECTED_GENED_MAPPINGS.items():
+        course = by_code.get(code)
+        if not course:
+            missing.append(f"{code}: course missing")
+            continue
+        actual = _course_paths_by_major(course)
+        for major, paths in expected.items():
+            have = actual.get(major, set())
+            for path in paths:
+                if path not in have:
+                    missing.append(f"{code} {major}: {path}")
+    return {
+        "catalog": str(catalog_path),
+        "checked": len(EXPECTED_GENED_MAPPINGS),
+        "missing": missing,
+        "ok": not missing,
+    }
+
+
 def main() -> int:
     overlays_doc = _load_json(OVERLAYS_PATH)
     overlays = overlays_doc.get("overlays") or []
@@ -193,6 +347,14 @@ def main() -> int:
         status = "OK" if result["ok"] else "FAIL"
         print(f"verify {path.name}: {status} IGI={result['igi_total']} missing={result['modern_language_missing']}")
         if not result["ok"]:
+            failed = True
+
+        audit = verify_expected_geneds(path)
+        audit_status = "OK" if audit["ok"] else "FAIL"
+        print(f"audit {path.name}: {audit_status} checked={audit['checked']} gaps={len(audit['missing'])}")
+        if not audit["ok"]:
+            for gap in audit["missing"][:20]:
+                print(f"  - {gap}")
             failed = True
 
     return 1 if failed else 0

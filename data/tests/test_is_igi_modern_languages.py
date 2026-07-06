@@ -7,10 +7,13 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 sys.path.insert(0, str(ROOT / "data"))
 
 from apply_mapping_overlays import (  # noqa: E402
+    EXPECTED_GENED_MAPPINGS,
+    IS_CONTEXTUAL_PATH,
     IS_IGI_PATH,
     MODERN_LANGUAGE_CODES,
     apply_overlays_to_courses,
     query_is_igi_courses,
+    verify_expected_geneds,
     verify_modern_languages,
 )
 from soc_parse import normalize_course_code  # noqa: E402
@@ -77,4 +80,26 @@ def test_query_includes_all_six_without_dropping_existing():
     overlays = json.loads((ROOT / "data" / "mapping_overlays.json").read_text(encoding="utf-8"))["overlays"]
     apply_overlays_to_courses(copy, overlays)
     after = set(query_is_igi_courses(copy))
-    assert after == before
+    assert after.issuperset(before)
+
+
+def test_spreadsheet_gened_audit_passes():
+    result = verify_expected_geneds(ROOT / "data" / "courses.json")
+    assert result["ok"], result["missing"]
+
+
+def test_79_286_has_contextual_thinking():
+    courses = _load_courses("data/courses.json")
+    course = next(c for c in courses if c["course_code"] == "79-286")
+    is_paths = {
+        r["requirement"]
+        for r in (course.get("requirements") or {}).get("IS") or []
+        if r.get("type") is True
+    }
+    assert IS_CONTEXTUAL_PATH in is_paths
+
+
+def test_expected_mapping_table_covers_user_courses():
+    assert "82-314" in EXPECTED_GENED_MAPPINGS
+    assert "79-286" in EXPECTED_GENED_MAPPINGS
+    assert "82-411" not in EXPECTED_GENED_MAPPINGS

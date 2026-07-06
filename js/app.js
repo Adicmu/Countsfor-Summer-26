@@ -5,7 +5,8 @@
 const HOME_POPULAR_COURSES = ['15-122', '21-120', '36-200', '67-250', '82-112'];
 const HOME_SEARCH_CHIPS = ['15-122', 'Contextual Thinking', 'Intercultural and Global Inquiry', 'Probability'];
 const HOME_RECENT_MAPPINGS = [
-  { courses: '82-101 – 82-142', label: 'Modern Languages → IS GenEd IGI', major: 'IS', path: 'GenEd---GenEd---Foundations---Intercultural and Global Inquiry' },
+  { courses: '82-101 – 82-142', label: 'Modern Languages → IS/BA/BS/CS GenEd', major: 'IS', path: 'GenEd---GenEd---Foundations---Intercultural and Global Inquiry' },
+  { courses: '79-286', label: 'Movers & Shakers → IS Contextual Thinking', major: 'IS', path: 'GenEd---GenEd---Foundations---Contextual Thinking' },
 ];
 
 const App = {
