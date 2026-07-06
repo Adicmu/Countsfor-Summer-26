@@ -11,6 +11,11 @@
   --cf-card: #FFFFFF;
   --cf-focus-ring: rgba(196, 18, 48, 0.15);
   --cf-ok: #1a7f4b;
+  /* CMU-red hero — same gradient as the app's onboarding splash */
+  --cf-hero-grad: linear-gradient(135deg, #C41230 0%, #7d0a1f 45%, #4a0612 100%);
+  --cf-on-dark: #FFFFFF;
+  --cf-on-dark-muted: rgba(255, 255, 255, 0.82);
+  --cf-on-dark-faint: rgba(255, 255, 255, 0.55);
 }
 
 *,
@@ -31,30 +36,32 @@ body {
   overflow: hidden;
 }
 
-/* parchment base on the page */
+/* CMU-red hero base — matches the app's onboarding splash */
 body{
-  background:#F5F0EA;
+  background:var(--cf-hero-grad);
+  background-attachment:fixed;
   min-height:100vh;
   margin:0;
 }
 
-/* the windowpane plaid — fixed full-page layer behind everything */
+/* the windowpane plaid — fixed full-page layer behind everything,
+   recolored for the dark hero */
 body::before{
   content:"";
   position:fixed;
   inset:0;
   z-index:0;
   pointer-events:none;
-  opacity:.5;
+  opacity:.6;
   background:
     repeating-linear-gradient(90deg, transparent 0 64px,
-      rgba(196,18,48,.15) 64px 68px, transparent 68px 96px,
-      rgba(38,38,38,.12) 96px 97px, transparent 97px 132px,
-      rgba(224,168,46,.13) 132px 133px, transparent 133px 134px),
+      rgba(255,255,255,.05) 64px 68px, transparent 68px 96px,
+      rgba(255,255,255,.03) 96px 97px, transparent 97px 132px,
+      rgba(224,168,46,.06) 132px 133px, transparent 133px 134px),
     repeating-linear-gradient(0deg, transparent 0 64px,
-      rgba(196,18,48,.15) 64px 68px, transparent 68px 96px,
-      rgba(38,38,38,.12) 96px 97px, transparent 97px 132px,
-      rgba(224,168,46,.13) 132px 133px, transparent 133px 134px);
+      rgba(255,255,255,.05) 64px 68px, transparent 68px 96px,
+      rgba(255,255,255,.03) 96px 97px, transparent 97px 132px,
+      rgba(224,168,46,.06) 132px 133px, transparent 133px 134px);
 }
 
 /* all page content must sit above the plaid layer */
@@ -70,9 +77,10 @@ body::before{
   z-index: 1;
   width: 100%;
   max-width: none;
-  height: 100dvh;
-  max-height: 100dvh;
-  overflow: hidden;
+  min-height: 100dvh;
+  /* scroll instead of clipping when a taller panel (e.g. forgot view with
+     both reset paths) plus the guest row exceed one viewport */
+  overflow-y: auto;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -104,6 +112,11 @@ body::before{
   width: auto;
   height: clamp(40px, 8vh, 72px);
   margin: 0 auto clamp(2px, 0.8vh, 8px);
+  /* white chip so the portrait sits cleanly on the maroon hero */
+  background: #fff;
+  border-radius: 50%;
+  padding: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
 }
 
 .landing-brand__rule {
@@ -111,7 +124,7 @@ body::before{
   height: 3px;
   margin: 0 auto clamp(2px, 0.8vh, 8px);
   border: none;
-  background: var(--cf-red);
+  background: #E0A82E;
 }
 
 .landing-brand__eyebrow {
@@ -121,7 +134,7 @@ body::before{
   font-weight: 500;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: var(--cf-maroon);
+  color: var(--cf-on-dark-faint);
 }
 
 .landing-brand__wordmark {
@@ -130,26 +143,29 @@ body::before{
   font-weight: 800;
   letter-spacing: -0.03em;
   line-height: 1;
-  color: var(--cf-black);
+  color: var(--cf-on-dark);
+  text-shadow: 0 2px 12px rgba(0, 0, 0, 0.25);
 }
 
 .landing-brand__tagline {
-  margin: 0;
-  max-width: none;
+  /* Left-aligned description (per faculty feedback) — kept as a centered block
+     under the wordmark, but the text itself reads left, not centered. */
+  margin: 0 auto;
+  max-width: 46ch;
+  text-align: left;
   font-size: clamp(12px, 1.8vh, 16px);
   font-weight: 400;
   line-height: 1.3;
-  color: var(--cf-slate);
-  white-space: nowrap;
+  color: var(--cf-on-dark-muted);
 }
 
 /* ── Auth card ────────────────────────────────────────────── */
 
 .landing-card {
   background: var(--cf-card);
-  border: 1px solid var(--cf-line);
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(38, 38, 38, 0.06);
+  border: none;
+  border-radius: 14px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.35);
   width: 100%;
   max-width: 400px;
   flex-shrink: 1;
@@ -623,6 +639,41 @@ body::before{
 
 /* ── Status toast (no storage) ──────────────────────────────── */
 
+/* ── Guest mode entry ─────────────────────────────────────── */
+
+.landing-guest-row {
+  text-align: center;
+  margin-top: 16px;
+}
+
+.landing-guest {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.55);
+  color: #fff;
+  border-radius: 999px;
+  padding: 10px 22px;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.landing-guest:hover {
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.landing-guest:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 2px;
+}
+
+.landing-guest-note {
+  margin: 8px 0 0;
+  font-size: 12.5px;
+  color: var(--cf-on-dark-faint);
+}
+
 .landing-toast {
   position: fixed;
   left: 50%;
@@ -673,6 +724,16 @@ body::before{
     height: auto;
     min-height: 100dvh;
   }
+  /* keep the page in one viewport now that the guest row adds height */
+  .landing-brand {
+    margin-bottom: 10px;
+  }
+  .landing-guest-row {
+    margin-top: 10px;
+  }
+  .landing-guest {
+    padding: 7px 18px;
+  }
 }
 
 /* ── Reduced motion ───────────────────────────────────────── */
@@ -688,4 +749,38 @@ body::before{
     animation: none;
     border-top-color: rgba(255, 255, 255, 0.85);
   }
+}
+
+/* Divider between the email-reset form and Google recovery (forgot view) */
+.landing-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 18px 0 6px;
+  color: var(--cf-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.landing-divider::before,
+.landing-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--cf-line);
+}
+
+/* Google-based password recovery (forgot view) */
+.landing-google-mount {
+  display: flex;
+  justify-content: center;
+  min-height: 44px;
+  margin: 8px 0 4px;
+}
+.landing-recover-note {
+  margin: 14px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--cf-muted);
+  text-align: center;
 }

@@ -3,25 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="CountsFor — Find out which requirements any course satisfies, all in one place." />
-  <meta name="theme-color" content="#F5F0EA" />
+  <meta name="description" content="CountsFor — See what courses count for at CMU-Q, in the majors and in General Education." />
+  <meta name="theme-color" content="#C41230" />
   <meta name="cf-backend-url" content="https://countsfor-summer-26.onrender.com" />
+  <meta name="cf-google-client-id" content="378923997481-bgnvhg3gsgka5ptijjjsb80q4k7kc2vg.apps.googleusercontent.com" />
+  <!-- Google Identity Services — used on the landing for Google-based password recovery. -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
   <title>CountsFor — CMU-Q Curriculum Explorer</title>
   <link rel="icon" type="image/png" href="docs/scotty-portrait.png" />
   <link rel="apple-touch-icon" href="docs/scotty-portrait.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="css/landing.css?v=auth-v1" />
+  <link rel="stylesheet" href="css/landing.css?v=red-guest-v1" />
   <style>
     /* Critical layout — keeps GH Pages sizing correct even if the stylesheet is cached late */
-    html, body { height: 100%; margin: 0; overflow: hidden; }
+    html, body { height: 100%; margin: 0; }
     .auth-shell {
       box-sizing: border-box;
       width: 100%;
-      height: 100dvh;
-      max-height: 100dvh;
-      overflow: hidden;
+      min-height: 100dvh;
+      /* scroll instead of clipping when a tall panel + guest row exceed one viewport */
+      overflow-y: auto;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -35,10 +38,6 @@
       box-sizing: border-box;
       width: 100%;
       max-width: 400px;
-    }
-    @media (max-height: 599px) {
-      html, body { overflow-y: auto; }
-      .auth-shell { height: auto; min-height: 100dvh; overflow-y: auto; }
     }
   </style>
 </head>
@@ -57,15 +56,20 @@
       <p class="landing-brand__eyebrow">CMU-Q CURRICULUM EXPLORER</p>
       <h1 class="landing-brand__wordmark">CountsFor</h1>
       <p class="landing-brand__tagline">
-        Find out which requirements any course satisfies, all in one place.
+        See what courses count for at CMU-Q — in the majors and in General Education.
       </p>
     </header>
 
     <main class="landing-card" id="landingCard" aria-live="polite">
       <!-- Sign in / Create account / Forgot / Reset panels rendered by js/landing.js -->
     </main>
+
+    <div class="landing-guest-row">
+      <button type="button" id="cfGuestBtn" class="landing-guest">Continue as guest →</button>
+      <p class="landing-guest-note">Browse every course and requirement — nothing is saved to a server.</p>
+    </div>
   </div>
   <script src="js/utils.js"></script>
-  <script src="js/landing.js?v=auth-v2"></script>
+  <script src="js/landing.js?v=red-guest-v1"></script>
 </body>
 </html>

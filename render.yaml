@@ -34,10 +34,26 @@ services:
         value: https://adicmu.github.io,https://hindjendara.github.io,http://localhost:8765
       - key: SEED_USERS_PATH
         value: data/faculty_directory.json
+      # ── Password-reset email. Configure ONE provider in the dashboard (see
+      #    docs/SETUP_AUTH.md "Reset emails"). Until then the forgot view
+      #    steers users to Google recovery — nothing looks broken.
+      #    Resend API: RESEND_API_KEY + MAIL_FROM.
+      #    Gmail SMTP: SMTP_HOST=smtp.gmail.com, SMTP_USER=<gmail address>,
+      #                SMTP_PASS=<16-char Google App Password>.
       - key: RESEND_API_KEY
         sync: false
       - key: MAIL_FROM
         sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        value: "587"
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: FRONTEND_RESET_BASE
+        value: https://adicmu.github.io/Countsfor-Summer-26/index.html
 
 databases:
   - name: CountsFor_Summer_2026

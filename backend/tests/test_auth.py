@@ -509,12 +509,59 @@ def test_forgot_and_reset_password(client, monkeypatch):
     assert ok.status_code == 200
 
 
-def test_forgot_password_generic_when_unknown(client):
+def test_forgot_password_generic_when_unknown(client, monkeypatch):
+    monkeypatch.setenv("EXPOSE_RESET_TOKEN", "1")
     r = client.post("/api/auth/forgot-password", json={"email": "nobody@andrew.cmu.edu"})
     assert r.status_code == 200
     body = r.get_json()
     assert body["ok"] is True
     assert "reset_token" not in body
+
+
+def test_forgot_password_503_when_no_provider(client):
+    """No email provider configured and no dev exposure → honest failure that
+    steers the user to Google recovery, same response for any email (no
+    account enumeration)."""
+    for email in ("resetme@andrew.cmu.edu", "nobody@andrew.cmu.edu"):
+        r = client.post("/api/auth/forgot-password", json={"email": email})
+        assert r.status_code == 503
+        body = r.get_json()
+        assert body["error"] == "email_unavailable"
+        assert body["google_recovery"] is True
+
+
+def test_set_password_when_authenticated(client):
+    """Google-recovery path: an authenticated user sets a new password with
+    no reset token, then signs in with it."""
+    client.post("/api/auth/register", json={
+        "email": "recover@andrew.cmu.edu",
+        "password": "origpass1",
+        "confirm_password": "origpass1",
+    })  # register leaves the user signed in (stands in for the Google sign-in)
+    r = client.post("/api/auth/set-password", json={"password": "brandnew99"})
+    assert r.status_code == 200, r.get_json()
+    client.post("/api/auth/logout")
+    ok = client.post("/api/auth/login", json={
+        "email": "recover@andrew.cmu.edu",
+        "password": "brandnew99",
+    })
+    assert ok.status_code == 200
+
+
+def test_set_password_requires_login(client):
+    r = client.post("/api/auth/set-password", json={"password": "whatever123"})
+    assert r.status_code == 401
+
+
+def test_set_password_rejects_weak(client):
+    client.post("/api/auth/register", json={
+        "email": "weak@andrew.cmu.edu",
+        "password": "origpass1",
+        "confirm_password": "origpass1",
+    })
+    r = client.post("/api/auth/set-password", json={"password": "short"})
+    assert r.status_code == 400
+    assert r.get_json()["error"] == "weak_password"
 
 
 def test_reset_password_works_for_google_only_account(client, monkeypatch):

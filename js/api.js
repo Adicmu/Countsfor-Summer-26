@@ -53,7 +53,20 @@ async function _fetchFromGitHub() {
 
 // ── Main exported function ───────────────────────────────────
 async function fetchAllCourses() {
-  // 1. Try live API
+  // 1. Bundled data first — it ships with every deploy (kept fresh by the
+  //    scrape workflow), so nobody waits on a remote fetch failing.
+  try {
+    const data = await _get(LOCAL_DATA);
+    const courses = data.courses || [];
+    if (courses.length > 0) {
+      console.log(`[API] ✓ Local data — ${courses.length} courses`);
+      return courses;
+    }
+  } catch (e) {
+    console.warn('[API] Local data failed:', e.message);
+  }
+
+  // 2. Live CMU-Q API (future hosting migration path)
   try {
     const data = await _get(`${API_BASE}/courses/search?searchQuery=`);
     const courses = data.courses || [];
@@ -65,26 +78,14 @@ async function fetchAllCourses() {
     console.warn('[API] Live API failed:', e.message);
   }
 
-  // 2. Try GitHub
+  // 3. Last resort: GitHub raw
   try {
     return await _fetchFromGitHub();
   } catch (e) {
-    console.warn('[API] GitHub failed:', e.message);
+    console.error('[API] GitHub failed:', e.message);
   }
 
-  // 3. Fall back to bundled local data
-  try {
-    const data = await _get(LOCAL_DATA);
-    const courses = data.courses || [];
-    if (courses.length > 0) {
-      console.log(`[API] ✓ Local data — ${courses.length} courses`);
-      return courses;
-    }
-  } catch (e) {
-    console.error('[API] Local data failed:', e.message);
-  }
-
-  throw new Error('Could not load course data from any source (API, GitHub, or local file).');
+  throw new Error('Could not load course data from any source (local file, API, or GitHub).');
 }
 
 // ============================================================
@@ -95,11 +96,27 @@ async function fetchAllCourses() {
 // deployed. Override at runtime by setting window.CF_BACKEND_URL before
 // app.js loads.
 
-// Production backend URL. Set in index.html via
-// `<meta name="cf-backend-url" content="https://your-service.onrender.com">`
-// so you do not need to edit this file after deploy. Falls back to the
-// placeholder below when the meta tag is empty.
+// Backend URL resolution, in priority order:
+//   1. localStorage 'cf_backend_override' — manual escape hatch for odd setups
+//      (e.g. localhost frontend against the production backend)
+//   2. window.CF_BACKEND_URL — set before this script loads
+//   3. localhost/127.0.0.1 hostname — local Flask dev server on :5000, so the
+//      committed production meta never needs hand-editing for local dev
+//   4. <meta name="cf-backend-url"> — the deployed production URL
+//   5. hardcoded fallback
 function getBackendUrl() {
+  try {
+    const override = (localStorage.getItem('cf_backend_override') || '').trim();
+    if (override) return override.replace(/\/$/, '');
+  } catch (e) { /* storage blocked — fall through */ }
+  if (typeof window !== 'undefined' && window.CF_BACKEND_URL) {
+    return String(window.CF_BACKEND_URL).replace(/\/$/, '');
+  }
+  const host = (typeof location !== 'undefined' ? location.hostname : '');
+  if (host === 'localhost' || host === '127.0.0.1' || host === '') {
+    // 5050, not 5000 — macOS AirPlay Receiver squats on 5000.
+    return 'http://localhost:5050';
+  }
   const meta = typeof document !== 'undefined'
     ? document.querySelector('meta[name="cf-backend-url"]')
     : null;
@@ -116,14 +133,7 @@ function isBackendConfigured() {
   return !!(meta && (meta.getAttribute('content') || '').trim());
 }
 
-const CF_BACKEND_URL = (() => {
-  if (typeof window !== 'undefined' && window.CF_BACKEND_URL) return window.CF_BACKEND_URL;
-  const host = (typeof location !== 'undefined' ? location.hostname : '');
-  if (host === 'localhost' || host === '127.0.0.1' || host === '') {
-    return 'http://localhost:5000';
-  }
-  return getBackendUrl();
-})();
+const CF_BACKEND_URL = getBackendUrl();
 
 const CF_AUTH_TOKEN_KEY = 'cf_auth_token';
 

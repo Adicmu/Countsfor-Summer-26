@@ -380,6 +380,22 @@ def forgot_password():
     if not email:
         return jsonify(error="invalid_email", message="Enter your @andrew.cmu.edu email."), 400
 
+    # No email provider configured and no dev token exposure → be honest
+    # instead of claiming a mail was sent. Returned for ANY email (existing
+    # or not) so it never reveals whether an account exists. The frontend
+    # steers the user to Google recovery instead.
+    cfg = current_app.config
+    expose = os.environ.get("EXPOSE_RESET_TOKEN", "").lower() in ("1", "true", "yes")
+    provider_configured = bool(
+        (cfg.get("RESEND_API_KEY") or "").strip() and (cfg.get("MAIL_FROM") or "").strip()
+    ) or bool((cfg.get("SMTP_HOST") or "").strip())
+    if not provider_configured and not expose:
+        return jsonify(
+            error="email_unavailable",
+            google_recovery=True,
+            message="Password reset by email isn't available yet. Use Continue with Google below.",
+        ), 503
+
     payload = {"ok": True, "message": GENERIC_RESET_MESSAGE}
     user = db.session.query(User).filter_by(email=email).one_or_none()
     if user is not None:
@@ -387,7 +403,6 @@ def forgot_password():
         reset_url = _frontend_reset_url(raw_token)
         send_password_reset_email(email, reset_url)
 
-        expose = os.environ.get("EXPOSE_RESET_TOKEN", "").lower() in ("1", "true", "yes")
         if expose:
             payload["reset_token"] = raw_token
             payload["reset_url"] = reset_url
@@ -419,6 +434,28 @@ def reset_password():
     _invalidate_reset_tokens(user.id)
     db.session.commit()
     return jsonify(ok=True, message="Password updated. You can sign in now.")
+
+
+@bp.route("/auth/set-password", methods=["POST"])
+@require_login
+def set_password():
+    """Set/replace the signed-in user's password without a reset token.
+
+    Used by the Google-based recovery flow: signing in with Google already
+    proves ownership of the @andrew.cmu.edu address, so no emailed token is
+    needed. Works even when no email provider is configured.
+    """
+    data = request.get_json(silent=True) or {}
+    password = data.get("password") or ""
+    err = _validate_password(password)
+    if err:
+        return jsonify(error="weak_password", message=err), 400
+
+    user = current_user()
+    user.password_hash = _hash_password(password)
+    _invalidate_reset_tokens(user.id)
+    db.session.commit()
+    return jsonify(ok=True, message="Password set. You can sign in with it next time.")
 
 
 # ── Legacy email sign-in (passwordless — deprecated) ─────────

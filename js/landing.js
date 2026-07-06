@@ -6,14 +6,22 @@
 
   const APP_URL = 'app.html';
 
+  // Same resolution order as js/api.js: local override → localhost dev
+  // backend → committed production meta → fallback. Keeping localhost ahead
+  // of the meta means local dev never requires hand-editing index.html.
   function getBackendUrl() {
+    try {
+      const override = (localStorage.getItem('cf_backend_override') || '').trim();
+      if (override) return override.replace(/\/$/, '');
+    } catch (e) { /* storage blocked — fall through */ }
+    const host = location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1' || host === '') {
+      // 5050, not 5000 — macOS AirPlay Receiver squats on 5000.
+      return 'http://localhost:5050';
+    }
     const meta = document.querySelector('meta[name="cf-backend-url"]');
     const fromMeta = (meta && meta.getAttribute('content') || '').trim();
     if (fromMeta) return fromMeta.replace(/\/$/, '');
-    const host = location.hostname;
-    if (host === 'localhost' || host === '127.0.0.1' || host === '') {
-      return 'http://localhost:5000';
-    }
     return 'https://countsfor-summer-26.onrender.com';
   }
 
@@ -31,6 +39,11 @@
 
   function clearAuthToken() {
     try { sessionStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+  }
+
+  function getGoogleClientId() {
+    const meta = document.querySelector('meta[name="cf-google-client-id"]');
+    return (meta && meta.getAttribute('content') || '').trim();
   }
 
   async function apiFetch(path, opts) {
@@ -83,6 +96,12 @@
   function apiResetPassword(body) {
     return apiFetch('/api/auth/reset-password', { method: 'POST', body });
   }
+  function apiGoogle(credential) {
+    return apiFetch('/api/auth/google', { method: 'POST', body: { credential } });
+  }
+  function apiSetPassword(password) {
+    return apiFetch('/api/auth/set-password', { method: 'POST', body: { password } });
+  }
 
   function esc(str) {
     return String(str || '')
@@ -96,6 +115,7 @@
     view: 'signin',
     resetEmail: '',
     resetToken: '',
+    recovered: false,       // true after Google verified the user in the recovery flow
     backendUnreachable: false,
   };
 
@@ -459,6 +479,7 @@
         '<div class="landing-panel-head">' +
         '<button type="button" class="landing-back" data-view="signin">← Back to sign in</button>' +
         '<h2 class="landing-panel-title" id="panel-title-forgot">Forgot password</h2>' +
+        '<p class="landing-panel-lead">We\'ll email you a reset link — or verify with your <strong>@andrew.cmu.edu</strong> Google account instead, no email needed.</p>' +
         '</div>' +
         backendWarnHtml() +
         '</div>' +
@@ -470,15 +491,22 @@
         '<button type="submit" class="landing-submit" id="cfAuthSubmit" disabled>Send reset link →</button>' +
         '</div>' +
         '</form>' +
+        '<div class="landing-reset-box" id="cfResetLinkBox" hidden></div>' +
+        '<div class="landing-divider" aria-hidden="true"><span>or</span></div>' +
+        '<div id="cfGoogleRecover" class="landing-google-mount"></div>' +
+        '<p class="landing-recover-note">Sign in with Google to confirm you own the account — no reset email needed.</p>' +
         '</div>',
         'forgot'
       );
     } else if (v === 'reset') {
+      const resetLead = state.recovered
+        ? 'You\'re verified. Choose a new password for <strong>' + esc(state.resetEmail || 'your account') + '</strong>.'
+        : 'Choose a new password for <strong>' + esc(state.resetEmail || 'your account') + '</strong>.';
       inner = panelWrap(
         '<div class="landing-card__top">' +
         '<div class="landing-panel-head">' +
         '<h2 class="landing-panel-title" id="panel-title-reset">Set a new password</h2>' +
-        '<p class="landing-panel-lead">Choose a new password for your account.</p>' +
+        '<p class="landing-panel-lead">' + resetLead + '</p>' +
         '</div>' +
         '</div>' +
         '<div class="landing-card__body">' +
@@ -536,6 +564,8 @@
     }
 
     bindForm(v);
+
+    if (v === 'forgot') mountGoogleRecover();
 
     if (opts.focus !== false) {
       const focusIds = {
@@ -656,6 +686,58 @@
     goToApp();
   }
 
+  function mountGoogleRecover() {
+    const slot = document.getElementById('cfGoogleRecover');
+    if (!slot) return;
+    const clientId = getGoogleClientId();
+    if (!clientId) {
+      setFormError('Google sign-in isn\'t configured, so password recovery is unavailable. Contact an admin.');
+      return;
+    }
+    let tries = 0;
+    const mount = function () {
+      if (!(window.google && window.google.accounts && window.google.accounts.id)) {
+        if (tries++ > 40) {  // ~6s
+          setFormError('Couldn\'t load Google sign-in. Check your connection and refresh.');
+          return;
+        }
+        return setTimeout(mount, 150);
+      }
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: onGoogleRecover,
+        ux_mode: 'popup',
+        auto_select: false,
+      });
+      slot.innerHTML = '';
+      window.google.accounts.id.renderButton(slot, {
+        theme: 'filled_blue',
+        size: 'large',
+        text: 'continue_with',
+        shape: 'pill',
+        width: 300,
+      });
+    };
+    mount();
+  }
+
+  async function onGoogleRecover(response) {
+    if (!response || !response.credential) {
+      setFormError('Google sign-in was cancelled.');
+      return;
+    }
+    setFormError('');
+    const r = await apiGoogle(response.credential);
+    if (!r.ok) {
+      setFormError((r.data && r.data.message) || 'Google sign-in failed. Use your @andrew.cmu.edu account.');
+      return;
+    }
+    // Verified — move to the set-a-new-password step (now authenticated).
+    state.recovered = true;
+    state.resetEmail = (r.data && r.data.email) || '';
+    switchView('reset');
+  }
+
   async function onForgotPassword(event) {
     event.preventDefault();
     setFormError('');
@@ -665,7 +747,21 @@
     const r = await apiForgotPassword(normalizeCmuEmailLocal(email) || email);
     setLoading(false, 'Send reset link →');
     if (!r.ok) {
-      setFormError((r.data && r.data.message) || 'Request failed.');
+      if (r.status === 503) {
+        // email_unavailable — SMTP not configured on the server; steer to Google.
+        const box = document.getElementById('cfResetLinkBox');
+        if (box) {
+          box.hidden = false;
+          box.innerHTML =
+            '<p class="landing-reset-msg">Email reset isn\'t available yet — use ' +
+            '<strong>Continue with Google</strong> below to verify it\'s you and set a new password.</p>';
+        }
+      } else if (r.status === 502) {
+        // email_failed — transient send failure.
+        setFormError((r.data && r.data.message) || 'We couldn\'t send the email right now — try again in a few minutes, or use Google below.');
+      } else {
+        setFormError((r.data && r.data.message) || 'Request failed.');
+      }
       updateSubmitState('forgot');
       return;
     }
@@ -700,14 +796,21 @@
     }
     if (!validatePasswordMatch('cfResetPass', 'cfResetPass2', 'cfResetPass2Msg')) return;
     setLoading(true, 'Update password →');
-    const r = await apiResetPassword({
-      token: state.resetToken,
-      password,
-    });
+    // Recovery via Google: the user is already authenticated, so set the
+    // password directly. The email-link path uses the one-time token.
+    const r = state.recovered
+      ? await apiSetPassword(password)
+      : await apiResetPassword({ token: state.resetToken, password });
     setLoading(false, 'Update password →');
     if (!r.ok) {
       setFormError((r.data && r.data.message) || 'Reset failed.');
       updateSubmitState('reset');
+      return;
+    }
+    if (state.recovered) {
+      // Already signed in via Google — go straight into the app.
+      showToast('Password set. Taking you in…');
+      goToApp();
       return;
     }
     showToast('Password updated — sign in with your new password.');
@@ -728,6 +831,14 @@
   }
 
   async function init() {
+    const guestBtn = document.getElementById('cfGuestBtn');
+    if (guestBtn) {
+      guestBtn.addEventListener('click', function () {
+        try { sessionStorage.setItem('cf_guest', '1'); } catch (e) { /* storage blocked */ }
+        location.href = APP_URL;
+      });
+    }
+
     const params = new URLSearchParams(location.search);
     const resetTok = params.get('token') || params.get('reset') || '';
     if (resetTok) {
