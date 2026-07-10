@@ -2271,7 +2271,9 @@ const App = {
     this._unifiedBrowseMajor = browseMajor;
 
     const chipsHtml = HOME_SEARCH_CHIPS.map(c =>
-      `<button type="button" class="home-chip" onclick="App.runHomeSearchChip(${JSON.stringify(c)})">${esc(c)}</button>`
+      // Single-quote the JS string — JSON.stringify's double quotes would
+      // terminate the double-quoted onclick attribute and kill the handler.
+      `<button type="button" class="home-chip" onclick="App.runHomeSearchChip('${c.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">${esc(c)}</button>`
     ).join('');
 
     const compareBtn = vm === 'cross-program'
