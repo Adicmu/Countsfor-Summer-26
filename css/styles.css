@@ -277,7 +277,7 @@ body {
   align-items:center;
   gap:12px;
   padding-left:24px;
-  border-left:1px solid var(--cf-line);
+  border-left:1px solid var(--border-light);
 }
 .navbar-filters-desktop {
   display:flex;
@@ -296,7 +296,7 @@ body {
   font-family:inherit;
   font-size:0.8rem;
   font-weight:600;
-  color:var(--charcoal);
+  color:var(--text-primary);
   cursor:pointer;
 }
 .navbar-filters-popover {
@@ -2263,7 +2263,7 @@ body.is-resizing-panels * {
   flex: 1;
   min-height: 0;
   width: 100%;
-  background: var(--surface);
+  background: var(--bg-primary);
   overflow: hidden;
 }
 .home-page::before {
@@ -2283,6 +2283,25 @@ body.is-resizing-panels * {
       rgba(38, 38, 38, 0.08) 96px 97px, transparent 97px 132px,
       rgba(184, 134, 11, 0.1) 132px 133px, transparent 133px 134px);
 }
+/* Dark theme: recolor the decorative plaid for the dark canvas and render
+   the CMU wordmark logo white so it stays visible. */
+[data-theme="dark"] .home-page::before {
+  opacity: 0.5;
+  background:
+    repeating-linear-gradient(90deg, transparent 0 64px,
+      rgba(255, 255, 255, 0.05) 64px 68px, transparent 68px 96px,
+      rgba(255, 255, 255, 0.03) 96px 97px, transparent 97px 132px,
+      rgba(224, 168, 46, 0.06) 132px 133px, transparent 133px 134px),
+    repeating-linear-gradient(0deg, transparent 0 64px,
+      rgba(255, 255, 255, 0.05) 64px 68px, transparent 68px 96px,
+      rgba(255, 255, 255, 0.03) 96px 97px, transparent 97px 132px,
+      rgba(224, 168, 46, 0.06) 132px 133px, transparent 133px 134px);
+}
+[data-theme="dark"] .home-foot-logo img {
+  filter: brightness(0) invert(1);
+  opacity: 0.75;
+}
+
 .home-plaid {
   position: relative;
   z-index: 2;
@@ -2319,7 +2338,7 @@ body.is-resizing-panels * {
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: -0.03em;
-  color: var(--charcoal);
+  color: var(--text-primary);
   margin: 0 0 10px;
 }
 .home-hero-accent {
@@ -2344,8 +2363,8 @@ body.is-resizing-panels * {
   gap: 12px;
   min-height: 64px;
   padding: 10px 18px;
-  background: #fff;
-  border: 1px solid var(--cf-line);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
   transition: border-color 120ms ease, box-shadow 120ms ease;
@@ -2363,7 +2382,7 @@ body.is-resizing-panels * {
   outline: 0;
   background: transparent;
   font-size: 20px;
-  color: var(--charcoal);
+  color: var(--text-primary);
   font-family: inherit;
 }
 .home-search-input::placeholder { color: var(--text-tertiary); font-size: 0.95em; }
@@ -2372,7 +2391,7 @@ body.is-resizing-panels * {
   right: 18px;
   width: 18px;
   height: 18px;
-  border: 2px solid var(--cf-line);
+  border: 2px solid var(--border-medium);
   border-top-color: var(--cmu-red);
   border-radius: 50%;
   animation: home-spin 0.7s linear infinite;
@@ -2419,9 +2438,9 @@ body.is-resizing-panels * {
   margin-top: 14px;
 }
 .home-chip {
-  border: 1px solid var(--cf-line);
-  background: rgba(255, 255, 255, 0.85);
-  color: var(--charcoal);
+  border: 1px solid var(--border-light);
+  background: var(--bg-card);
+  color: var(--text-primary);
   border-radius: 999px;
   padding: 6px 14px;
   font-size: 0.82rem;
@@ -2431,8 +2450,8 @@ body.is-resizing-panels * {
   transition: border-color 120ms ease, background 120ms ease;
 }
 .home-chip:hover {
-  border-color: color-mix(in srgb, var(--cmu-red) 40%, var(--cf-line));
-  background: #fff;
+  border-color: color-mix(in srgb, var(--cmu-red) 40%, var(--border-light));
+  background: var(--bg-tertiary);
 }
 
 .home-ghost-actions {
@@ -2447,10 +2466,10 @@ body.is-resizing-panels * {
   align-items: center;
   gap: 8px;
   padding: 10px 18px;
-  border: 1.5px solid var(--charcoal);
+  border: 1.5px solid var(--text-primary);
   border-radius: 999px;
   background: transparent;
-  color: var(--charcoal);
+  color: var(--text-primary);
   font-family: inherit;
   font-size: 0.88rem;
   font-weight: 600;
@@ -2458,8 +2477,8 @@ body.is-resizing-panels * {
   transition: background 120ms ease, color 120ms ease;
 }
 .home-ghost-btn:hover {
-  background: var(--charcoal);
-  color: #fff;
+  background: var(--text-primary);
+  color: var(--text-inverse);
 }
 
 /* Dock — overlay slot avoids hero shift when pills appear */
@@ -2486,14 +2505,14 @@ body.is-resizing-panels * {
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  border: 1px solid var(--cf-line);
+  border: 1px solid var(--border-light);
   border-radius: 999px;
-  background: #fff;
+  background: var(--bg-card);
   box-shadow: var(--shadow-soft);
   font-family: inherit;
   font-size: 0.82rem;
   font-weight: 700;
-  color: var(--charcoal);
+  color: var(--text-primary);
   cursor: pointer;
 }
 .home-dock-pill-btn svg { width: 14px; height: 14px; }
@@ -2506,8 +2525,8 @@ body.is-resizing-panels * {
   min-width: 220px;
   max-width: 320px;
   padding: 8px;
-  background: #fff;
-  border: 1px solid var(--cf-line);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
   text-align: left;
@@ -2560,8 +2579,8 @@ body.is-resizing-panels * {
   gap: 16px;
 }
 .home-qs-card {
-  background: #fff;
-  border: 1px solid var(--cf-line);
+  background: var(--bg-card);
+  border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
   padding: 18px;
   box-shadow: var(--shadow-soft);
@@ -2569,7 +2588,7 @@ body.is-resizing-panels * {
 .home-qs-title {
   font-size: 0.92rem;
   font-weight: 700;
-  color: var(--charcoal);
+  color: var(--text-primary);
   margin: 0 0 6px;
 }
 .home-qs-sub {
@@ -2618,14 +2637,14 @@ body.is-resizing-panels * {
   gap: 8px;
 }
 .home-qs-chip {
-  border: 1px solid var(--cf-line);
-  background: var(--surface);
+  border: 1px solid var(--border-light);
+  background: var(--bg-secondary);
   border-radius: 999px;
   padding: 6px 12px;
   font-size: 0.78rem;
   font-weight: 600;
   font-family: inherit;
-  color: var(--charcoal);
+  color: var(--text-primary);
   cursor: pointer;
 }
 .home-qs-chip:hover { border-color: var(--major-is); color: var(--major-is-text); }
@@ -2639,8 +2658,8 @@ body.is-resizing-panels * {
   justify-content: space-between;
   gap: 16px;
   padding: 14px 32px 18px;
-  border-top: 1px solid var(--cf-line);
-  background: rgba(255, 255, 255, 0.72);
+  border-top: 1px solid var(--border-light);
+  background: color-mix(in srgb, var(--bg-primary) 72%, transparent);
   backdrop-filter: blur(8px);
 }
 .home-foot-logo {
