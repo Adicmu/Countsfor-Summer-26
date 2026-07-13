@@ -1593,6 +1593,28 @@ const App = {
     };
   },
 
+  // Search uses campus + modality only — not semester (catalog courses may lack F26 sections)
+  _searchFilterParams() {
+    return {
+      locationFilter: this.locationFilter,
+      modalityFilter: this.modalityFilter,
+    };
+  },
+
+  coursePassesSearchFilter(course) {
+    if (!course) return false;
+    return courseHasMatchingOffering(course, this._searchFilterParams());
+  },
+
+  _ensureExactCourseInResults(results, query) {
+    const code = normalizeCourseCode((query || '').trim());
+    if (!/^\d{1,2}-\d{2,4}$/.test(code)) return results;
+    const hit = lookupCourse(this.courseIndex, code);
+    if (!hit) return results;
+    const rest = results.filter(c => c.course_code !== hit.course_code);
+    return [hit, ...rest];
+  },
+
   setSemester(code) {
     this.activeSemester = code;
     this._refreshFilters();
@@ -1741,8 +1763,9 @@ const App = {
       return false;
     });
 
-    // Apply location filter
-    results = results.filter(c => App.filterByLocation(c));
+    // Campus/modality only — semester filter does not apply to search
+    results = results.filter(c => App.coursePassesSearchFilter(c));
+    results = App._ensureExactCourseInResults(results, query);
 
     results = results.slice(0, 8);
     App._searchResults = results;
@@ -1982,7 +2005,7 @@ const App = {
       if (code.includes(qNorm) || name.includes(q)) return true;
       const dept = getDeptName(c.course_code).toLowerCase();
       return dept.includes(q);
-    }).filter(c => App.filterByLocation(c));
+    }).filter(c => App.coursePassesSearchFilter(c));
 
     if (!codeQuery) {
       courseResults = courseResults.filter(c => {
@@ -1992,6 +2015,7 @@ const App = {
       });
     }
 
+    courseResults = App._ensureExactCourseInResults(courseResults, query);
     courseResults = courseResults.slice(0, 6);
     App._searchResults = courseResults;
 
