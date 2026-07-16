@@ -109,8 +109,11 @@ body::before{
 
 .landing-brand__scotty {
   display: block;
+  /* square box — border-radius:50% on a non-square box clips the artwork */
+  aspect-ratio: 1;
   width: auto;
   height: clamp(40px, 8vh, 72px);
+  object-fit: contain;
   margin: 0 auto clamp(2px, 0.8vh, 8px);
   /* white chip so the portrait sits cleanly on the maroon hero */
   background: #fff;
