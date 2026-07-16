@@ -1,0 +1,17 @@
+name: Keep backend awake
+
+on:
+  schedule:
+    # Every 10 min during Qatar waking hours (~7:00-23:59 AST = 4:00-20:59 UTC).
+    # Render free tier sleeps after ~15 min idle; this keeps sign-in instant.
+    # Budget: ~17h/day awake ≈ 510 instance-hours/month, under the 750h free cap.
+    - cron: '*/10 4-20 * * *'
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Render /health
+        # `|| true`: when the ping IS the wake-up call it can time out — that's fine.
+        run: curl -fsS --max-time 60 --retry 2 https://countsfor-summer-26.onrender.com/health || true

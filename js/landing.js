@@ -53,6 +53,12 @@
       credentials: 'include',
       headers: { Accept: 'application/json' },
     };
+    // Cap the wait at a full Render cold start so a sleeping backend
+    // surfaces as status 0 instead of hanging forever.
+    const timeoutMs = (opts && opts.timeoutMs) || 75000;
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+      init.signal = AbortSignal.timeout(timeoutMs);
+    }
     const authToken = getAuthToken();
     if (authToken) init.headers['Authorization'] = 'Bearer ' + authToken;
     if (opts && opts.body !== undefined) {
@@ -61,6 +67,10 @@
     }
     try {
       const res = await fetch(url, init);
+      if (state.backendUnreachable) {
+        state.backendUnreachable = false;
+        setBackendAlert('');
+      }
       let data = null;
       if (res.status !== 204) {
         try {
@@ -77,7 +87,13 @@
         message: (data && data.message) || null,
       };
     } catch (e) {
-      return { ok: false, status: 0, data: null, message: e.message };
+      const timedOut = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+      return {
+        ok: false,
+        status: 0,
+        data: null,
+        message: timedOut ? 'The server took too long to respond.' : e.message,
+      };
     }
   }
 
@@ -208,9 +224,11 @@
     }
   }
 
+  let wakeTimer = null;
   function setLoading(loading, idleLabel) {
     const btn = document.getElementById('cfAuthSubmit');
     if (!btn) return;
+    window.clearTimeout(wakeTimer);
     btn.classList.toggle('is-loading', loading);
     if (loading) {
       btn.disabled = true;
@@ -218,6 +236,14 @@
         '<span class="landing-submit-spinner" aria-hidden="true"></span><span>' +
         idleLabel.replace(' →', '…') +
         '</span>';
+      // A slow response usually means the free-tier backend is cold-starting —
+      // say so instead of looking frozen.
+      wakeTimer = window.setTimeout(function () {
+        const label = btn.querySelector('span:last-child');
+        if (label && btn.classList.contains('is-loading')) {
+          label.textContent = 'Waking up the server — up to ~30s…';
+        }
+      }, 4000);
     } else {
       btn.textContent = idleLabel;
       updateSubmitState(state.view);
@@ -435,8 +461,32 @@
   }
 
   function backendWarnHtml() {
-    if (!state.backendUnreachable) return '';
-    return '<div class="landing-alert" role="alert">Could not reach the server — wait ~30s and refresh.</div>';
+    // Always emit the slot so background probes can fill it without re-rendering
+    // the panel (a re-render would wipe anything the user has typed).
+    if (!state.backendUnreachable) {
+      return '<div class="landing-alert" id="cfBackendAlert" role="alert" hidden></div>';
+    }
+    return '<div class="landing-alert" id="cfBackendAlert" role="alert">Could not reach the server — it may be waking up. Try again in ~30s.</div>';
+  }
+
+  function setBackendAlert(message, opts) {
+    const box = document.getElementById('cfBackendAlert');
+    if (!box) return;
+    if (!message) {
+      box.textContent = '';
+      box.hidden = true;
+      return;
+    }
+    box.textContent = message + ' ';
+    if (opts && opts.continueLink) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'landing-link-btn';
+      btn.textContent = 'Continue to CountsFor →';
+      btn.addEventListener('click', goToApp);
+      box.appendChild(btn);
+    }
+    box.hidden = false;
   }
 
   function formErrorHtml() {
@@ -508,6 +558,7 @@
         '<h2 class="landing-panel-title" id="panel-title-reset">Set a new password</h2>' +
         '<p class="landing-panel-lead">' + resetLead + '</p>' +
         '</div>' +
+        backendWarnHtml() +
         '</div>' +
         '<div class="landing-card__body">' +
         '<form class="landing-form" id="cfAuthForm" novalidate>' +
@@ -830,7 +881,33 @@
     return onLogin(event);
   }
 
-  async function init() {
+  function userIsEngaged() {
+    const card = document.getElementById('landingCard');
+    if (!card) return false;
+    return Array.prototype.some.call(card.querySelectorAll('input'), function (i) {
+      return (i.value || '').length > 0;
+    });
+  }
+
+  // Runs in the background after the panel is already on screen; must never
+  // re-render the panel (that would wipe anything the user has typed).
+  async function probeSession() {
+    const me = await apiGetMe();
+    if (me.ok) {
+      if (!userIsEngaged()) {
+        goToApp();
+        return;
+      }
+      setBackendAlert("You're already signed in.", { continueLink: true });
+      return;
+    }
+    if (me.status === 0) {
+      state.backendUnreachable = true;
+      setBackendAlert('Could not reach the server — it may be waking up. Try again in ~30s.');
+    }
+  }
+
+  function init() {
     const guestBtn = document.getElementById('cfGuestBtn');
     if (guestBtn) {
       guestBtn.addEventListener('click', function () {
@@ -846,16 +923,8 @@
       state.view = 'reset';
     }
 
-    const me = await apiGetMe();
-    if (me.ok) {
-      goToApp();
-      return;
-    }
-    if (me.status === 0) {
-      state.backendUnreachable = true;
-    }
-
     renderPanel();
+    probeSession();
   }
 
   if (document.readyState === 'loading') {
