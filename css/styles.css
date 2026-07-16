@@ -3028,6 +3028,48 @@ body.is-resizing-panels * {
   .cc-desc { padding: 0 16px 14px; }
 }
 
+/* ── Focused mode, desktop: full-width card, larger type ──
+   Scoped to .layout-focused ≥861px so split mode, the mobile lens, and the
+   ≤700px stacking above are untouched. Overrides the 720px cap at the
+   .layout-focused .cc-card rule (same specificity, later in file). */
+@media (min-width: 861px) {
+  .layout-focused .panel-body:has(.cc-card) {
+    padding: 0 clamp(24px, 3vw, 56px) 32px;
+  }
+  .layout-focused .cc-card { max-width: 1500px; }
+
+  /* Head */
+  .layout-focused .cc-head { padding: 22px 28px 14px; }
+  .layout-focused .cc-code { font-size: clamp(30px, 2.2vw, 36px); }
+  .layout-focused .cc-name { font-size: 15px; }
+
+  /* About | semester columns — keep 2-col, absorb width with gap */
+  .layout-focused .cc-cols { gap: clamp(28px, 4vw, 64px); padding: 20px 28px; }
+  .layout-focused .cc-h4 { font-size: 12.5px; margin-bottom: 10px; }
+  .layout-focused .cc-kv { font-size: 14px; padding: 9px 0; }
+  .layout-focused .cc-k { min-width: 76px; }
+
+  /* Counts For — wider min column so 4 programs sit comfortably in one row */
+  .layout-focused .cc-section-cf { padding: 6px 28px 20px; }
+  .layout-focused .cc-cf-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .layout-focused .cc-cf-badge { font-size: 12px; }
+  .layout-focused .cc-cf-col-count { font-size: 11.5px; }
+  .layout-focused .cc-cf-item { padding: 9px 11px; }
+  .layout-focused .cc-cf-item-label { font-size: 13.5px; }
+  .layout-focused .cc-cf-item-type { font-size: 10.5px; }
+
+  /* Description — bigger type, measure capped for readability. Pad the whole
+     section (label + text together) so it aligns with the 28px content gutter. */
+  .layout-focused .cc-desc { font-size: 15.5px; line-height: 1.65; max-width: 78ch; }
+  .layout-focused .cc-card > .cc-section:last-child:not(.cc-section-cf) { padding: 0 28px 22px; }
+  .layout-focused .cc-card > .cc-section:last-child:not(.cc-section-cf) .cc-desc { padding: 0; }
+  .layout-focused .cc-empty { font-size: 13.5px; }
+  .layout-focused .cc-more { font-size: 12.5px; }
+}
+
 /* ════════════════════════════════════════════════════════════
    Tree panel chrome
    ════════════════════════════════════════════════════════════ */
