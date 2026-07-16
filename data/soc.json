@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet/search",
-    "last_scrape": "2026-07-15T13:41:33.290477+00:00",
+    "last_scrape": "2026-07-16T07:57:01.594613+00:00",
     "semesters_on_form": [
       {
         "code": "F26",
@@ -12499,7 +12499,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -12519,7 +12519,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -12581,7 +12581,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-12:50PM",
+              "days_times": "TR 12:00PM-04:00PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -12605,7 +12605,7 @@
               "section": "D",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-12:50PM",
+              "days_times": "TR 12:00PM-04:00PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -17279,44 +17279,6 @@
               "modality": "Remote",
               "units": "12",
               "days_times": "R 08:15PM-09:30PM",
-              "instructor": "",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode_raw": "Remote only"
-            }
-          ],
-          "semester": "Fall 2026",
-          "semester_code": "F26"
-        },
-        {
-          "course_number": "45706",
-          "title": "Data Driven Decision Making",
-          "units": "6",
-          "department_code": "BUS",
-          "department": "Business Administration",
-          "sections": [
-            {
-              "section": "M2",
-              "mini": "Y",
-              "days": "T",
-              "begin_time": "08:15PM",
-              "end_time": "09:30PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "Remote only",
-              "campus": "Pittsburgh"
-            }
-          ],
-          "campus": [
-            "Pittsburgh"
-          ],
-          "offerings": [
-            {
-              "semester": "Fall 2026",
-              "semester_code": "F26",
-              "campus": "Pittsburgh",
-              "section": "M2",
-              "modality": "Remote",
-              "units": "6",
-              "days_times": "T 08:15PM-09:30PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "Remote only"
@@ -26661,7 +26623,7 @@
         },
         {
           "course_number": "70347",
-          "title": "Entrepreneuship Communication",
+          "title": "Entrepreneurship Communication",
           "units": "9",
           "department_code": "BUS",
           "department": "Business Administration",
@@ -38452,7 +38414,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -38481,7 +38443,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 02:00PM-02:50PM",
+              "days_times": "TR 02:00PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -63936,44 +63898,6 @@
           "semester_code": "F26"
         },
         {
-          "course_number": "54389",
-          "title": "Composition for Theatrical Sound Design 1",
-          "units": "9",
-          "department_code": "DRA",
-          "department": "Drama",
-          "sections": [
-            {
-              "section": "A",
-              "mini": "",
-              "days": "M",
-              "begin_time": "01:00PM",
-              "end_time": "03:50PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person only",
-              "campus": "Pittsburgh"
-            }
-          ],
-          "campus": [
-            "Pittsburgh"
-          ],
-          "offerings": [
-            {
-              "semester": "Fall 2026",
-              "semester_code": "F26",
-              "campus": "Pittsburgh",
-              "section": "A",
-              "modality": "In Person",
-              "units": "9",
-              "days_times": "M 01:00PM-03:50PM",
-              "instructor": "",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode_raw": "In-person only"
-            }
-          ],
-          "semester": "Fall 2026",
-          "semester_code": "F26"
-        },
-        {
           "course_number": "54394",
           "title": "Production Prep SOM: Hansel und Gretel : Directing",
           "units": "VAR",
@@ -78365,44 +78289,6 @@
               "modality": "In Person",
               "units": "15",
               "days_times": "TR 02:00PM-04:50PM",
-              "instructor": "",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode_raw": "In-person only"
-            }
-          ],
-          "semester": "Fall 2026",
-          "semester_code": "F26"
-        },
-        {
-          "course_number": "54889",
-          "title": "Composition for Theatrical Sound Design 1",
-          "units": "9",
-          "department_code": "DRA",
-          "department": "Drama",
-          "sections": [
-            {
-              "section": "A",
-              "mini": "",
-              "days": "M",
-              "begin_time": "01:00PM",
-              "end_time": "03:50PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person only",
-              "campus": "Pittsburgh"
-            }
-          ],
-          "campus": [
-            "Pittsburgh"
-          ],
-          "offerings": [
-            {
-              "semester": "Fall 2026",
-              "semester_code": "F26",
-              "campus": "Pittsburgh",
-              "section": "A",
-              "modality": "In Person",
-              "units": "9",
-              "days_times": "M 01:00PM-03:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -113633,7 +113519,7 @@
           "department": "Information Systems:Sch of IS & Mgt",
           "sections": [
             {
-              "section": "A1",
+              "section": "A",
               "mini": "",
               "days": "R",
               "begin_time": "12:30PM",
@@ -113651,7 +113537,7 @@
               "semester": "Fall 2026",
               "semester_code": "F26",
               "campus": "Pittsburgh",
-              "section": "A1",
+              "section": "A",
               "modality": "In Person",
               "units": "0",
               "days_times": "R 12:30PM-01:50PM",
@@ -114633,6 +114519,16 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "C2",
+              "mini": "Y",
+              "days": "TR",
+              "begin_time": "03:30PM",
+              "end_time": "04:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
             }
           ],
           "campus": [
@@ -114659,6 +114555,18 @@
               "modality": "In Person",
               "units": "6",
               "days_times": "MW 05:00PM-06:20PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            },
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "C2",
+              "modality": "In Person",
+              "units": "6",
+              "days_times": "TR 03:30PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -114931,7 +114839,7 @@
           "department": "Information Systems:Sch of IS & Mgt",
           "sections": [
             {
-              "section": "A1",
+              "section": "A",
               "mini": "",
               "days": "R",
               "begin_time": "12:30PM",
@@ -114949,7 +114857,7 @@
               "semester": "Fall 2026",
               "semester_code": "F26",
               "campus": "Pittsburgh",
-              "section": "A1",
+              "section": "A",
               "modality": "In Person",
               "units": "0",
               "days_times": "R 12:30PM-01:50PM",
@@ -115705,7 +115613,7 @@
           "department": "Information Systems:Sch of IS & Mgt",
           "sections": [
             {
-              "section": "A1",
+              "section": "A",
               "mini": "",
               "days": "M",
               "begin_time": "12:30PM",
@@ -115723,7 +115631,7 @@
               "semester": "Fall 2026",
               "semester_code": "F26",
               "campus": "Pittsburgh",
-              "section": "A1",
+              "section": "A",
               "modality": "In Person",
               "units": "0",
               "days_times": "M 12:30PM-01:50PM",
@@ -125235,7 +125143,7 @@
         },
         {
           "course_number": "82248",
-          "title": "Introduction to Latin American Film and Visual Arts",
+          "title": "Introduction to Latin American Film and Visual Arts This Section Cancelled",
           "units": "9",
           "department_code": "LCL",
           "department": "Languages Cultures & Appl Linguistics",
@@ -168014,82 +167922,6 @@
           "semester_code": "F26"
         },
         {
-          "course_number": "57787",
-          "title": "History Proficiency I Test",
-          "units": "0",
-          "department_code": "MUS",
-          "department": "Music",
-          "sections": [
-            {
-              "section": "A2",
-              "mini": "Y",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
-              "campus": "Pittsburgh"
-            }
-          ],
-          "campus": [
-            "Pittsburgh"
-          ],
-          "offerings": [
-            {
-              "semester": "Fall 2026",
-              "semester_code": "F26",
-              "campus": "Pittsburgh",
-              "section": "A2",
-              "modality": "In Person",
-              "units": "0",
-              "days_times": "TBA",
-              "instructor": "",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode_raw": "In-person Expectation"
-            }
-          ],
-          "semester": "Fall 2026",
-          "semester_code": "F26"
-        },
-        {
-          "course_number": "57788",
-          "title": "History Proficiency II Test",
-          "units": "0",
-          "department_code": "MUS",
-          "department": "Music",
-          "sections": [
-            {
-              "section": "A2",
-              "mini": "Y",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
-              "campus": "Pittsburgh"
-            }
-          ],
-          "campus": [
-            "Pittsburgh"
-          ],
-          "offerings": [
-            {
-              "semester": "Fall 2026",
-              "semester_code": "F26",
-              "campus": "Pittsburgh",
-              "section": "A2",
-              "modality": "In Person",
-              "units": "0",
-              "days_times": "TBA",
-              "instructor": "",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode_raw": "In-person Expectation"
-            }
-          ],
-          "semester": "Fall 2026",
-          "semester_code": "F26"
-        },
-        {
           "course_number": "57789",
           "title": "Theory Proficiency Test",
           "units": "0",
@@ -189075,7 +188907,7 @@
           "department": "Public Policy & Mgt:Sch of Pub Pol & Mgt",
           "sections": [
             {
-              "section": "A1",
+              "section": "A",
               "mini": "",
               "days": "T",
               "begin_time": "12:30PM",
@@ -189093,7 +188925,7 @@
               "semester": "Fall 2026",
               "semester_code": "F26",
               "campus": "Pittsburgh",
-              "section": "A1",
+              "section": "A",
               "modality": "In Person",
               "units": "0",
               "days_times": "T 12:30PM-01:50PM",
@@ -189439,6 +189271,44 @@
               "modality": "In Person",
               "units": "6",
               "days_times": "T 06:30PM-09:20PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            }
+          ],
+          "semester": "Fall 2026",
+          "semester_code": "F26"
+        },
+        {
+          "course_number": "90785",
+          "title": "Race, Citizenship and Voting Policy in America",
+          "units": "3",
+          "department_code": "PPP",
+          "department": "Public Policy & Mgt:Sch of Pub Pol & Mgt",
+          "sections": [
+            {
+              "section": "A1",
+              "mini": "Y",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "A1",
+              "modality": "In Person",
+              "units": "3",
+              "days_times": "TBA",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -190148,6 +190018,44 @@
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
+            }
+          ],
+          "semester": "Fall 2026",
+          "semester_code": "F26"
+        },
+        {
+          "course_number": "90909",
+          "title": "Systematic Review Methods",
+          "units": "6",
+          "department_code": "PPP",
+          "department": "Public Policy & Mgt:Sch of Pub Pol & Mgt",
+          "sections": [
+            {
+              "section": "A2",
+              "mini": "Y",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "Remote only",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "A2",
+              "modality": "Remote",
+              "units": "6",
+              "days_times": "TBA",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "Remote only"
             }
           ],
           "semester": "Fall 2026",
@@ -208079,8 +207987,8 @@
         {
           "code": "BUS",
           "name": "Business Administration",
-          "courses": 202,
-          "sections": 387
+          "courses": 201,
+          "sections": 386
         },
         {
           "code": "CFA",
@@ -208163,8 +208071,8 @@
         {
           "code": "DRA",
           "name": "Drama",
-          "courses": 272,
-          "sections": 704
+          "courses": 270,
+          "sections": 702
         },
         {
           "code": "ECO",
@@ -208254,7 +208162,7 @@
           "code": "ISM",
           "name": "Information Systems:Sch of IS & Mgt",
           "courses": 63,
-          "sections": 123
+          "sections": 124
         },
         {
           "code": "III",
@@ -208313,8 +208221,8 @@
         {
           "code": "MUS",
           "name": "Music",
-          "courses": 316,
-          "sections": 1009
+          "courses": 314,
+          "sections": 1007
         },
         {
           "code": "NVS",
@@ -208361,8 +208269,8 @@
         {
           "code": "PPP",
           "name": "Public Policy & Mgt:Sch of Pub Pol & Mgt",
-          "courses": 53,
-          "sections": 59
+          "courses": 55,
+          "sections": 61
         },
         {
           "code": "ROB",
@@ -208407,10 +208315,10 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-07-15T13:41:33.290477+00:00",
+      "scraped_at": "2026-07-16T07:57:01.594613+00:00",
       "semester_label": "Fall 2026",
-      "total_courses": 3239,
-      "total_sections": 7094
+      "total_courses": 3236,
+      "total_sections": 7092
     },
     "S26": {
       "courses": [
@@ -414382,7 +414290,7 @@
           "sections": 39
         }
       ],
-      "scraped_at": "2026-07-15T13:41:33.290477+00:00",
+      "scraped_at": "2026-07-16T07:57:01.594613+00:00",
       "semester_label": "Spring 2026",
       "total_courses": 3209,
       "total_sections": 7007
@@ -427295,7 +427203,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -427377,7 +427285,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-04:00PM",
+              "days_times": "TR 12:00PM-12:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -452234,7 +452142,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "07:20PM",
+              "end_time": "08:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -452296,7 +452204,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-07:20PM",
+              "days_times": "MW 06:30PM-08:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -622114,7 +622022,7 @@
           "sections": 36
         }
       ],
-      "scraped_at": "2026-07-15T13:41:33.290477+00:00",
+      "scraped_at": "2026-07-16T07:57:01.594613+00:00",
       "semester_label": "Fall 2025",
       "total_courses": 3213,
       "total_sections": 7084
