@@ -173,6 +173,12 @@ async function apiFetch(path, opts = {}) {
     credentials: 'include',
     headers: { 'Accept': 'application/json' },
   };
+  // Never hang forever on a cold-starting backend. Default covers a full
+  // Render free-tier wake; callers with a local fallback pass something short.
+  const timeoutMs = opts.timeoutMs || 75000;
+  if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+    init.signal = AbortSignal.timeout(timeoutMs);
+  }
   const authToken = getAuthToken();
   if (authToken) init.headers['Authorization'] = 'Bearer ' + authToken;
   if (opts.body !== undefined) {
@@ -183,7 +189,14 @@ async function apiFetch(path, opts = {}) {
   try {
     res = await fetch(url, init);
   } catch (e) {
-    return { ok: false, status: 0, error: 'network', message: e.message, data: null };
+    const timedOut = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+    return {
+      ok: false,
+      status: 0,
+      error: timedOut ? 'timeout' : 'network',
+      message: timedOut ? 'The server took too long to respond.' : e.message,
+      data: null,
+    };
   }
   let data = null;
   if (res.status !== 204) {
@@ -296,5 +309,6 @@ async function apiRecordCourseSearch(course_code, semester_code) {
 }
 async function apiGetPopularCourses(program, semester, limit) {
   const q = new URLSearchParams({ program, semester, limit: String(limit || 5) });
-  return apiFetch('/api/search-analytics/popular?' + q.toString());
+  // Short leash — the home screen already shows a local fallback list.
+  return apiFetch('/api/search-analytics/popular?' + q.toString(), { timeoutMs: 8000 });
 }

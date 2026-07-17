@@ -2241,51 +2241,33 @@ const App = {
     const program = this._popularProgram();
     const semester = this.activeSemester;
     const limit = 5;
-    let items = [];
-    let peerScope = false;
 
-    const r = await apiGetPopularCourses(program, semester, limit);
-    if (r.ok && r.data && Array.isArray(r.data.items) && r.data.items.length) {
-      items = r.data.items;
-      peerScope = true;
-    }
-
-    if (!items.length) {
-      const local = this._getLocalPopularCourses(limit);
-      if (local.length) {
-        items = local;
-      }
-    }
-
-    if (!items.length) {
-      items = HOME_POPULAR_COURSES.map(code => ({ course_code: code, search_count: 0 }));
-    } else if (!peerScope) {
-      // local-only counts in demo / before peers have searched
-    }
-
-    const rows = items.map(item => {
-      const c = lookupCourse(this.courseIndex, item.course_code);
-      if (!c) return '';
-      return `<li><button type="button" class="home-qs-link" onclick="App.selectCourseFromTree('${esc(item.course_code)}')"><span class="home-qs-code">${esc(item.course_code)}</span>${esc(c.course_name)}</button></li>`;
-    }).filter(Boolean);
-
-    if (!rows.length) {
+    // Sync pass: refresh from local/static immediately (semester or program
+    // may have changed) — the card is never in a loading state.
+    const local = this._getLocalPopularCourses(limit);
+    const fallback = local.length ? local
+      : HOME_POPULAR_COURSES.map(code => ({ course_code: code, search_count: 0 }));
+    const fallbackRows = this._popularRowsHtml(fallback);
+    if (fallbackRows.length) {
+      cardEl.hidden = false;
+      listEl.innerHTML = fallbackRows.join('');
+      if (subEl) subEl.textContent = this._popularSubText(false, program);
+    } else {
       cardEl.hidden = true;
-      return;
     }
 
-    cardEl.hidden = false;
-    listEl.innerHTML = rows.join('');
-
-    if (subEl) {
-      if (peerScope) {
-        subEl.textContent = `Top among ${program} students this semester`;
-      } else if (this.authMode === 'authed') {
-        subEl.textContent = `Suggested courses — be the first ${program} student to explore`;
-      } else {
-        subEl.textContent = 'Suggested starter courses';
-      }
-    }
+    // Async pass: upgrade in place when real peer data arrives.
+    const r = await apiGetPopularCourses(program, semester, limit);
+    if (!r.ok || !r.data || !Array.isArray(r.data.items) || !r.data.items.length) return;
+    // Stale-response guards: user may have switched semester or left home.
+    if (this.activeSemester !== semester) return;
+    const list = document.getElementById('homePopularList');
+    if (!list) return;
+    const rows = this._popularRowsHtml(r.data.items);
+    if (!rows.length) return;
+    list.innerHTML = rows.join('');
+    const sub = document.getElementById('homePopularSub');
+    if (sub) sub.textContent = this._popularSubText(true, program);
   },
 
   _renderHome() {
@@ -2330,7 +2312,6 @@ const App = {
 
     return `
       <div class="home-page">
-        <div class="home-plaid" aria-hidden="true"></div>
         <div class="home-main">
           <div class="home-main-spacer" aria-hidden="true"></div>
           <section class="home-hero" aria-label="Course search">
@@ -2351,7 +2332,7 @@ const App = {
             <div class="home-chips" aria-label="Example searches">${chipsHtml}</div>
 
             <div class="home-ghost-actions">
-              <button type="button" class="home-ghost-btn" onclick="App.enterExplorer('${browseMajor}')" title="Browse ${browseSub}">
+              <button type="button" class="home-primary-btn" onclick="App.enterExplorer('${browseMajor}')" title="Browse ${browseSub}">
                 <span>Browse ${browseSub}</span><span aria-hidden="true">→</span>
               </button>
               ${compareBtn}
@@ -2451,45 +2432,60 @@ const App = {
     return out;
   },
 
-  _renderQuickStart(browseMajor) {
-    const cards = [];
+  _popularRowsHtml(items) {
+    return items.map(item => {
+      const c = lookupCourse(this.courseIndex, item.course_code);
+      if (!c) return '';
+      return `<li><button type="button" class="home-qs-link" onclick="App.selectCourseFromTree('${esc(item.course_code)}')"><span class="home-qs-code">${esc(item.course_code)}</span>${esc(c.course_name)}</button></li>`;
+    }).filter(Boolean);
+  },
 
-    cards.push(`
+  _popularSubText(peerScope, program) {
+    if (peerScope) return `Top among ${program} students this semester`;
+    if (this.authMode === 'authed') return `Suggested courses — be the first ${program} student to explore`;
+    return 'Suggested starter courses';
+  },
+
+  _renderQuickStart(browseMajor) {
+    // Popular renders its local/static fallback synchronously — no loading
+    // state exists; _loadPopularCourses upgrades in place if peer data lands.
+    const local = this._getLocalPopularCourses(5);
+    const items = local.length ? local
+      : HOME_POPULAR_COURSES.map(code => ({ course_code: code, search_count: 0 }));
+    const rows = this._popularRowsHtml(items);
+
+    const popularCard = rows.length ? `
       <article class="home-qs-card" id="homePopularCard">
         <h3 class="home-qs-title">Popular this semester</h3>
-        <p class="home-qs-sub" id="homePopularSub"></p>
-        <ul class="home-qs-list" id="homePopularList">
-          <li class="home-qs-loading">Loading…</li>
+        <p class="home-qs-sub" id="homePopularSub">${esc(this._popularSubText(false, this._popularProgram()))}</p>
+        <ul class="home-qs-list" id="homePopularList">${rows.join('')}</ul>
+      </article>` : '';
+
+    const recentCard = HOME_RECENT_MAPPINGS.length ? `
+      <article class="home-qs-card">
+        <h3 class="home-qs-title">Recently updated mappings</h3>
+        <ul class="home-qs-list">
+          ${HOME_RECENT_MAPPINGS.map(m =>
+            `<li><button type="button" class="home-qs-link" onclick="App.enterExplorer('${m.major}', '${esc(m.path).replace(/'/g, "\\'")}')"><span class="home-qs-code">${esc(m.courses)}</span>${esc(m.label)}</button></li>`
+          ).join('')}
         </ul>
-      </article>`);
+      </article>` : '';
 
     const gened = this._getIsGenedCategories();
-    if (gened.length) {
-      cards.push(`
-        <article class="home-qs-card">
-          <h3 class="home-qs-title">GenEd categories at a glance</h3>
-          <div class="home-qs-chips">
-            ${gened.slice(0, 12).map(g =>
-              `<button type="button" class="home-qs-chip" onclick="App.enterExplorer('IS', '${esc(g.path).replace(/'/g, "\\'")}')">${esc(g.leaf)}</button>`
-            ).join('')}
-          </div>
-        </article>`);
-    }
+    const bandHtml = gened.length ? `
+      <nav class="home-gened-band" aria-label="GenEd categories">
+        ${gened.slice(0, 12).map(g =>
+          `<button type="button" class="home-qs-chip" onclick="App.enterExplorer('IS', '${esc(g.path).replace(/'/g, "\\'")}')">${esc(g.leaf)}</button>`
+        ).join('')}
+      </nav>` : '';
 
-    if (HOME_RECENT_MAPPINGS.length) {
-      cards.push(`
-        <article class="home-qs-card">
-          <h3 class="home-qs-title">Recently updated mappings</h3>
-          <ul class="home-qs-list">
-            ${HOME_RECENT_MAPPINGS.map(m =>
-              `<li><button type="button" class="home-qs-link" onclick="App.enterExplorer('${m.major}', '${esc(m.path).replace(/'/g, "\\'")}')"><span class="home-qs-code">${esc(m.courses)}</span>${esc(m.label)}</button></li>`
-            ).join('')}
-          </ul>
-        </article>`);
-    }
-
-    if (!cards.length) return '';
-    return `<section class="home-quickstart" aria-label="Quick start"><h2 class="home-quickstart-label">Quick start</h2><div class="home-quickstart-grid">${cards.join('')}</div></section>`;
+    const grid = [popularCard, recentCard].filter(Boolean).join('');
+    if (!bandHtml && !grid) return '';
+    return `<section class="home-quickstart" aria-label="Quick start">
+      <h2 class="home-quickstart-label">Quick start</h2>
+      ${bandHtml}
+      ${grid ? `<div class="home-quickstart-grid">${grid}</div>` : ''}
+    </section>`;
   },
 
   _navbarWishlistHtml() {
