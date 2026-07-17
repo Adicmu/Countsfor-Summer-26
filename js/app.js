@@ -1321,6 +1321,7 @@ const App = {
           <div class="search-wrapper">
             <span class="search-icon">🔍</span>
             <input type="text" class="search-input" id="courseSearch" placeholder='Try "15-122" or "Probability"' autocomplete="off" />
+            <button type="button" class="search-clear" data-clear="courseSearch" aria-label="Clear search" hidden>&times;</button>
             <div class="typeahead" id="typeahead"></div>
           </div>
           <button class="explore-btn-inline" id="exploreInlineBtn" onclick="App.enterExplorer()" style="display:none;" title="Open requirement map"><span aria-hidden="true">🗂</span> <span class="explore-btn-inline-label">Explore other courses</span></button>
@@ -1388,6 +1389,7 @@ const App = {
           </div>
           <div class="tree-search">
             <input type="text" id="treeSearchInput" placeholder="Filter requirements…" />
+            <button type="button" class="search-clear" data-clear="treeSearchInput" aria-label="Clear filter" hidden>&times;</button>
           </div>
           <div class="panel-body" id="rightBody"></div>
         </div>
@@ -1495,6 +1497,13 @@ const App = {
   },
 
   // ── Events ────────────────────────────────────────────────
+  // Show the × clear button only while its search input has text
+  _syncSearchClear(input) {
+    if (!input || !input.id) return;
+    const btn = document.querySelector(`.search-clear[data-clear="${input.id}"]`);
+    if (btn) btn.hidden = !input.value;
+  },
+
   _globalEventsBound: false,
   bindGlobalEvents() {
     if (this._globalEventsBound) return;
@@ -1509,6 +1518,7 @@ const App = {
         this.treeSearchQuery = e.target.value.trim().toLowerCase();
         this.renderTree();
       }
+      this._syncSearchClear(e.target);
     });
 
     document.addEventListener('keydown', (e) => {
@@ -1517,6 +1527,17 @@ const App = {
     });
 
     document.addEventListener('click', (e) => {
+      const clearBtn = e.target.closest('.search-clear');
+      if (clearBtn) {
+        const input = document.getElementById(clearBtn.getAttribute('data-clear'));
+        if (input) {
+          input.value = '';
+          // Route through the delegated input handler so results/tree reset too
+          input.dispatchEvent(new Event('input', { bubbles: true }));
+          input.focus();
+        }
+        return;
+      }
       // Close typeaheads if clicking outside any search bar
       const insideSearch = e.target.closest('.search-wrapper, .home-hero-search');
       if (!insideSearch) {
@@ -2322,6 +2343,7 @@ const App = {
             <div class="home-hero-search">
               <span class="home-search-icon" aria-hidden="true">🔍</span>
               <input type="search" class="home-search-input" id="homeSearch" placeholder="Search a course number, title, or category, e.g. 15-122 or Probability" autocomplete="off" enterkeyhint="search" />
+              <button type="button" class="search-clear" data-clear="homeSearch" aria-label="Clear search" hidden>&times;</button>
               <span class="home-search-spinner" id="homeSearchSpinner" hidden aria-hidden="true"></span>
               <div class="typeahead home-typeahead" id="homeTypeahead"></div>
             </div>

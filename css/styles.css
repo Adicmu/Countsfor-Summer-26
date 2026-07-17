@@ -753,6 +753,32 @@ body.is-resizing-panels * {
   box-shadow:var(--shadow-focus);
   background:var(--bg-card);
 }
+/* One-click clear (×) for search inputs */
+.search-clear {
+  position:absolute;
+  right:8px;
+  top:50%;
+  transform:translateY(-50%);
+  width:24px;
+  height:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:0;
+  border-radius:50%;
+  background:var(--bg-secondary);
+  color:var(--text-tertiary);
+  font-size:16px;
+  line-height:1;
+  cursor:pointer;
+  padding:0;
+  transition:background var(--transition), color var(--transition);
+}
+.search-clear:hover {
+  background:var(--border-light);
+  color:var(--text-primary);
+}
+.search-wrapper .search-input { padding-right:36px; }
 /* Typeahead dropdown */
 .typeahead {
   position:absolute;
@@ -1108,14 +1134,16 @@ body.is-resizing-panels * {
 
 /* Tree search */
 .tree-search {
+  position:relative;
   padding:10px 16px;
   border-bottom:var(--panel-divider);
   flex-shrink:0;
 }
+.tree-search .search-clear { right:24px; width:20px; height:20px; font-size:14px; }
 .tree-search input {
   width:100%;
   height:32px;
-  padding:0 10px;
+  padding:0 30px 0 10px; /* room for the × clear button */
   border:1px solid var(--border-light);
   border-radius:var(--radius-sm);
   background:var(--bg-secondary);
@@ -2386,6 +2414,18 @@ body.is-resizing-panels * {
   font-family: inherit;
 }
 .home-search-input::placeholder { color: var(--text-tertiary); font-size: 0.95em; }
+/* our × replaces the native WebKit one */
+.home-search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.home-hero-search .search-clear {
+  position: static;
+  transform: none;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  font-size: 20px;
+}
+/* while the spinner is up it occupies the same corner — yield to it */
+.home-hero-search.is-loading .search-clear { visibility: hidden; }
 .home-search-spinner {
   position: absolute;
   right: 18px;
