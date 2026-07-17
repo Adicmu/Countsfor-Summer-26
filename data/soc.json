@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet/search",
-    "last_scrape": "2026-07-16T13:48:08.999580+00:00",
+    "last_scrape": "2026-07-17T07:52:59.449706+00:00",
     "semesters_on_form": [
       {
         "code": "F26",
@@ -12519,7 +12519,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -12605,7 +12605,7 @@
               "section": "D",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-04:00PM",
+              "days_times": "TR 12:00PM-12:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -30784,44 +30784,6 @@
           "semester_code": "F26"
         },
         {
-          "course_number": "62318",
-          "title": "Sparta Summer Study",
-          "units": "10",
-          "department_code": "CFA",
-          "department": "CFA Interdisciplinary",
-          "sections": [
-            {
-              "section": "W",
-              "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
-              "location": "Doha, Qatar",
-              "delivery_mode": "In-person Expectation",
-              "campus": "Qatar"
-            }
-          ],
-          "campus": [
-            "Qatar"
-          ],
-          "offerings": [
-            {
-              "semester": "Fall 2026",
-              "semester_code": "F26",
-              "campus": "Qatar",
-              "section": "W",
-              "modality": "In Person",
-              "units": "10",
-              "days_times": "TBA",
-              "instructor": "",
-              "location": "Doha, Qatar",
-              "delivery_mode_raw": "In-person Expectation"
-            }
-          ],
-          "semester": "Fall 2026",
-          "semester_code": "F26"
-        },
-        {
           "course_number": "39050",
           "title": "Study Abroad",
           "units": "0",
@@ -38078,7 +38040,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "04:20PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -38088,7 +38050,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "08:50PM",
+              "end_time": "07:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -38138,7 +38100,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 02:00PM-04:20PM",
+              "days_times": "MW 02:00PM-02:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -38150,7 +38112,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-08:50PM",
+              "days_times": "MW 06:30PM-07:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -86325,6 +86287,16 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "PP",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
             }
           ],
           "campus": [
@@ -86336,6 +86308,18 @@
               "semester_code": "F26",
               "campus": "Pittsburgh",
               "section": "A",
+              "modality": "In Person",
+              "units": "0-48",
+              "days_times": "TBA",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            },
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "PP",
               "modality": "In Person",
               "units": "0-48",
               "days_times": "TBA",
@@ -100036,9 +100020,9 @@
             {
               "section": "A2",
               "mini": "Y",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
+              "days": "TR",
+              "begin_time": "03:30PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -100055,7 +100039,7 @@
               "section": "A2",
               "modality": "In Person",
               "units": "6",
-              "days_times": "TBA",
+              "days_times": "TR 03:30PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -100672,7 +100656,7 @@
               "begin_time": "03:30PM",
               "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person Expectation",
+              "delivery_mode": "Remote only",
               "campus": "Pittsburgh"
             },
             {
@@ -100715,12 +100699,12 @@
               "semester_code": "F26",
               "campus": "Pittsburgh",
               "section": "A1",
-              "modality": "In Person",
+              "modality": "Remote",
               "units": "6",
               "days_times": "TR 03:30PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode_raw": "In-person Expectation"
+              "delivery_mode_raw": "Remote only"
             },
             {
               "semester": "Fall 2026",
@@ -108314,6 +108298,16 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "P",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
             }
           ],
           "campus": [
@@ -108325,6 +108319,18 @@
               "semester_code": "F26",
               "campus": "Pittsburgh",
               "section": "A",
+              "modality": "In Person",
+              "units": "24-48",
+              "days_times": "TBA",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            },
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "P",
               "modality": "In Person",
               "units": "24-48",
               "days_times": "TBA",
@@ -119538,6 +119544,16 @@
               "campus": "Pittsburgh"
             },
             {
+              "section": "PP",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            },
+            {
               "section": "Q",
               "mini": "",
               "days": "TBA",
@@ -119995,6 +120011,18 @@
               "semester_code": "F26",
               "campus": "Pittsburgh",
               "section": "P",
+              "modality": "In Person",
+              "units": "1-48",
+              "days_times": "TBA",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            },
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "PP",
               "modality": "In Person",
               "units": "1-48",
               "days_times": "TBA",
@@ -201504,7 +201532,7 @@
               "mini": "",
               "days": "UT",
               "begin_time": "10:00AM",
-              "end_time": "10:50AM",
+              "end_time": "11:15AM",
               "location": "Doha, Qatar",
               "delivery_mode": "In-person Expectation",
               "campus": "Qatar"
@@ -201654,7 +201682,7 @@
               "section": "X",
               "modality": "In Person",
               "units": "9",
-              "days_times": "UT 10:00AM-10:50AM",
+              "days_times": "UT 10:00AM-11:15AM",
               "instructor": "",
               "location": "Doha, Qatar",
               "delivery_mode_raw": "In-person Expectation"
@@ -207993,8 +208021,8 @@
         {
           "code": "CFA",
           "name": "CFA Interdisciplinary",
-          "courses": 40,
-          "sections": 61
+          "courses": 39,
+          "sections": 60
         },
         {
           "code": "CIT",
@@ -208084,7 +208112,7 @@
           "code": "ECE",
           "name": "Electrical & Computer Engineering",
           "courses": 112,
-          "sections": 181
+          "sections": 182
         },
         {
           "code": "EPP",
@@ -208132,7 +208160,7 @@
           "code": "HCI",
           "name": "Human-Computer Interaction",
           "courses": 46,
-          "sections": 69
+          "sections": 70
         },
         {
           "code": "BHA",
@@ -208174,7 +208202,7 @@
           "code": "LTI",
           "name": "Language Technologies Institute",
           "courses": 55,
-          "sections": 223
+          "sections": 224
         },
         {
           "code": "LCL",
@@ -208315,10 +208343,10 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-07-16T13:48:08.999580+00:00",
+      "scraped_at": "2026-07-17T07:52:59.449706+00:00",
       "semester_label": "Fall 2026",
-      "total_courses": 3236,
-      "total_sections": 7092
+      "total_courses": 3235,
+      "total_sections": 7094
     },
     "S26": {
       "courses": [
@@ -220775,7 +220803,7 @@
               "mini": "",
               "days": "MF",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -220835,7 +220863,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "12",
-              "days_times": "MF 12:00PM-04:00PM",
+              "days_times": "MF 12:00PM-12:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -247539,7 +247567,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "04:20PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation Rotation",
               "campus": "Pittsburgh"
@@ -247549,7 +247577,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "07:20PM",
+              "end_time": "08:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -247578,7 +247606,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 02:00PM-04:20PM",
+              "days_times": "MW 02:00PM-02:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation Rotation"
@@ -247590,7 +247618,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-07:20PM",
+              "days_times": "MW 06:30PM-08:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -247824,7 +247852,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "04:50PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -247863,7 +247891,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "12",
-              "days_times": "MW 02:00PM-04:50PM",
+              "days_times": "MW 02:00PM-02:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -414290,7 +414318,7 @@
           "sections": 39
         }
       ],
-      "scraped_at": "2026-07-16T13:48:08.999580+00:00",
+      "scraped_at": "2026-07-17T07:52:59.449706+00:00",
       "semester_label": "Spring 2026",
       "total_courses": 3209,
       "total_sections": 7007
@@ -427203,7 +427231,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -427285,7 +427313,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-04:00PM",
+              "days_times": "TR 12:00PM-12:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -622022,7 +622050,7 @@
           "sections": 36
         }
       ],
-      "scraped_at": "2026-07-16T13:48:08.999580+00:00",
+      "scraped_at": "2026-07-17T07:52:59.449706+00:00",
       "semester_label": "Fall 2025",
       "total_courses": 3213,
       "total_sections": 7084
