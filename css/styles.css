@@ -778,6 +778,8 @@ body.is-resizing-panels * {
   background:var(--border-light);
   color:var(--text-primary);
 }
+/* display:flex above would defeat the hidden attribute — keep it authoritative */
+.search-clear[hidden] { display:none; }
 .search-wrapper .search-input { padding-right:36px; }
 /* Typeahead dropdown */
 .typeahead {
