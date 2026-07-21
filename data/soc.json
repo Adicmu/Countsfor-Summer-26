@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet/search",
-    "last_scrape": "2026-07-21T08:24:51.446343+00:00",
+    "last_scrape": "2026-07-21T13:22:13.754575+00:00",
     "semesters_on_form": [
       {
         "code": "F26",
@@ -208419,7 +208419,7 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-07-21T08:24:51.446343+00:00",
+      "scraped_at": "2026-07-21T13:22:13.754575+00:00",
       "semester_label": "Fall 2026",
       "total_courses": 3237,
       "total_sections": 7096
@@ -414394,7 +414394,7 @@
           "sections": 39
         }
       ],
-      "scraped_at": "2026-07-21T08:24:51.446343+00:00",
+      "scraped_at": "2026-07-21T13:22:13.754575+00:00",
       "semester_label": "Spring 2026",
       "total_courses": 3209,
       "total_sections": 7007
@@ -427307,7 +427307,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -427389,7 +427389,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-04:00PM",
+              "days_times": "TR 12:00PM-12:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -622126,7 +622126,7 @@
           "sections": 36
         }
       ],
-      "scraped_at": "2026-07-21T08:24:51.446343+00:00",
+      "scraped_at": "2026-07-21T13:22:13.754575+00:00",
       "semester_label": "Fall 2025",
       "total_courses": 3213,
       "total_sections": 7084
