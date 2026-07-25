@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet/search",
-    "last_scrape": "2026-07-24T13:22:12.900968+00:00",
+    "last_scrape": "2026-07-25T13:07:41.067376+00:00",
     "semesters_on_form": [
       {
         "code": "F26",
@@ -1347,7 +1347,7 @@
             {
               "section": "F",
               "mini": "",
-              "days": "WF",
+              "days": "T",
               "begin_time": "11:00AM",
               "end_time": "12:20PM",
               "location": "Pittsburgh, Pennsylvania",
@@ -1390,7 +1390,7 @@
               "section": "F",
               "modality": "In Person",
               "units": "9",
-              "days_times": "WF 11:00AM-12:20PM",
+              "days_times": "T 11:00AM-12:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -3295,7 +3295,7 @@
             {
               "section": "F",
               "mini": "",
-              "days": "WF",
+              "days": "T",
               "begin_time": "11:00AM",
               "end_time": "12:20PM",
               "location": "Pittsburgh, Pennsylvania",
@@ -3350,7 +3350,7 @@
               "section": "F",
               "modality": "In Person",
               "units": "9",
-              "days_times": "WF 11:00AM-12:20PM",
+              "days_times": "T 11:00AM-12:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -20475,7 +20475,7 @@
         },
         {
           "course_number": "45933",
-          "title": "Marketing Communication for Consumer Brands",
+          "title": "Marketing Communication for Consumer Brands This Section Cancelled",
           "units": "6",
           "department_code": "BUS",
           "department": "Business Administration",
@@ -30669,6 +30669,16 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "B",
+              "mini": "",
+              "days": "TR",
+              "begin_time": "03:30PM",
+              "end_time": "04:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
             }
           ],
           "campus": [
@@ -30683,6 +30693,18 @@
               "modality": "In Person",
               "units": "9",
               "days_times": "TR 12:30PM-01:50PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            },
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "B",
+              "modality": "In Person",
+              "units": "9",
+              "days_times": "TR 03:30PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -102216,11 +102238,31 @@
           "department": "History",
           "sections": [
             {
+              "section": "A1",
+              "mini": "Y",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            },
+            {
               "section": "A2",
               "mini": "Y",
               "days": "TR",
               "begin_time": "03:30PM",
               "end_time": "04:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            },
+            {
+              "section": "B1",
+              "mini": "Y",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -102234,10 +102276,34 @@
               "semester": "Fall 2026",
               "semester_code": "F26",
               "campus": "Pittsburgh",
+              "section": "A1",
+              "modality": "In Person",
+              "units": "6",
+              "days_times": "TBA",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            },
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
               "section": "A2",
               "modality": "In Person",
               "units": "6",
               "days_times": "TR 03:30PM-04:50PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            },
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "B1",
+              "modality": "In Person",
+              "units": "6",
+              "days_times": "TBA",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -128402,8 +128468,8 @@
               "section": "A",
               "mini": "",
               "days": "TR",
-              "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "begin_time": "05:00PM",
+              "end_time": "05:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -128420,7 +128486,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "3",
-              "days_times": "TR 02:00PM-02:50PM",
+              "days_times": "TR 05:00PM-05:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -128497,6 +128563,82 @@
               "modality": "In Person",
               "units": "6",
               "days_times": "TR 11:00AM-12:20PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            }
+          ],
+          "semester": "Fall 2026",
+          "semester_code": "F26"
+        },
+        {
+          "course_number": "82770",
+          "title": "Analysis of Language in a Global Context",
+          "units": "9",
+          "department_code": "LCL",
+          "department": "Languages Cultures & Appl Linguistics",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "A",
+              "modality": "In Person",
+              "units": "9",
+              "days_times": "TBA",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            }
+          ],
+          "semester": "Fall 2026",
+          "semester_code": "F26"
+        },
+        {
+          "course_number": "82772",
+          "title": "MA in ALSLA Synthesis Paper",
+          "units": "9",
+          "department_code": "LCL",
+          "department": "Languages Cultures & Appl Linguistics",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "TBA",
+              "begin_time": "TBA",
+              "end_time": "TBA",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "A",
+              "modality": "In Person",
+              "units": "9",
+              "days_times": "TBA",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -208246,7 +208388,7 @@
           "code": "CFA",
           "name": "CFA Interdisciplinary",
           "courses": 39,
-          "sections": 60
+          "sections": 61
         },
         {
           "code": "CIT",
@@ -208378,7 +208520,7 @@
           "code": "HIS",
           "name": "History",
           "courses": 67,
-          "sections": 134
+          "sections": 136
         },
         {
           "code": "HCI",
@@ -208431,8 +208573,8 @@
         {
           "code": "LCL",
           "name": "Languages Cultures & Appl Linguistics",
-          "courses": 124,
-          "sections": 180
+          "courses": 126,
+          "sections": 182
         },
         {
           "code": "MCS",
@@ -208567,10 +208709,10 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-07-24T13:22:12.900968+00:00",
+      "scraped_at": "2026-07-25T13:07:41.067376+00:00",
       "semester_label": "Fall 2026",
-      "total_courses": 3238,
-      "total_sections": 7102
+      "total_courses": 3240,
+      "total_sections": 7107
     },
     "S26": {
       "courses": [
@@ -247801,7 +247943,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "07:20PM",
+              "end_time": "08:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -247842,7 +247984,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-07:20PM",
+              "days_times": "MW 06:30PM-08:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -414542,7 +414684,7 @@
           "sections": 39
         }
       ],
-      "scraped_at": "2026-07-24T13:22:12.900968+00:00",
+      "scraped_at": "2026-07-25T13:07:41.067376+00:00",
       "semester_label": "Spring 2026",
       "total_courses": 3209,
       "total_sections": 7007
@@ -427455,7 +427597,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -427475,7 +427617,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -427537,7 +427679,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-04:00PM",
+              "days_times": "TR 12:00PM-12:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -427561,7 +427703,7 @@
               "section": "D",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-12:50PM",
+              "days_times": "TR 12:00PM-04:00PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -452384,7 +452526,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "04:20PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -452444,7 +452586,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 02:00PM-04:20PM",
+              "days_times": "MW 02:00PM-02:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -452720,7 +452862,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -452749,7 +452891,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 02:00PM-02:50PM",
+              "days_times": "TR 02:00PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -622274,7 +622416,7 @@
           "sections": 36
         }
       ],
-      "scraped_at": "2026-07-24T13:22:12.900968+00:00",
+      "scraped_at": "2026-07-25T13:07:41.067376+00:00",
       "semester_label": "Fall 2025",
       "total_courses": 3213,
       "total_sections": 7084
