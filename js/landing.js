@@ -28,17 +28,50 @@
   const BACKEND_URL = getBackendUrl();
   const AUTH_TOKEN_KEY = 'cf_auth_token';
 
+  // Two buckets on purpose. localStorage survives a browser restart and backs the
+  // "Keep me signed in" opt-in; sessionStorage dies with the tab and is the default.
   function getAuthToken() {
-    try { return sessionStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; }
+    try {
+      return localStorage.getItem(AUTH_TOKEN_KEY)
+        || sessionStorage.getItem(AUTH_TOKEN_KEY)
+        || '';
+    } catch { return ''; }
   }
 
-  function saveAuthToken(token) {
+  // `persist` is only passed at sign-in time, from the checkbox. Later refreshes
+  // pass nothing and must not downgrade a remembered session to a tab-only one, so
+  // they write to whichever bucket already holds a token.
+  function saveAuthToken(token, persist) {
     if (!token) return;
+    if (persist === true) {
+      try {
+        localStorage.setItem(AUTH_TOKEN_KEY, token);
+        sessionStorage.removeItem(AUTH_TOKEN_KEY);
+        return;
+      } catch { /* storage blocked — fall through to sessionStorage */ }
+    } else if (persist === false) {
+      try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+    } else {
+      try {
+        if (localStorage.getItem(AUTH_TOKEN_KEY)) {
+          localStorage.setItem(AUTH_TOKEN_KEY, token);
+          return;
+        }
+      } catch {}
+    }
     try { sessionStorage.setItem(AUTH_TOKEN_KEY, token); } catch {}
   }
 
+  // Must clear BOTH, or signing out leaves a 30-day token behind.
   function clearAuthToken() {
     try { sessionStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+    try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+  }
+
+  // Reads the checkbox rendered in the sign-in panel.
+  function wantsPersistentSession() {
+    const box = document.getElementById('cfRememberMe');
+    return !!(box && box.checked);
   }
 
   function getGoogleClientId() {
@@ -241,7 +274,7 @@
       wakeTimer = window.setTimeout(function () {
         const label = btn.querySelector('span:last-child');
         if (label && btn.classList.contains('is-loading')) {
-          label.textContent = 'Waking up the server — up to ~30s…';
+          label.textContent = 'Waking up the server…';
         }
       }, 4000);
     } else {
@@ -466,7 +499,56 @@
     if (!state.backendUnreachable) {
       return '<div class="landing-alert" id="cfBackendAlert" role="alert" hidden></div>';
     }
-    return '<div class="landing-alert" id="cfBackendAlert" role="alert">Could not reach the server — it may be waking up. Try again in ~30s.</div>';
+    return '<div class="landing-alert" id="cfBackendAlert" role="alert">' + esc(UNREACHABLE_MSG) + '</div>';
+  }
+
+  // One canonical wording, reused by the initial render, the background session
+  // probe, and every failed submit, so the user never sees two different
+  // descriptions of the same outage.
+  //
+  // The wording names the consequence (accounts are unavailable) rather than the
+  // mechanism, and points at guest mode, which needs no server and covers the whole
+  // catalog. Leaving a working-looking sign-in form on screen during an outage just
+  // makes people retype passwords that were never wrong.
+  const ACCOUNTS_UNAVAILABLE_MSG =
+    'Accounts are unavailable right now. The server may be waking up, so try again in about 30 seconds, or browse everything as a guest.';
+  const UNREACHABLE_MSG = ACCOUNTS_UNAVAILABLE_MSG;
+  const SLOW_MSG =
+    'The server took too long to respond. Try again in about 30 seconds, or browse everything as a guest.';
+
+  // status 0 means the request never completed: connection refused, DNS, a CORS
+  // rejection, or the abort timeout. It carries no information about the
+  // credentials, so it must never be reported as a bad password.
+  function isUnreachable(r) {
+    return !r || r.status === 0;
+  }
+
+  // Show the connectivity banner and clear any credential-level error, so the
+  // page never claims "wrong password" and "cannot reach server" at once.
+  function showUnreachable(r) {
+    state.backendUnreachable = true;
+    setFormError('');
+    clearFieldMsg('cfLoginPass', 'cfLoginPassMsg');
+    setBackendAlert(
+      r && r.message === 'The server took too long to respond.' ? SLOW_MSG : ACCOUNTS_UNAVAILABLE_MSG,
+      { guestLink: true }
+    );
+  }
+
+  // The server answered, so any banner left over from a previous attempt or from
+  // the background probe is stale.
+  function clearBackendAlert() {
+    state.backendUnreachable = false;
+    setBackendAlert('');
+  }
+
+  // Called between the first attempt and the retry: the button is still in its
+  // loading state, so relabel it instead of leaving it looking frozen.
+  function showWakingLabel() {
+    const btn = document.getElementById('cfAuthSubmit');
+    if (!btn || !btn.classList.contains('is-loading')) return;
+    const label = btn.querySelector('span:last-child');
+    if (label) label.textContent = 'Waking up the server…';
   }
 
   function setBackendAlert(message, opts) {
@@ -484,6 +566,17 @@
       btn.className = 'landing-link-btn';
       btn.textContent = 'Continue to CountsFor →';
       btn.addEventListener('click', goToApp);
+      box.appendChild(btn);
+    }
+    // When accounts are unavailable there is still a fully usable path: guest mode
+    // needs no server. Offer it inline instead of leaving the user at a sign-in form
+    // that cannot succeed.
+    if (opts && opts.guestLink) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'landing-link-btn';
+      btn.textContent = 'Browse as guest →';
+      btn.addEventListener('click', enterGuestMode);
       box.appendChild(btn);
     }
     box.hidden = false;
@@ -529,7 +622,7 @@
         '<div class="landing-panel-head">' +
         '<button type="button" class="landing-back" data-view="signin">← Back to sign in</button>' +
         '<h2 class="landing-panel-title" id="panel-title-forgot">Forgot password</h2>' +
-        '<p class="landing-panel-lead">We\'ll email you a reset link — or verify with your <strong>@andrew.cmu.edu</strong> Google account instead, no email needed.</p>' +
+        '<p class="landing-panel-lead">We\'ll email you a reset link. Or verify with your <strong>@andrew.cmu.edu</strong> Google account instead, no email needed.</p>' +
         '</div>' +
         backendWarnHtml() +
         '</div>' +
@@ -544,7 +637,7 @@
         '<div class="landing-reset-box" id="cfResetLinkBox" hidden></div>' +
         '<div class="landing-divider" aria-hidden="true"><span>or</span></div>' +
         '<div id="cfGoogleRecover" class="landing-google-mount"></div>' +
-        '<p class="landing-recover-note">Sign in with Google to confirm you own the account — no reset email needed.</p>' +
+        '<p class="landing-recover-note">Sign in with Google to confirm you own the account. No reset email needed.</p>' +
         '</div>',
         'forgot'
       );
@@ -587,6 +680,10 @@
         emailField('cfLoginEmail', 'Andrew email') +
         passwordField('cfLoginPass', 'Password', { autocomplete: 'current-password' }) +
         '<div class="landing-forgot-row">' +
+        '<label class="landing-remember">' +
+        '<input type="checkbox" id="cfRememberMe" />' +
+        '<span>Keep me signed in</span>' +
+        '</label>' +
         '<button type="button" class="landing-link-btn" data-view="forgot">Forgot password?</button>' +
         '</div>' +
         '<div class="landing-form-actions">' +
@@ -615,6 +712,13 @@
     }
 
     bindForm(v);
+
+    // The first-run explainer is for someone deciding whether to sign up. On the
+    // forgot/reset views they already have an account, so it is just noise
+    // pushing the form down. Toggled on the element, never re-rendered, because
+    // re-rendering the panel would wipe anything already typed.
+    const intro = document.getElementById('cfIntro');
+    if (intro) intro.hidden = (v === 'forgot' || v === 'reset');
 
     if (v === 'forgot') mountGoogleRecover();
 
@@ -667,9 +771,25 @@
       setFieldMsg('cfLoginPass', 'cfLoginPassMsg', 'Enter your password.', 'error');
       return;
     }
+    // Read the checkbox before any await, while the panel is still on screen.
+    const persist = wantsPersistentSession();
     setLoading(true, 'Sign in →');
-    const r = await apiLogin({ email: normalizeCmuEmailLocal(email) || email, password });
+    const body = { email: normalizeCmuEmailLocal(email) || email, password };
+    let r = await apiLogin(body);
+    // A cold free-tier backend often drops the first request and answers the
+    // second. Retry exactly once so a real cold start becomes a slow success,
+    // while a genuinely dead server still fails in bounded time.
+    if (isUnreachable(r)) {
+      showWakingLabel();
+      r = await apiLogin(body);
+    }
     setLoading(false, 'Sign in →');
+    if (isUnreachable(r)) {
+      showUnreachable(r);
+      updateSubmitState('signin');
+      return;
+    }
+    clearBackendAlert();
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Email or password is incorrect.';
       if (r.data && r.data.error === 'no_password_set') {
@@ -684,7 +804,9 @@
       updateSubmitState('signin');
       return;
     }
-    if (r.data && r.data.auth_token) saveAuthToken(r.data.auth_token);
+    // Re-save with the explicit choice: apiFetch already stashed the token in the
+    // tab-only bucket, so this promotes it to localStorage when the box was ticked.
+    if (r.data && r.data.auth_token) saveAuthToken(r.data.auth_token, persist);
     const me = await apiGetMe();
     if (!me.ok) {
       clearAuthToken();
@@ -708,13 +830,24 @@
     }
     if (!validatePasswordMatch('cfRegPass', 'cfRegPass2', 'cfRegPass2Msg')) return;
     setLoading(true, 'Create account →');
-    const r = await apiRegister({
+    const regBody = {
       email: normalizeCmuEmailLocal(email) || email,
       password,
       confirm_password: confirm,
       name: name || undefined,
-    });
+    };
+    let r = await apiRegister(regBody);
+    if (isUnreachable(r)) {
+      showWakingLabel();
+      r = await apiRegister(regBody);
+    }
     setLoading(false, 'Create account →');
+    if (isUnreachable(r)) {
+      showUnreachable(r);
+      updateSubmitState('register');
+      return;
+    }
+    clearBackendAlert();
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Registration failed.';
       if (r.data && r.data.error === 'email_taken') {
@@ -804,12 +937,12 @@
         if (box) {
           box.hidden = false;
           box.innerHTML =
-            '<p class="landing-reset-msg">Email reset isn\'t available yet — use ' +
+            '<p class="landing-reset-msg">Email reset isn\'t available yet. Use ' +
             '<strong>Continue with Google</strong> below to verify it\'s you and set a new password.</p>';
         }
       } else if (r.status === 502) {
         // email_failed — transient send failure.
-        setFormError((r.data && r.data.message) || 'We couldn\'t send the email right now — try again in a few minutes, or use Google below.');
+        setFormError((r.data && r.data.message) || 'We couldn\'t send the email right now. Try again in a few minutes, or use Google below.');
       } else {
         setFormError((r.data && r.data.message) || 'Request failed.');
       }
@@ -864,7 +997,7 @@
       goToApp();
       return;
     }
-    showToast('Password updated — sign in with your new password.');
+    showToast('Password updated. Sign in with your new password.');
     state.view = 'signin';
     state.resetToken = '';
     state.resetEmail = '';
@@ -903,18 +1036,18 @@
     }
     if (me.status === 0) {
       state.backendUnreachable = true;
-      setBackendAlert('Could not reach the server — it may be waking up. Try again in ~30s.');
+      setBackendAlert(ACCOUNTS_UNAVAILABLE_MSG, { guestLink: true });
     }
+  }
+
+  function enterGuestMode() {
+    try { sessionStorage.setItem('cf_guest', '1'); } catch (e) { /* storage blocked */ }
+    location.href = APP_URL;
   }
 
   function init() {
     const guestBtn = document.getElementById('cfGuestBtn');
-    if (guestBtn) {
-      guestBtn.addEventListener('click', function () {
-        try { sessionStorage.setItem('cf_guest', '1'); } catch (e) { /* storage blocked */ }
-        location.href = APP_URL;
-      });
-    }
+    if (guestBtn) guestBtn.addEventListener('click', enterGuestMode);
 
     const params = new URLSearchParams(location.search);
     const resetTok = params.get('token') || params.get('reset') || '';

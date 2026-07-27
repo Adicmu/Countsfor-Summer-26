@@ -5,7 +5,7 @@
 const HOME_POPULAR_COURSES = ['15-122', '21-120', '36-200', '67-250', '82-112'];
 const HOME_SEARCH_CHIPS = ['15-122', 'Contextual Thinking', 'Intercultural and Global Inquiry', 'Probability'];
 const HOME_RECENT_MAPPINGS = [
-  { courses: '82-101 – 82-142', label: 'Modern Languages → IS/BA/BS/CS GenEd', major: 'IS', path: 'GenEd---GenEd---Foundations---Intercultural and Global Inquiry' },
+  { courses: '82-101 to 82-142', label: 'Modern Languages → IS/BA/BS/CS GenEd', major: 'IS', path: 'GenEd---GenEd---Foundations---Intercultural and Global Inquiry' },
   { courses: '79-286', label: 'Movers & Shakers → IS Contextual Thinking', major: 'IS', path: 'GenEd---GenEd---Foundations---Contextual Thinking' },
 ];
 
@@ -256,6 +256,11 @@ const App = {
       // Auto-expand first level of the default major
       this.autoExpandFirstLevel(this.activeMajor);
 
+      // The navbar is rendered before the catalog finishes loading, so the semester
+      // picker was built from an empty course list. Refresh it now that we know which
+      // semesters actually have offerings.
+      this._refreshSemesterOptions();
+
       this.renderLeftEmpty();
       this.renderTree();
     } catch (err) {
@@ -384,7 +389,7 @@ const App = {
 
       ${showMinorSelect && s.roleGroup === 'student' ? `
         <div class="ob-section">
-          <div class="ob-section-label">MINOR(S) <span class="ob-optional">— optional</span></div>
+          <div class="ob-section-label">MINOR(S) <span class="ob-optional">(optional)</span></div>
           ${minorChips ? `<div class="ob-minor-chips">${minorChips}</div>` : ''}
           <div class="ob-select-wrap ob-minor-add-row">
             <select class="ob-select" id="obMinorPick" onchange="App._obAddMinor(this.value); this.value='';">
@@ -400,7 +405,7 @@ const App = {
           <div class="ob-section-label">WHICH MINOR</div>
           <div class="ob-select-wrap">
             <select class="ob-select" onchange="App._obPickMinor(this.value)">
-              <option value="" ${!s.primary ? 'selected' : ''}>— Choose a minor —</option>
+              <option value="" ${!s.primary ? 'selected' : ''}>Choose a minor</option>
               ${advisorMinorOptions}
             </select>
           </div>
@@ -566,7 +571,7 @@ const App = {
       }
       const r = await apiPatchMe(serverPatch);
       if (!r.ok) {
-        showToast('Could not save profile to the server — using local copy.');
+        showToast('Could not save profile to the server. Using local copy.');
       } else {
         this.authedUser = r.data;
         this._hydrateProfileFromServer(r.data);
@@ -835,7 +840,7 @@ const App = {
   renderLogin(opts = {}) {
     const v = this.authView;
     const backendWarn = opts.backendUnreachable
-      ? `<div class="auth-alert">Could not reach the server — wait ~30s and refresh.</div>`
+      ? `<div class="auth-alert">Could not reach the server. It may be waking up, so try again in about 30 seconds.</div>`
       : '';
     const formError = `<div class="auth-form-error" id="cfAuthFormError" hidden role="alert"></div>`;
 
@@ -940,8 +945,18 @@ const App = {
     }
     this._setAuthLoading(true, 'Sign in →');
     const normalizedEmail = (typeof normalizeCmuEmail === 'function' ? normalizeCmuEmail(email) : null) || email;
-    const r = await apiLogin({ email: normalizedEmail, password });
+    const loginBody = { email: normalizedEmail, password };
+    let r = await apiLogin(loginBody);
+    // status 0 means the request never completed, so it says nothing about the
+    // credentials. Retry once for a cold backend before reporting failure.
+    if (r.status === 0) r = await apiLogin(loginBody);
     this._setAuthLoading(false, 'Sign in →');
+    if (r.status === 0) {
+      this._setFieldMsg('cfLoginPass', 'cfLoginPassMsg', '', '');
+      this._setAuthFormError('Could not reach the server. It may be waking up, so try again in about 30 seconds.');
+      this._updateAuthSubmitState('signin');
+      return;
+    }
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Email or password is incorrect.';
       if (r.data && r.data.error === 'no_password_set') {
@@ -1041,7 +1056,7 @@ const App = {
       this._updateAuthSubmitState('reset');
       return;
     }
-    showToast('Password updated — sign in with your new password.');
+    showToast('Password updated. Sign in with your new password.');
     this.authView = 'signin';
     if (typeof history !== 'undefined') history.replaceState({}, '', location.pathname);
     this.renderLogin();
@@ -1114,8 +1129,8 @@ const App = {
     this.renderLeftEmpty();
     this.renderTree();
     showToast(kind === 'faculty'
-      ? 'Faculty view — you can flag course issues (saved locally in guest mode).'
-      : 'Student view — you can save courses to a wishlist.');
+      ? 'Faculty view. You can flag course issues (saved locally in guest mode).'
+      : 'Student view. You can save courses to a wishlist.');
   },
 
   async signOut() {
@@ -1128,7 +1143,11 @@ const App = {
 
     await apiLogout();
     if (typeof clearAuthToken === 'function') clearAuthToken();
+    // Belt and braces in case api.js did not load. Both buckets, because a
+    // "Keep me signed in" token lives in localStorage and would otherwise survive
+    // sign-out for its full 30 days.
     try { sessionStorage.removeItem('cf_auth_token'); } catch {}
+    try { localStorage.removeItem('cf_auth_token'); } catch {}
     clearProfile();
     // Clear per-user local caches so a different account on the same browser
     // doesn't inherit them. The cf_synced flag must reset for next sign-in.
@@ -1221,7 +1240,7 @@ const App = {
       if (p.scope === 'major' && p.primary) {
         targetLabel = `${PROGRAM_LABEL[p.primary]} Advisor`;
       } else if (p.scope === 'minor' && p.primary) {
-        targetLabel = `${esc(getMinorLabel(p.primary))} minor — Advisor`;
+        targetLabel = `${esc(getMinorLabel(p.primary))} minor advisor`;
       } else if (p.scope === 'arts_sciences') {
         targetLabel = 'Arts &amp; Sciences Advisor';
       } else {
@@ -1344,7 +1363,7 @@ const App = {
               <div class="navbar-semester">
                 <label class="sr-only" for="semesterSelect">Semester</label>
                 <select id="semesterSelect" class="semester-select" onchange="App.setSemester(this.value)">
-                  ${SEMESTER_OPTIONS.map(s => `<option value="${s.code}" ${this.activeSemester===s.code?'selected':''}>${esc(s.label)}</option>`).join('')}
+                  ${availableSemesterOptions(this.courses, this.activeSemester).map(s => `<option value="${s.code}" ${this.activeSemester===s.code?'selected':''}>${esc(s.label)}</option>`).join('')}
                 </select>
               </div>
               <div class="navbar-location-toggle">
@@ -1376,7 +1395,7 @@ const App = {
           <div class="panel-body" id="leftBody"></div>
         </div>
 
-        <div class="panel-resizer" id="panelResizer" role="separator" aria-orientation="vertical" aria-label="Resize panels — drag left or right" tabindex="0">
+        <div class="panel-resizer" id="panelResizer" role="separator" aria-orientation="vertical" aria-label="Resize panels, drag left or right" tabindex="0">
           <span class="panel-resizer-grip" aria-hidden="true"></span>
         </div>
 
@@ -1395,7 +1414,7 @@ const App = {
         </div>
       </div>
       ${(canManageDirectory(this.profile) && this.authMode === 'authed') ? `
-        <button type="button" class="directory-fab" onclick="App.toggleDirectoryPanel()" title="Directory — manage faculty access">📋 Directory</button>
+        <button type="button" class="directory-fab" onclick="App.toggleDirectoryPanel()" title="Directory: manage faculty access">📋 Directory</button>
         <div id="directoryPanelRoot" class="directory-panel-root" hidden></div>
       ` : ''}
     `;
@@ -1612,6 +1631,44 @@ const App = {
       locationFilter: this.locationFilter,
       modalityFilter: this.modalityFilter,
     };
+  },
+
+  /**
+   * Rebuild the semester <select> in place from the loaded catalog. Done as a
+   * targeted DOM update rather than a full navbar re-render so open panels and
+   * focus are left alone.
+   */
+  _refreshSemesterOptions() {
+    const sel = document.getElementById('semesterSelect');
+    if (!sel) return;
+    const opts = availableSemesterOptions(this.courses, this.activeSemester);
+    // If the active semester has no data at all, fall back to the first one that does
+    // rather than leaving the user on a filter that matches nothing.
+    if (!opts.some(s => s.code === this.activeSemester) && opts.length) {
+      this.activeSemester = opts[0].code;
+    }
+    sel.innerHTML = opts
+      .map(s => `<option value="${s.code}" ${this.activeSemester === s.code ? 'selected' : ''}>${esc(s.label)}</option>`)
+      .join('');
+  },
+
+  _campusFilterLabel() {
+    if (this.locationFilter === 'qatar') return 'Qatar only';
+    if (this.locationFilter === 'pittsburgh') return 'Pittsburgh only';
+    return 'All campuses';
+  },
+
+  _modalityFilterLabel() {
+    const hit = MODALITY_OPTIONS.find(m => m.id === this.modalityFilter);
+    return hit ? hit.label : 'All';
+  },
+
+  /** Human-readable list of the filters currently narrowing results. */
+  _activeFilterSummary() {
+    const parts = [semesterLabel(this.activeSemester)];
+    if (this.locationFilter !== 'all') parts.push(this._campusFilterLabel());
+    if (this.modalityFilter !== 'all') parts.push(this._modalityFilterLabel());
+    return parts;
   },
 
   // Search uses campus + modality only — not semester (catalog courses may lack F26 sections)
@@ -2442,7 +2499,7 @@ const App = {
 
   _popularSubText(peerScope, program) {
     if (peerScope) return `Top among ${program} students this semester`;
-    if (this.authMode === 'authed') return `Suggested courses — be the first ${program} student to explore`;
+    if (this.authMode === 'authed') return `Suggested courses. Be the first ${program} student to explore`;
     return 'Suggested starter courses';
   },
 
@@ -2523,7 +2580,7 @@ const App = {
     const count = this._getWishlistItems().length;
     const subtext = count === 0
       ? 'Tap the bookmark on any course to add it here.'
-      : `${count} course${count === 1 ? '' : 's'} saved — open to add notes.`;
+      : `${count} course${count === 1 ? '' : 's'} saved. Open to add notes.`;
     return `
       <button type="button" class="home-tile home-tile-wish" onclick="App.showWishlistView()">
         <span class="home-tile-icon">${this._iconBookmarkFilled()}</span>
@@ -2781,7 +2838,7 @@ const App = {
     const whereParts = [];
     if (course.offered_qatar) whereParts.push('Qatar');
     if (course.offered_pitts) whereParts.push('Pittsburgh');
-    const whereStr = whereParts.length ? whereParts.join(' &amp; ') : '—';
+    const whereStr = whereParts.length ? whereParts.join(' &amp; ') : 'Not listed';
 
     // Slim DC banner (spec § 4.4) — student lens only; faculty get the full
     // cross-program grid instead of a "double-counter for you" framing.
@@ -2798,7 +2855,7 @@ const App = {
     // About column rows
     const aboutRows = `
       <div class="cc-kv"><span class="cc-k">Dept</span><span class="cc-v">${esc(deptName)} (${esc(course.course_code.split('-')[0])})</span></div>
-      <div class="cc-kv"><span class="cc-k">Offered</span><span class="cc-v">${semesters.length ? semesters.map(esc).join(' · ') : '—'}</span></div>
+      <div class="cc-kv"><span class="cc-k">Offered</span><span class="cc-v">${semesters.length ? semesters.map(esc).join(' · ') : 'Not listed'}</span></div>
       <div class="cc-kv"><span class="cc-k">Where</span><span class="cc-v">${whereStr}</span></div>
       <div class="cc-kv"><span class="cc-k">Prereq</span><span class="cc-v">${prereq ? esc(prereq) : '<em>None</em>'}</span></div>
     `;
@@ -2912,7 +2969,7 @@ const App = {
     const time = (s.days_times && s.days_times !== 'TBA')
       ? esc(s.days_times)
       : ((s.begin_time && s.begin_time !== 'TBA')
-        ? `${esc(s.days || 'TBA')} ${esc(s.begin_time)}–${esc(s.end_time)}`
+        ? `${esc(s.days || 'TBA')} ${esc(s.begin_time)} to ${esc(s.end_time)}`
         : 'TBA');
     const dmCls = (dm) => {
       const d = (dm || '').toLowerCase();
@@ -3036,7 +3093,7 @@ const App = {
               The official requirement list for ${esc(full)} is still being collected.
               Once it lands, courses will automatically count toward this program.
             </div>
-            <a class="empty-state-pending-help" href="mailto:cmuq-curriculum@andrew.cmu.edu?subject=${encodeURIComponent('CountsFor — ' + full + ' requirement data')}">
+            <a class="empty-state-pending-help" href="mailto:cmuq-curriculum@andrew.cmu.edu?subject=${encodeURIComponent('CountsFor: ' + full + ' requirement data')}">
               Have official data? Email us
             </a>
           </div>`;
@@ -3140,7 +3197,10 @@ const App = {
     };
     const courses = collectCoursesForRequirement(node, filterFn);
     if (!courses.length) {
-      showToast('No courses match your current campus filter.');
+      // Name every filter that is actually narrowing the result. Reporting only the
+      // campus filter made an active semester or modality filter look like missing
+      // data rather than a filter the user could clear.
+      showToast('No courses match your filters (' + this._activeFilterSummary().join(', ') + ').');
       return;
     }
 
@@ -3161,18 +3221,20 @@ const App = {
       ];
     });
 
-    const filterNote = this.locationFilter === 'all'
-      ? 'All campuses'
-      : (this.locationFilter === 'qatar' ? 'Qatar only' : 'Pittsburgh only');
+    // Record all three filters, not just campus. The export applies semester and
+    // modality too (see _filterParams), so a sheet that lists only the campus filter
+    // cannot be reconciled with its own row count.
     const metaRows = [
       ['CountsFor course export'],
       ['Major', majorLabel],
       ['Requirement', pathLabel],
-      ['Campus filter', filterNote],
+      ['Semester filter', semesterLabel(this.activeSemester)],
+      ['Campus filter', this._campusFilterLabel()],
+      ['Modality filter', this._modalityFilterLabel()],
       ['Courses', String(courses.length)],
       ['Exported', new Date().toLocaleString()],
     ];
-    const filename = `CountsFor_${major}_${slugifyFilename(node.label)}.xls`;
+    const filename = `CountsFor_${major}_${slugifyFilename(node.label)}.csv`;
     downloadExcelSheet(filename, node.label, headers, rows, metaRows);
     showToast(`Downloaded ${courses.length} courses`);
   },
@@ -3376,7 +3438,7 @@ const App = {
         if (!r.ok) {
           // Drop the synced flag so next sign-in retries the migration loop.
           try { localStorage.removeItem('cf_synced'); } catch {}
-          showToast('Saved locally — sync to server failed.');
+          showToast('Saved locally. Sync to server failed.');
         }
       }
       showToast('Saved for later');
@@ -3387,7 +3449,7 @@ const App = {
         const r = await apiRemoveWishlist(code);
         if (!r.ok && r.status !== 404) {
           try { localStorage.removeItem('cf_synced'); } catch {}
-          showToast('Removed locally — sync to server failed.');
+          showToast('Removed locally. Sync to server failed.');
         }
       }
       showToast('Removed from wishlist');
@@ -3452,7 +3514,7 @@ const App = {
         <div class="wl-header">
           <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
           <div class="wl-title">Saved courses${courses.length ? ` <span class="wl-count">· ${courses.length}</span>` : ''}</div>
-          <p class="wl-hint">Add a note on each course — faculty advisors can read these when you share favorites.</p>
+          <p class="wl-hint">Add a note on each course. Faculty advisors can read these when you share favorites.</p>
         </div>
         <div class="wl-list">${rowsHtml}</div>
       </div>
@@ -3487,7 +3549,7 @@ const App = {
       const r = await apiUpdateWishlistNote(code, items[idx].note);
       if (!r.ok) {
         try { localStorage.removeItem('cf_synced'); } catch {}
-        showToast('Note saved on this device — could not sync to server.');
+        showToast('Note saved on this device. Could not sync to server.');
       }
     }
   },
@@ -3514,7 +3576,7 @@ const App = {
           <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
           <div class="adm-title">Flagged courses <span class="adm-count">· ${items.length}</span></div>
         </div>
-        <p class="adm-hint">Read-only — students cannot submit flags. Faculty report and resolve issues.</p>
+        <p class="adm-hint">Read-only. Students cannot submit flags. Faculty report and resolve issues.</p>
         <div class="adm-list">${rows}</div>
       </div>`;
   },
@@ -3536,7 +3598,7 @@ const App = {
     const students = (r.data && r.data.students) || [];
     const blocks = students.length ? students.map(s => {
       const rows = (s.items || []).map(i => `
-        <li><strong>${esc(i.course_code)}</strong>${i.note ? ` — <em>${esc(i.note)}</em>` : ''}</li>`).join('') || '<li class="sf-empty">No saved courses</li>';
+        <li><strong>${esc(i.course_code)}</strong>${i.note ? `: <em>${esc(i.note)}</em>` : ''}</li>`).join('') || '<li class="sf-empty">No saved courses</li>';
       return `
         <div class="sf-student">
           <div class="sf-student-head"><strong>${esc(s.name)}</strong> <span class="sf-email">${esc(s.email)}</span>${s.primary_program ? ` · ${esc(s.primary_program)}` : ''}</div>
@@ -3644,8 +3706,8 @@ const App = {
             <div class="cf-flag-reasons">${reasonItems}</div>
           </fieldset>
           <label class="cf-flag-notes-wrap">
-            <span class="cf-flag-notes-label">Additional context <span class="cf-flag-notes-opt">— optional</span></span>
-            <textarea class="cf-flag-notes" id="cfFlagNotes" placeholder="Anything else admins should know — e.g., 'Last offered Spring 2024 in Doha.'"></textarea>
+            <span class="cf-flag-notes-label">Additional context <span class="cf-flag-notes-opt">(optional)</span></span>
+            <textarea class="cf-flag-notes" id="cfFlagNotes" placeholder="Anything else admins should know, e.g. 'Last offered Spring 2024 in Doha.'"></textarea>
           </label>
           <div class="cf-flag-attribution">
             <strong>Filed as:</strong> ${esc(getRoleLabel(this.profile))}${this.profile.primary ? ' · ' + esc(this.profile.primary) : ''}
@@ -3709,17 +3771,17 @@ const App = {
     flags.push(flag);
     this._saveFlags(flags);
 
-    let toast = 'Flag submitted — admins will review';
+    let toast = 'Flag submitted for admin review';
     if (this.authMode === 'authed') {
       const r = await apiCreateFlag(flag);
       if (!r.ok) {
         try { localStorage.removeItem('cf_synced'); } catch {}
-        toast = 'Saved locally — sync to server failed (will retry next sign-in).';
+        toast = 'Saved locally. Sync to server failed, will retry next sign-in.';
       }
     } else if (this.isGuest) {
-      toast = 'Guest mode — flag saved on this device only. Sign in to submit it for review.';
+      toast = 'Guest mode. Flag saved on this device only. Sign in to submit it for review.';
     } else {
-      toast = 'Flag saved (offline) — sign in to submit for admin review.';
+      toast = 'Flag saved offline. Sign in to submit for admin review.';
     }
 
     this.closeFlagModal();
@@ -3835,8 +3897,8 @@ const App = {
             <label>Name<input class="adm-search" id="staffAddName" value="${esc(f.name)}" placeholder="Full name" /></label>
             <label>Email<input class="adm-search" id="staffAddEmail" value="${esc(f.email)}" placeholder="name@andrew.cmu.edu" ${f.editEmail ? 'readonly' : ''} /></label>
             <label>Role<select class="adm-select" id="staffAddRole">${roleOpts}</select></label>
-            <label>Department<select class="adm-select" id="staffAddDept"><option value="">—</option>${deptOpts}</select></label>
-            <label>Program<select class="adm-select" id="staffAddProgram"><option value="">—</option>${progOpts}</select></label>
+            <label>Department<select class="adm-select" id="staffAddDept"><option value="">None</option>${deptOpts}</select></label>
+            <label>Program<select class="adm-select" id="staffAddProgram"><option value="">None</option>${progOpts}</select></label>
           </div>
           <button class="adm-btn adm-btn-resolve" onclick="App._submitDirectoryForm()">${f.editEmail ? 'Save changes' : 'Add to directory'}</button>
           ${f.editEmail ? '<button type="button" class="adm-btn" onclick="App._staffDirState.form={name:\'\',email:\'\',role:\'professor\',department:\'\',primary_program:\'\'};App._renderDirectoryPanel()">Cancel edit</button>' : ''}
@@ -3886,7 +3948,7 @@ const App = {
       showToast((r.data && r.data.message) || 'Could not save.');
       return;
     }
-    showToast(f.editEmail ? 'Directory updated.' : 'Person added — they get faculty access on next login.');
+    showToast(f.editEmail ? 'Directory updated.' : 'Person added. They get faculty access on next login.');
     this._staffDirState.form = { name: '', email: '', role: 'professor', department: '', primary_program: '' };
     await this._loadDirectoryPanel();
   },
@@ -3947,11 +4009,11 @@ const App = {
   _renderUserAdminRow(u) {
     const rg = getRoleGroup(u);
     const isStudent = rg === 'student';
-    const progLabel = getProgramLabel(u.primary_program) || u.primary_program || '—';
+    const progLabel = getProgramLabel(u.primary_program) || u.primary_program || 'Not listed';
     const minors = Array.isArray(u.minor_codes) ? u.minor_codes : (u.minor_code ? [u.minor_code] : []);
     const minorSummary = minors.length ? minors.map(mc => getMinorLabel(mc)).join(', ') : '';
     const summary = isStudent
-      ? `${esc(u.name)} · student · ${esc(u.primary_program || '—')}${minorSummary ? ' · minors ' + esc(minorSummary) : ''}`
+      ? `${esc(u.name)} · student · ${esc(u.primary_program || 'Not listed')}${minorSummary ? ' · minors ' + esc(minorSummary) : ''}`
       : `${esc(u.name)} · ${esc(u.role)} · ${esc(progLabel)}`;
     const roleOpts = ['student', 'professor', 'area_head', 'associate_area_head', 'advisor', 'admin']
       .map(r => `<option value="${r}" ${u.role === r ? 'selected' : ''}>${esc((ROLE_META[r] && ROLE_META[r].label) || r)}</option>`)
@@ -3966,14 +4028,14 @@ const App = {
     const minorAddOpts = MINOR_LIST.filter(m => !minors.includes(m.code))
       .map(m => `<option value="${m.code}">${esc(m.label)}</option>`).join('');
     const studentFields = `
-          <label>Major<select class="adm-select" id="major-${u.id}"><option value="">—</option>${majorOpts}</select></label>
-          <label>Minor(s)<div class="adm-minor-chips" id="minors-${u.id}">${minorChips || '<span class="adm-minor-empty">—</span>'}</div>
+          <label>Major<select class="adm-select" id="major-${u.id}"><option value="">None</option>${majorOpts}</select></label>
+          <label>Minor(s)<div class="adm-minor-chips" id="minors-${u.id}">${minorChips || '<span class="adm-minor-empty">None</span>'}</div>
             <select class="adm-select adm-minor-add" id="minor-add-${u.id}" onchange="App._adminAddMinor(${u.id}, this.value); this.value='';">
               <option value="">Add minor…</option>${minorAddOpts}
             </select></label>`;
     const facultyFields = `
-          <label>Department<select class="adm-select" id="dept-${u.id}"><option value="">—</option>${deptOpts}</select></label>
-          <label>Program<select class="adm-select" id="program-${u.id}"><option value="">—</option>${programOpts}</select></label>`;
+          <label>Department<select class="adm-select" id="dept-${u.id}"><option value="">None</option>${deptOpts}</select></label>
+          <label>Program<select class="adm-select" id="program-${u.id}"><option value="">None</option>${programOpts}</select></label>`;
     return `
       <div class="adm-row adm-user-row" data-user-id="${u.id}">
         <div class="adm-row-head">
@@ -4017,7 +4079,7 @@ const App = {
     chipRoot.innerHTML = codes.length
       ? codes.map(mc => `<span class="adm-minor-chip" data-code="${esc(mc)}">${esc(getMinorLabel(mc))}
         <button type="button" class="adm-minor-chip-x" onclick="App._adminRemoveMinor(${userId}, '${esc(mc)}')">×</button></span>`).join('')
-      : '<span class="adm-minor-empty">—</span>';
+      : '<span class="adm-minor-empty">None</span>';
     const addEl = document.getElementById('minor-add-' + userId);
     if (addEl) {
       addEl.innerHTML = '<option value="">Add minor…</option>' + MINOR_LIST.filter(m => !codes.includes(m.code))

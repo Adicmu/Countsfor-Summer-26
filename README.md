@@ -71,17 +71,40 @@ Area heads and Arts & Sciences faculty see a `3 programs` / `4 programs` chip on
 
 ## Quick Start
 
-You only need a way to serve static files. The simplest:
+To browse the site as a guest you only need a way to serve static files:
 
 ```bash
 git clone https://github.com/Adicmu/Countsfor-Summer-26.git
 cd Countsfor-Summer-26
-python3 -m http.server 8080
+python3 -m http.server 8765
 ```
 
-Open `http://localhost:8080` — the onboarding splash appears, you pick your role, you're in.
+Open `http://localhost:8765`, the onboarding splash appears, you pick your role, you're in.
 
-Windows: `py -m http.server 8080`. Or use VS Code Live Server, `npx serve -p 8080`, or any other static server.
+**Use port 8765.** The backend's CORS allow-list (`FRONTEND_ORIGIN`) only permits
+`http://localhost:8765`. On any other port every API call is rejected by the
+browser and the UI reports "could not reach the server", which looks like an
+outage but is a local misconfiguration.
+
+Windows: `py -m http.server 8765`. Or VS Code Live Server, `npx serve -p 8765`, or any other static server on that port.
+
+### Running the backend locally
+
+Guest mode needs no backend, but sign-in does. From the **repo root**:
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
+pip install -r requirements.txt
+cp backend/.env.example backend/.env    # defaults to local SQLite
+python -m backend.bootstrap_db          # create the tables once
+python -m backend.app                   # http://localhost:5050
+```
+
+Run these from the repo root, not from `backend/`: the package uses relative
+imports, so `python app.py` inside `backend/` fails to start.
+
+A freshly bootstrapped database has no users, so **Create account** before trying
+to sign in.
 
 ---
 

@@ -137,17 +137,35 @@ const CF_BACKEND_URL = getBackendUrl();
 
 const CF_AUTH_TOKEN_KEY = 'cf_auth_token';
 
+// Two buckets on purpose. localStorage survives a browser restart and backs the
+// "Keep me signed in" opt-in; sessionStorage dies with the tab and is the default.
+// Read checks localStorage first so a remembered session wins.
 function getAuthToken() {
-  try { return sessionStorage.getItem(CF_AUTH_TOKEN_KEY) || ''; } catch { return ''; }
+  try {
+    return localStorage.getItem(CF_AUTH_TOKEN_KEY)
+      || sessionStorage.getItem(CF_AUTH_TOKEN_KEY)
+      || '';
+  } catch { return ''; }
 }
 
+// Writes to whichever bucket already holds a token, so refreshed tokens do not
+// silently downgrade a remembered session to a tab-only one.
 function saveAuthToken(token) {
   if (!token) return;
+  try {
+    if (localStorage.getItem(CF_AUTH_TOKEN_KEY)) {
+      localStorage.setItem(CF_AUTH_TOKEN_KEY, token);
+      return;
+    }
+  } catch {}
   try { sessionStorage.setItem(CF_AUTH_TOKEN_KEY, token); } catch {}
 }
 
+// Must clear BOTH, or signing out leaves a 30-day token behind and the user
+// cannot actually log out.
 function clearAuthToken() {
   try { sessionStorage.removeItem(CF_AUTH_TOKEN_KEY); } catch {}
+  try { localStorage.removeItem(CF_AUTH_TOKEN_KEY); } catch {}
 }
 
 // Public Google OAuth client ID. Set this in index.html via
