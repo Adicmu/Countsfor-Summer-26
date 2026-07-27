@@ -256,6 +256,11 @@ const App = {
       // Auto-expand first level of the default major
       this.autoExpandFirstLevel(this.activeMajor);
 
+      // The navbar is rendered before the catalog finishes loading, so the semester
+      // picker was built from an empty course list. Refresh it now that we know which
+      // semesters actually have offerings.
+      this._refreshSemesterOptions();
+
       this.renderLeftEmpty();
       this.renderTree();
     } catch (err) {
@@ -1138,7 +1143,11 @@ const App = {
 
     await apiLogout();
     if (typeof clearAuthToken === 'function') clearAuthToken();
+    // Belt and braces in case api.js did not load. Both buckets, because a
+    // "Keep me signed in" token lives in localStorage and would otherwise survive
+    // sign-out for its full 30 days.
     try { sessionStorage.removeItem('cf_auth_token'); } catch {}
+    try { localStorage.removeItem('cf_auth_token'); } catch {}
     clearProfile();
     // Clear per-user local caches so a different account on the same browser
     // doesn't inherit them. The cf_synced flag must reset for next sign-in.
@@ -1354,7 +1363,7 @@ const App = {
               <div class="navbar-semester">
                 <label class="sr-only" for="semesterSelect">Semester</label>
                 <select id="semesterSelect" class="semester-select" onchange="App.setSemester(this.value)">
-                  ${SEMESTER_OPTIONS.map(s => `<option value="${s.code}" ${this.activeSemester===s.code?'selected':''}>${esc(s.label)}</option>`).join('')}
+                  ${availableSemesterOptions(this.courses, this.activeSemester).map(s => `<option value="${s.code}" ${this.activeSemester===s.code?'selected':''}>${esc(s.label)}</option>`).join('')}
                 </select>
               </div>
               <div class="navbar-location-toggle">
@@ -1622,6 +1631,44 @@ const App = {
       locationFilter: this.locationFilter,
       modalityFilter: this.modalityFilter,
     };
+  },
+
+  /**
+   * Rebuild the semester <select> in place from the loaded catalog. Done as a
+   * targeted DOM update rather than a full navbar re-render so open panels and
+   * focus are left alone.
+   */
+  _refreshSemesterOptions() {
+    const sel = document.getElementById('semesterSelect');
+    if (!sel) return;
+    const opts = availableSemesterOptions(this.courses, this.activeSemester);
+    // If the active semester has no data at all, fall back to the first one that does
+    // rather than leaving the user on a filter that matches nothing.
+    if (!opts.some(s => s.code === this.activeSemester) && opts.length) {
+      this.activeSemester = opts[0].code;
+    }
+    sel.innerHTML = opts
+      .map(s => `<option value="${s.code}" ${this.activeSemester === s.code ? 'selected' : ''}>${esc(s.label)}</option>`)
+      .join('');
+  },
+
+  _campusFilterLabel() {
+    if (this.locationFilter === 'qatar') return 'Qatar only';
+    if (this.locationFilter === 'pittsburgh') return 'Pittsburgh only';
+    return 'All campuses';
+  },
+
+  _modalityFilterLabel() {
+    const hit = MODALITY_OPTIONS.find(m => m.id === this.modalityFilter);
+    return hit ? hit.label : 'All';
+  },
+
+  /** Human-readable list of the filters currently narrowing results. */
+  _activeFilterSummary() {
+    const parts = [semesterLabel(this.activeSemester)];
+    if (this.locationFilter !== 'all') parts.push(this._campusFilterLabel());
+    if (this.modalityFilter !== 'all') parts.push(this._modalityFilterLabel());
+    return parts;
   },
 
   // Search uses campus + modality only — not semester (catalog courses may lack F26 sections)
@@ -3150,7 +3197,10 @@ const App = {
     };
     const courses = collectCoursesForRequirement(node, filterFn);
     if (!courses.length) {
-      showToast('No courses match your current campus filter.');
+      // Name every filter that is actually narrowing the result. Reporting only the
+      // campus filter made an active semester or modality filter look like missing
+      // data rather than a filter the user could clear.
+      showToast('No courses match your filters (' + this._activeFilterSummary().join(', ') + ').');
       return;
     }
 
@@ -3171,18 +3221,20 @@ const App = {
       ];
     });
 
-    const filterNote = this.locationFilter === 'all'
-      ? 'All campuses'
-      : (this.locationFilter === 'qatar' ? 'Qatar only' : 'Pittsburgh only');
+    // Record all three filters, not just campus. The export applies semester and
+    // modality too (see _filterParams), so a sheet that lists only the campus filter
+    // cannot be reconciled with its own row count.
     const metaRows = [
       ['CountsFor course export'],
       ['Major', majorLabel],
       ['Requirement', pathLabel],
-      ['Campus filter', filterNote],
+      ['Semester filter', semesterLabel(this.activeSemester)],
+      ['Campus filter', this._campusFilterLabel()],
+      ['Modality filter', this._modalityFilterLabel()],
       ['Courses', String(courses.length)],
       ['Exported', new Date().toLocaleString()],
     ];
-    const filename = `CountsFor_${major}_${slugifyFilename(node.label)}.xls`;
+    const filename = `CountsFor_${major}_${slugifyFilename(node.label)}.csv`;
     downloadExcelSheet(filename, node.label, headers, rows, metaRows);
     showToast(`Downloaded ${courses.length} courses`);
   },

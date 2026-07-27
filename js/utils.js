@@ -50,38 +50,46 @@ function formatPrereq(text) {
   return text;
 }
 
-function _xmlCell(value) {
-  const s = String(value ?? '');
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
+/**
+ * Quote one CSV field. Doubling the quote is the RFC 4180 escape, and quoting
+ * unconditionally keeps commas, newlines and leading zeros in course codes intact.
+ */
+function _csvCell(value) {
+  return '"' + String(value ?? '').replace(/"/g, '""') + '"';
 }
 
-function _xmlRow(cells) {
-  return '<Row>' + cells.map(c => `<Cell><Data ss:Type="String">${_xmlCell(c)}</Data></Cell>`).join('') + '</Row>';
+function _csvRow(cells) {
+  return cells.map(_csvCell).join(',');
 }
 
-/** Download rows as an Excel-compatible .xls (SpreadsheetML) file. */
+/**
+ * Download rows as a real CSV file.
+ *
+ * This previously emitted SpreadsheetML 2003 XML under a .xls extension. Excel
+ * accepted it only after a "format does not match extension" warning, and Google
+ * Sheets, Numbers and Quick Look rendered it as a blank grid, which made a
+ * perfectly good export look like missing data. CSV opens correctly everywhere and
+ * needs no library. The sheetName argument is kept for call-site compatibility but
+ * a CSV has no named sheets, so it is unused.
+ */
 function downloadExcelSheet(filename, sheetName, headers, rows, metaRows) {
-  const safeName = (sheetName || 'Courses').replace(/[\\/*?:[\]]/g, '').slice(0, 31) || 'Courses';
-  let xml = '<?xml version="1.0"?><?mso-application progid="Excel.Sheet"?>';
-  xml += '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet">';
-  xml += `<Worksheet ss:Name="${_xmlCell(safeName)}"><Table>`;
+  const lines = [];
   if (metaRows && metaRows.length) {
-    for (const row of metaRows) xml += _xmlRow(row);
-    xml += _xmlRow(['']);
+    for (const row of metaRows) lines.push(_csvRow(row));
+    lines.push('');
   }
-  xml += _xmlRow(headers);
-  for (const row of rows) xml += _xmlRow(row);
-  xml += '</Table></Worksheet></Workbook>';
+  lines.push(_csvRow(headers));
+  for (const row of rows) lines.push(_csvRow(row));
 
-  const blob = new Blob([xml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+  // CRLF per RFC 4180, and a UTF-8 BOM so Excel on Windows reads accented course
+  // titles (e.g. "Français") as UTF-8 instead of mojibake.
+  const csv = '﻿' + lines.join('\r\n') + '\r\n';
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = filename.endsWith('.xls') ? filename : filename + '.xls';
+  a.download = filename.endsWith('.csv') ? filename : filename.replace(/\.xls$/i, '') + '.csv';
   document.body.appendChild(a);
   a.click();
   a.remove();
