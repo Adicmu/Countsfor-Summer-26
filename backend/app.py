@@ -1,11 +1,20 @@
 """Flask app factory + dev entry point.
 
-Run locally:
-    cd backend
-    python -m venv .venv && source .venv/bin/activate
+Run locally, from the REPO ROOT (not from backend/). This module uses relative
+imports, so `python app.py` inside backend/ fails with "attempted relative import
+with no known parent package":
+
+    python3 -m venv .venv && source .venv/bin/activate
     pip install -r requirements.txt
-    cp .env.example .env   # then fill in GOOGLE_CLIENT_ID etc.
-    python app.py          # http://localhost:5000
+    cp backend/.env.example backend/.env   # then fill in GOOGLE_CLIENT_ID etc.
+    python -m backend.bootstrap_db         # create the tables once
+    python -m backend.app                  # http://localhost:5050
+
+Serve the frontend on port 8765, not 8080: FRONTEND_ORIGIN only allows 8765, and
+any other port is rejected by CORS, which the UI reports as "could not reach the
+server".
+
+    python3 -m http.server 8765
 
 Run in production (Render):
     gunicorn --workers=2 --bind 0.0.0.0:$PORT 'backend.app:create_app()'
