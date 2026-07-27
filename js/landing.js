@@ -241,7 +241,7 @@
       wakeTimer = window.setTimeout(function () {
         const label = btn.querySelector('span:last-child');
         if (label && btn.classList.contains('is-loading')) {
-          label.textContent = 'Waking up the server — up to ~30s…';
+          label.textContent = 'Waking up the server…';
         }
       }, 4000);
     } else {
@@ -466,7 +466,47 @@
     if (!state.backendUnreachable) {
       return '<div class="landing-alert" id="cfBackendAlert" role="alert" hidden></div>';
     }
-    return '<div class="landing-alert" id="cfBackendAlert" role="alert">Could not reach the server — it may be waking up. Try again in ~30s.</div>';
+    return '<div class="landing-alert" id="cfBackendAlert" role="alert">' + esc(UNREACHABLE_MSG) + '</div>';
+  }
+
+  // One canonical wording, reused by the initial render, the background session
+  // probe, and every failed submit, so the user never sees two different
+  // descriptions of the same outage.
+  const UNREACHABLE_MSG =
+    'Could not reach the server. It may be waking up, so try again in about 30 seconds.';
+  const SLOW_MSG =
+    'The server took too long to respond. It may be waking up, so try again in about 30 seconds.';
+
+  // status 0 means the request never completed: connection refused, DNS, a CORS
+  // rejection, or the abort timeout. It carries no information about the
+  // credentials, so it must never be reported as a bad password.
+  function isUnreachable(r) {
+    return !r || r.status === 0;
+  }
+
+  // Show the connectivity banner and clear any credential-level error, so the
+  // page never claims "wrong password" and "cannot reach server" at once.
+  function showUnreachable(r) {
+    state.backendUnreachable = true;
+    setFormError('');
+    clearFieldMsg('cfLoginPass', 'cfLoginPassMsg');
+    setBackendAlert(r && r.message === 'The server took too long to respond.' ? SLOW_MSG : UNREACHABLE_MSG);
+  }
+
+  // The server answered, so any banner left over from a previous attempt or from
+  // the background probe is stale.
+  function clearBackendAlert() {
+    state.backendUnreachable = false;
+    setBackendAlert('');
+  }
+
+  // Called between the first attempt and the retry: the button is still in its
+  // loading state, so relabel it instead of leaving it looking frozen.
+  function showWakingLabel() {
+    const btn = document.getElementById('cfAuthSubmit');
+    if (!btn || !btn.classList.contains('is-loading')) return;
+    const label = btn.querySelector('span:last-child');
+    if (label) label.textContent = 'Waking up the server…';
   }
 
   function setBackendAlert(message, opts) {
@@ -529,7 +569,7 @@
         '<div class="landing-panel-head">' +
         '<button type="button" class="landing-back" data-view="signin">← Back to sign in</button>' +
         '<h2 class="landing-panel-title" id="panel-title-forgot">Forgot password</h2>' +
-        '<p class="landing-panel-lead">We\'ll email you a reset link — or verify with your <strong>@andrew.cmu.edu</strong> Google account instead, no email needed.</p>' +
+        '<p class="landing-panel-lead">We\'ll email you a reset link. Or verify with your <strong>@andrew.cmu.edu</strong> Google account instead, no email needed.</p>' +
         '</div>' +
         backendWarnHtml() +
         '</div>' +
@@ -544,7 +584,7 @@
         '<div class="landing-reset-box" id="cfResetLinkBox" hidden></div>' +
         '<div class="landing-divider" aria-hidden="true"><span>or</span></div>' +
         '<div id="cfGoogleRecover" class="landing-google-mount"></div>' +
-        '<p class="landing-recover-note">Sign in with Google to confirm you own the account — no reset email needed.</p>' +
+        '<p class="landing-recover-note">Sign in with Google to confirm you own the account. No reset email needed.</p>' +
         '</div>',
         'forgot'
       );
@@ -616,6 +656,13 @@
 
     bindForm(v);
 
+    // The first-run explainer is for someone deciding whether to sign up. On the
+    // forgot/reset views they already have an account, so it is just noise
+    // pushing the form down. Toggled on the element, never re-rendered, because
+    // re-rendering the panel would wipe anything already typed.
+    const intro = document.getElementById('cfIntro');
+    if (intro) intro.hidden = (v === 'forgot' || v === 'reset');
+
     if (v === 'forgot') mountGoogleRecover();
 
     if (opts.focus !== false) {
@@ -668,8 +715,22 @@
       return;
     }
     setLoading(true, 'Sign in →');
-    const r = await apiLogin({ email: normalizeCmuEmailLocal(email) || email, password });
+    const body = { email: normalizeCmuEmailLocal(email) || email, password };
+    let r = await apiLogin(body);
+    // A cold free-tier backend often drops the first request and answers the
+    // second. Retry exactly once so a real cold start becomes a slow success,
+    // while a genuinely dead server still fails in bounded time.
+    if (isUnreachable(r)) {
+      showWakingLabel();
+      r = await apiLogin(body);
+    }
     setLoading(false, 'Sign in →');
+    if (isUnreachable(r)) {
+      showUnreachable(r);
+      updateSubmitState('signin');
+      return;
+    }
+    clearBackendAlert();
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Email or password is incorrect.';
       if (r.data && r.data.error === 'no_password_set') {
@@ -708,13 +769,24 @@
     }
     if (!validatePasswordMatch('cfRegPass', 'cfRegPass2', 'cfRegPass2Msg')) return;
     setLoading(true, 'Create account →');
-    const r = await apiRegister({
+    const regBody = {
       email: normalizeCmuEmailLocal(email) || email,
       password,
       confirm_password: confirm,
       name: name || undefined,
-    });
+    };
+    let r = await apiRegister(regBody);
+    if (isUnreachable(r)) {
+      showWakingLabel();
+      r = await apiRegister(regBody);
+    }
     setLoading(false, 'Create account →');
+    if (isUnreachable(r)) {
+      showUnreachable(r);
+      updateSubmitState('register');
+      return;
+    }
+    clearBackendAlert();
     if (!r.ok) {
       const msg = (r.data && r.data.message) || 'Registration failed.';
       if (r.data && r.data.error === 'email_taken') {
@@ -804,12 +876,12 @@
         if (box) {
           box.hidden = false;
           box.innerHTML =
-            '<p class="landing-reset-msg">Email reset isn\'t available yet — use ' +
+            '<p class="landing-reset-msg">Email reset isn\'t available yet. Use ' +
             '<strong>Continue with Google</strong> below to verify it\'s you and set a new password.</p>';
         }
       } else if (r.status === 502) {
         // email_failed — transient send failure.
-        setFormError((r.data && r.data.message) || 'We couldn\'t send the email right now — try again in a few minutes, or use Google below.');
+        setFormError((r.data && r.data.message) || 'We couldn\'t send the email right now. Try again in a few minutes, or use Google below.');
       } else {
         setFormError((r.data && r.data.message) || 'Request failed.');
       }
@@ -864,7 +936,7 @@
       goToApp();
       return;
     }
-    showToast('Password updated — sign in with your new password.');
+    showToast('Password updated. Sign in with your new password.');
     state.view = 'signin';
     state.resetToken = '';
     state.resetEmail = '';
@@ -903,7 +975,7 @@
     }
     if (me.status === 0) {
       state.backendUnreachable = true;
-      setBackendAlert('Could not reach the server — it may be waking up. Try again in ~30s.');
+      setBackendAlert(UNREACHABLE_MSG);
     }
   }
 

@@ -13,5 +13,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Ping Render /health
-        # `|| true`: when the ping IS the wake-up call it can time out — that's fine.
-        run: curl -fsS --max-time 60 --retry 2 https://countsfor-summer-26.onrender.com/health || true
+        # This job MUST fail when the backend is unreachable. It previously ended
+        # in `|| true`, which reported 109 consecutive failures as green and hid a
+        # 10-day outage. A wake-up call legitimately takes ~30s on a cold start,
+        # so allow generous per-attempt time and several tries, then fail loudly
+        # only if every attempt fails.
+        run: |
+          set -uo pipefail
+          for attempt in 1 2 3; do
+            echo "Attempt $attempt..."
+            if body=$(curl -fsS --max-time 90 https://countsfor-summer-26.onrender.com/health); then
+              echo "Backend responded: $body"
+              exit 0
+            fi
+            echo "Attempt $attempt failed."
+            if [ "$attempt" -lt 3 ]; then sleep 15; fi
+          done
+          echo "::error::Backend did not answer /health after 3 attempts. It is down, not merely asleep."
+          exit 1
