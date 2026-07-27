@@ -162,6 +162,99 @@ body::before{
   color: var(--cf-on-dark-muted);
 }
 
+/* ── First-run explainer ──────────────────────────────────── */
+
+/* Wider than the 400px auth card on purpose: three columns need the room, and
+   the fixed 400px cap in index.html names only .landing-brand/.landing-card. */
+.landing-intro {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 660px;
+  margin: 0 auto;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: clamp(8px, 1.4vw, 16px);
+}
+
+.landing-intro[hidden] {
+  display: none;
+}
+
+.landing-intro__step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-areas:
+    "num title"
+    "num detail";
+  align-items: start;
+  column-gap: 8px;
+  row-gap: 2px;
+  padding: clamp(8px, 1.4vh, 14px) clamp(10px, 1.4vw, 14px);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.07);
+  text-align: left;
+}
+
+.landing-intro__num {
+  grid-area: num;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #E0A82E;
+  color: #4a0612;
+  font-family: "JetBrains Mono", ui-monospace, monospace;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+}
+
+.landing-intro__title {
+  grid-area: title;
+  font-size: clamp(12px, 1.7vh, 14px);
+  font-weight: 700;
+  line-height: 1.25;
+  color: var(--cf-on-dark);
+}
+
+.landing-intro__detail {
+  grid-area: detail;
+  font-size: clamp(11px, 1.5vh, 13px);
+  font-weight: 400;
+  line-height: 1.35;
+  color: var(--cf-on-dark-muted);
+}
+
+/* Stack on narrow screens. The badge stays beside the text so three rows cost
+   about 150px rather than doubling in height. */
+@media (max-width: 560px) {
+  .landing-intro {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+    gap: 6px;
+  }
+
+  .landing-intro__step {
+    padding: 8px 10px;
+  }
+}
+
+/* Short viewports: the auth card matters more than the explainer, so tighten. */
+@media (max-height: 760px) {
+  .landing-intro__step {
+    padding: 6px 10px;
+  }
+
+  .landing-intro__detail {
+    font-size: clamp(10px, 1.3vh, 12px);
+  }
+}
+
 /* ── Auth card ────────────────────────────────────────────── */
 
 .landing-card {
