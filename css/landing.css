@@ -615,8 +615,40 @@ body::before{
 
 .landing-forgot-row {
   display: flex;
-  justify-content: flex-end;
+  /* Was flex-end for a lone "Forgot password?" link. Now also holds the
+     "Keep me signed in" checkbox, so push them to opposite ends. */
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
   margin: clamp(-2px, -0.4vh, 0) 0 clamp(2px, 0.4vh, 4px);
+}
+
+.landing-remember {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: clamp(11px, 1.5vh, 13px);
+  font-weight: 500;
+  color: var(--cf-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.landing-remember input {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+  accent-color: var(--cf-red);
+  cursor: pointer;
+}
+
+.landing-remember:hover {
+  color: var(--cf-slate);
+}
+
+.landing-remember input:focus-visible {
+  outline: 2px solid var(--cf-red);
+  outline-offset: 2px;
 }
 
 .landing-link-btn {

@@ -28,17 +28,50 @@
   const BACKEND_URL = getBackendUrl();
   const AUTH_TOKEN_KEY = 'cf_auth_token';
 
+  // Two buckets on purpose. localStorage survives a browser restart and backs the
+  // "Keep me signed in" opt-in; sessionStorage dies with the tab and is the default.
   function getAuthToken() {
-    try { return sessionStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; }
+    try {
+      return localStorage.getItem(AUTH_TOKEN_KEY)
+        || sessionStorage.getItem(AUTH_TOKEN_KEY)
+        || '';
+    } catch { return ''; }
   }
 
-  function saveAuthToken(token) {
+  // `persist` is only passed at sign-in time, from the checkbox. Later refreshes
+  // pass nothing and must not downgrade a remembered session to a tab-only one, so
+  // they write to whichever bucket already holds a token.
+  function saveAuthToken(token, persist) {
     if (!token) return;
+    if (persist === true) {
+      try {
+        localStorage.setItem(AUTH_TOKEN_KEY, token);
+        sessionStorage.removeItem(AUTH_TOKEN_KEY);
+        return;
+      } catch { /* storage blocked — fall through to sessionStorage */ }
+    } else if (persist === false) {
+      try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+    } else {
+      try {
+        if (localStorage.getItem(AUTH_TOKEN_KEY)) {
+          localStorage.setItem(AUTH_TOKEN_KEY, token);
+          return;
+        }
+      } catch {}
+    }
     try { sessionStorage.setItem(AUTH_TOKEN_KEY, token); } catch {}
   }
 
+  // Must clear BOTH, or signing out leaves a 30-day token behind.
   function clearAuthToken() {
     try { sessionStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+    try { localStorage.removeItem(AUTH_TOKEN_KEY); } catch {}
+  }
+
+  // Reads the checkbox rendered in the sign-in panel.
+  function wantsPersistentSession() {
+    const box = document.getElementById('cfRememberMe');
+    return !!(box && box.checked);
   }
 
   function getGoogleClientId() {
@@ -472,10 +505,16 @@
   // One canonical wording, reused by the initial render, the background session
   // probe, and every failed submit, so the user never sees two different
   // descriptions of the same outage.
-  const UNREACHABLE_MSG =
-    'Could not reach the server. It may be waking up, so try again in about 30 seconds.';
+  //
+  // The wording names the consequence (accounts are unavailable) rather than the
+  // mechanism, and points at guest mode, which needs no server and covers the whole
+  // catalog. Leaving a working-looking sign-in form on screen during an outage just
+  // makes people retype passwords that were never wrong.
+  const ACCOUNTS_UNAVAILABLE_MSG =
+    'Accounts are unavailable right now. The server may be waking up, so try again in about 30 seconds, or browse everything as a guest.';
+  const UNREACHABLE_MSG = ACCOUNTS_UNAVAILABLE_MSG;
   const SLOW_MSG =
-    'The server took too long to respond. It may be waking up, so try again in about 30 seconds.';
+    'The server took too long to respond. Try again in about 30 seconds, or browse everything as a guest.';
 
   // status 0 means the request never completed: connection refused, DNS, a CORS
   // rejection, or the abort timeout. It carries no information about the
@@ -490,7 +529,10 @@
     state.backendUnreachable = true;
     setFormError('');
     clearFieldMsg('cfLoginPass', 'cfLoginPassMsg');
-    setBackendAlert(r && r.message === 'The server took too long to respond.' ? SLOW_MSG : UNREACHABLE_MSG);
+    setBackendAlert(
+      r && r.message === 'The server took too long to respond.' ? SLOW_MSG : ACCOUNTS_UNAVAILABLE_MSG,
+      { guestLink: true }
+    );
   }
 
   // The server answered, so any banner left over from a previous attempt or from
@@ -524,6 +566,17 @@
       btn.className = 'landing-link-btn';
       btn.textContent = 'Continue to CountsFor →';
       btn.addEventListener('click', goToApp);
+      box.appendChild(btn);
+    }
+    // When accounts are unavailable there is still a fully usable path: guest mode
+    // needs no server. Offer it inline instead of leaving the user at a sign-in form
+    // that cannot succeed.
+    if (opts && opts.guestLink) {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'landing-link-btn';
+      btn.textContent = 'Browse as guest →';
+      btn.addEventListener('click', enterGuestMode);
       box.appendChild(btn);
     }
     box.hidden = false;
@@ -627,6 +680,10 @@
         emailField('cfLoginEmail', 'Andrew email') +
         passwordField('cfLoginPass', 'Password', { autocomplete: 'current-password' }) +
         '<div class="landing-forgot-row">' +
+        '<label class="landing-remember">' +
+        '<input type="checkbox" id="cfRememberMe" />' +
+        '<span>Keep me signed in</span>' +
+        '</label>' +
         '<button type="button" class="landing-link-btn" data-view="forgot">Forgot password?</button>' +
         '</div>' +
         '<div class="landing-form-actions">' +
@@ -714,6 +771,8 @@
       setFieldMsg('cfLoginPass', 'cfLoginPassMsg', 'Enter your password.', 'error');
       return;
     }
+    // Read the checkbox before any await, while the panel is still on screen.
+    const persist = wantsPersistentSession();
     setLoading(true, 'Sign in →');
     const body = { email: normalizeCmuEmailLocal(email) || email, password };
     let r = await apiLogin(body);
@@ -745,7 +804,9 @@
       updateSubmitState('signin');
       return;
     }
-    if (r.data && r.data.auth_token) saveAuthToken(r.data.auth_token);
+    // Re-save with the explicit choice: apiFetch already stashed the token in the
+    // tab-only bucket, so this promotes it to localStorage when the box was ticked.
+    if (r.data && r.data.auth_token) saveAuthToken(r.data.auth_token, persist);
     const me = await apiGetMe();
     if (!me.ok) {
       clearAuthToken();
@@ -975,18 +1036,18 @@
     }
     if (me.status === 0) {
       state.backendUnreachable = true;
-      setBackendAlert(UNREACHABLE_MSG);
+      setBackendAlert(ACCOUNTS_UNAVAILABLE_MSG, { guestLink: true });
     }
+  }
+
+  function enterGuestMode() {
+    try { sessionStorage.setItem('cf_guest', '1'); } catch (e) { /* storage blocked */ }
+    location.href = APP_URL;
   }
 
   function init() {
     const guestBtn = document.getElementById('cfGuestBtn');
-    if (guestBtn) {
-      guestBtn.addEventListener('click', function () {
-        try { sessionStorage.setItem('cf_guest', '1'); } catch (e) { /* storage blocked */ }
-        location.href = APP_URL;
-      });
-    }
+    if (guestBtn) guestBtn.addEventListener('click', enterGuestMode);
 
     const params = new URLSearchParams(location.search);
     const resetTok = params.get('token') || params.get('reset') || '';
