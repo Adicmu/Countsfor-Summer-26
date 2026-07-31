@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet/search",
-    "last_scrape": "2026-07-30T13:42:44.202137+00:00",
+    "last_scrape": "2026-07-31T08:46:30.232700+00:00",
     "semesters_on_form": [
       {
         "code": "F26",
@@ -113093,6 +113093,16 @@
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
+            },
+            {
+              "section": "F",
+              "mini": "",
+              "days": "MW",
+              "begin_time": "02:00PM",
+              "end_time": "03:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
             }
           ],
           "campus": [
@@ -113155,6 +113165,18 @@
               "modality": "In Person",
               "units": "12",
               "days_times": "TR 02:00PM-03:20PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            },
+            {
+              "semester": "Fall 2026",
+              "semester_code": "F26",
+              "campus": "Pittsburgh",
+              "section": "F",
+              "modality": "In Person",
+              "units": "12",
+              "days_times": "MW 02:00PM-03:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -142990,8 +143012,8 @@
               "section": "X1",
               "mini": "Y",
               "days": "T",
-              "begin_time": "08:00PM",
-              "end_time": "09:50PM",
+              "begin_time": "06:00PM",
+              "end_time": "07:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -143000,8 +143022,8 @@
               "section": "X2",
               "mini": "Y",
               "days": "T",
-              "begin_time": "08:00PM",
-              "end_time": "09:50PM",
+              "begin_time": "06:00PM",
+              "end_time": "07:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -143138,7 +143160,7 @@
               "section": "X1",
               "modality": "In Person",
               "units": "3",
-              "days_times": "T 08:00PM-09:50PM",
+              "days_times": "T 06:00PM-07:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -143150,7 +143172,7 @@
               "section": "X2",
               "modality": "In Person",
               "units": "3",
-              "days_times": "T 08:00PM-09:50PM",
+              "days_times": "T 06:00PM-07:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -144066,7 +144088,7 @@
         {
           "course_number": "24251",
           "title": "Electronics for Sensing and Actuation",
-          "units": "VAR",
+          "units": "4",
           "department_code": "MEG",
           "department": "Mechanical Engineering",
           "sections": [
@@ -144101,7 +144123,7 @@
               "campus": "Pittsburgh",
               "section": "A1",
               "modality": "In Person",
-              "units": "VAR",
+              "units": "4",
               "days_times": "TR 03:30PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -144113,7 +144135,7 @@
               "campus": "Pittsburgh",
               "section": "A2",
               "modality": "In Person",
-              "units": "VAR",
+              "units": "4",
               "days_times": "TR 03:30PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -145344,8 +145366,8 @@
               "section": "T1",
               "mini": "Y",
               "days": "T",
-              "begin_time": "06:00PM",
-              "end_time": "07:50PM",
+              "begin_time": "08:00PM",
+              "end_time": "09:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -145354,8 +145376,8 @@
               "section": "T2",
               "mini": "Y",
               "days": "T",
-              "begin_time": "06:00PM",
-              "end_time": "07:50PM",
+              "begin_time": "08:00PM",
+              "end_time": "09:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -145396,7 +145418,7 @@
               "section": "T1",
               "modality": "In Person",
               "units": "3",
-              "days_times": "T 06:00PM-07:50PM",
+              "days_times": "T 08:00PM-09:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -145408,7 +145430,7 @@
               "section": "T2",
               "modality": "In Person",
               "units": "3",
-              "days_times": "T 06:00PM-07:50PM",
+              "days_times": "T 08:00PM-09:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -208638,7 +208660,7 @@
           "code": "ISM",
           "name": "Information Systems:Sch of IS & Mgt",
           "courses": 63,
-          "sections": 124
+          "sections": 125
         },
         {
           "code": "III",
@@ -208791,10 +208813,10 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-07-30T13:42:44.202137+00:00",
+      "scraped_at": "2026-07-31T08:46:30.232700+00:00",
       "semester_label": "Fall 2026",
       "total_courses": 3241,
-      "total_sections": 7110
+      "total_sections": 7111
     },
     "S26": {
       "courses": [
@@ -351317,7 +351339,7 @@
         {
           "course_number": "24251",
           "title": "Electronics for Sensing and Actuation",
-          "units": "VAR",
+          "units": "4",
           "department_code": "MEG",
           "department": "Mechanical Engineering",
           "sections": [
@@ -351352,7 +351374,7 @@
               "campus": "Pittsburgh",
               "section": "A3",
               "modality": "In Person",
-              "units": "VAR",
+              "units": "4",
               "days_times": "TR 12:30PM-01:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -351364,7 +351386,7 @@
               "campus": "Pittsburgh",
               "section": "A4",
               "modality": "In Person",
-              "units": "VAR",
+              "units": "4",
               "days_times": "TR 12:30PM-01:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -414766,7 +414788,7 @@
           "sections": 39
         }
       ],
-      "scraped_at": "2026-07-30T13:42:44.202137+00:00",
+      "scraped_at": "2026-07-31T08:46:30.232700+00:00",
       "semester_label": "Spring 2026",
       "total_courses": 3209,
       "total_sections": 7007
@@ -558869,7 +558891,7 @@
         {
           "course_number": "24251",
           "title": "Electronics for Sensing and Actuation",
-          "units": "VAR",
+          "units": "4",
           "department_code": "MEG",
           "department": "Mechanical Engineering",
           "sections": [
@@ -558904,7 +558926,7 @@
               "campus": "Pittsburgh",
               "section": "A1",
               "modality": "In Person",
-              "units": "VAR",
+              "units": "4",
               "days_times": "TR 03:30PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -558916,7 +558938,7 @@
               "campus": "Pittsburgh",
               "section": "A2",
               "modality": "In Person",
-              "units": "VAR",
+              "units": "4",
               "days_times": "TR 03:30PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
@@ -622498,7 +622520,7 @@
           "sections": 36
         }
       ],
-      "scraped_at": "2026-07-30T13:42:44.202137+00:00",
+      "scraped_at": "2026-07-31T08:46:30.232700+00:00",
       "semester_label": "Fall 2025",
       "total_courses": 3213,
       "total_sections": 7084
