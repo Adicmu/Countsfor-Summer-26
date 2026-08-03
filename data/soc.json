@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet/search",
-    "last_scrape": "2026-08-03T09:40:01.892470+00:00",
+    "last_scrape": "2026-08-03T14:22:30.759664+00:00",
     "semesters_on_form": [
       {
         "code": "F26",
@@ -12521,7 +12521,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -12603,7 +12603,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-12:50PM",
+              "days_times": "TR 12:00PM-04:00PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -38094,7 +38094,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "07:20PM",
+              "end_time": "08:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -38156,7 +38156,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-07:20PM",
+              "days_times": "MW 06:30PM-08:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -208813,7 +208813,7 @@
           "sections": 49
         }
       ],
-      "scraped_at": "2026-08-03T09:40:01.892470+00:00",
+      "scraped_at": "2026-08-03T14:22:30.759664+00:00",
       "semester_label": "Fall 2026",
       "total_courses": 3241,
       "total_sections": 7111
@@ -414788,7 +414788,7 @@
           "sections": 39
         }
       ],
-      "scraped_at": "2026-08-03T09:40:01.892470+00:00",
+      "scraped_at": "2026-08-03T14:22:30.759664+00:00",
       "semester_label": "Spring 2026",
       "total_courses": 3209,
       "total_sections": 7007
@@ -622520,7 +622520,7 @@
           "sections": 36
         }
       ],
-      "scraped_at": "2026-08-03T09:40:01.892470+00:00",
+      "scraped_at": "2026-08-03T14:22:30.759664+00:00",
       "semester_label": "Fall 2025",
       "total_courses": 3213,
       "total_sections": 7084
