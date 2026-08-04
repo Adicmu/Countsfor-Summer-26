@@ -1,5 +1,7 @@
 # Render upgrade — free trial expired, deploy failing
 
+> **Database already Available?** Skip to **`docs/RENDER_DEPLOY_NOW.md`** — connect `countsfor-summer-26` to the DB, remove `ALLOW_BOOTSTRAP_SKIP`, deploy.
+
 When the **Render free trial or free Postgres expires**, deploys fail at **pre-deploy** (`bootstrap_db`) or **health check** (`/health` returns 503). Render may also block plan changes until the service can deploy.
 
 If **Postgres was deleted** (common after free trial), create a **new** database and relink `DATABASE_URL` — the old connection string will never work again.
@@ -17,9 +19,10 @@ This repo includes a **recovery deploy** path to break that loop.
 5. Create → wait until **Available**
 6. Open your web service (**countsfor-summer-26**) → **Environment**
 7. Add / link **`DATABASE_URL`** → select the new database → **Internal Database URL**
-8. Set **`ALLOW_BOOTSTRAP_SKIP=1`** (temporary — see Step 2 below)
-9. **Manual Deploy** → **Clear build cache & deploy**
-10. After `/health` shows `"database":"connected"`, **remove** `ALLOW_BOOTSTRAP_SKIP` and redeploy
+8. On the DB **Apps** tab, confirm **1 service** is connected (not 0)
+9. **Remove** `ALLOW_BOOTSTRAP_SKIP` if it was set during recovery
+10. **Manual Deploy** → **Clear build cache & deploy**
+11. After `/health` shows `"database":"connected"`, you are done
 
 Tables are created automatically by `python -m backend.bootstrap_db` during pre-deploy.
 
