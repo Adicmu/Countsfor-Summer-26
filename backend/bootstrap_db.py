@@ -5,13 +5,12 @@ ALTER TABLE and the web process can bind to $PORT immediately.
 """
 from __future__ import annotations
 
-from __future__ import annotations
-
 import os
 import sys
 
 from sqlalchemy import inspect, text
 
+from .config import recovery_deploy_enabled
 from .app import create_app, init_database
 from .db import db
 from .db_schema import REQUIRED_TABLES, redact_database_url
@@ -61,16 +60,34 @@ def verify_bootstrap(app) -> None:
 
 
 def main() -> None:
-    app = create_app(bootstrap_db=False)
-    logs = init_database(app)
-    for line in logs:
-        print(line)
-    verify_bootstrap(app)
-    uri = app.config["SQLALCHEMY_DATABASE_URI"]
-    if uri.startswith("postgresql"):
-        print("Database bootstrap OK")
-    else:
-        print("Database bootstrap OK (local SQLite - not production Postgres)")
+    try:
+        app = create_app(bootstrap_db=False)
+        logs = init_database(app)
+        for line in logs:
+            print(line)
+        verify_bootstrap(app)
+        uri = app.config["SQLALCHEMY_DATABASE_URI"]
+        if uri.startswith("postgresql"):
+            print("Database bootstrap OK")
+        else:
+            print("Database bootstrap OK (local SQLite - not production Postgres)")
+    except SystemExit as exc:
+        if exc.code and recovery_deploy_enabled():
+            print(
+                "WARNING: bootstrap failed but ALLOW_BOOTSTRAP_SKIP=1 — deploy continues. "
+                "Upgrade Postgres to Starter, remove ALLOW_BOOTSTRAP_SKIP, redeploy.",
+                file=sys.stderr,
+            )
+            return
+        raise
+    except Exception as exc:
+        if recovery_deploy_enabled():
+            print(
+                f"WARNING: bootstrap skipped ({exc}). Upgrade Postgres, then redeploy without ALLOW_BOOTSTRAP_SKIP.",
+                file=sys.stderr,
+            )
+            return
+        raise
 
 
 if __name__ == "__main__":

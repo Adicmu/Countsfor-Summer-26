@@ -119,6 +119,25 @@
     backendUnreachable: false,
   };
 
+  function isNetworkError(r) {
+    return !r || r.status === 0 || r.error === 'network';
+  }
+
+  function authErrorMessage(r, fallback) {
+    if (isNetworkError(r)) {
+      return 'Could not reach the server — it may be waking up. Try again in ~30s.';
+    }
+    return (r.data && r.data.message) || fallback;
+  }
+
+  function handleAuthNetworkFailure(r) {
+    if (!isNetworkError(r)) return false;
+    state.backendUnreachable = true;
+    setFormError('');
+    renderPanel({ focus: false });
+    return true;
+  }
+
   function normalizeCmuEmailLocal(raw) {
     if (typeof normalizeCmuEmail === 'function') return normalizeCmuEmail(raw);
     const e = (raw || '').trim().toLowerCase();
@@ -436,7 +455,7 @@
 
   function backendWarnHtml() {
     if (!state.backendUnreachable) return '';
-    return '<div class="landing-alert" role="alert">Could not reach the server — wait ~30s and refresh.</div>';
+    return '<div class="landing-alert" role="alert">Could not reach the server — it may be waking up. Try again in ~30s.</div>';
   }
 
   function formErrorHtml() {
@@ -620,7 +639,12 @@
     const r = await apiLogin({ email: normalizeCmuEmailLocal(email) || email, password });
     setLoading(false, 'Sign in →');
     if (!r.ok) {
-      const msg = (r.data && r.data.message) || 'Email or password is incorrect.';
+      if (handleAuthNetworkFailure(r)) {
+        updateSubmitState('signin');
+        return;
+      }
+      state.backendUnreachable = false;
+      const msg = authErrorMessage(r, 'Email or password is incorrect.');
       if (r.data && r.data.error === 'no_password_set') {
         setFormError(msg);
         state.view = 'register';
@@ -665,7 +689,11 @@
     });
     setLoading(false, 'Create account →');
     if (!r.ok) {
-      const msg = (r.data && r.data.message) || 'Registration failed.';
+      if (handleAuthNetworkFailure(r)) {
+        updateSubmitState('register');
+        return;
+      }
+      const msg = authErrorMessage(r, 'Registration failed.');
       if (r.data && r.data.error === 'email_taken') {
         setFieldMsg('cfRegEmail', 'cfRegEmailMsg', msg, 'error');
       } else {
@@ -729,7 +757,8 @@
     setFormError('');
     const r = await apiGoogle(response.credential);
     if (!r.ok) {
-      setFormError((r.data && r.data.message) || 'Google sign-in failed. Use your @andrew.cmu.edu account.');
+      if (handleAuthNetworkFailure(r)) return;
+      setFormError(authErrorMessage(r, 'Google sign-in failed. Use your @andrew.cmu.edu account.'));
       return;
     }
     // Verified — move to the set-a-new-password step (now authenticated).
@@ -747,6 +776,10 @@
     const r = await apiForgotPassword(normalizeCmuEmailLocal(email) || email);
     setLoading(false, 'Send reset link →');
     if (!r.ok) {
+      if (handleAuthNetworkFailure(r)) {
+        updateSubmitState('forgot');
+        return;
+      }
       if (r.status === 503) {
         // email_unavailable — SMTP not configured on the server; steer to Google.
         const box = document.getElementById('cfResetLinkBox');
@@ -760,7 +793,7 @@
         // email_failed — transient send failure.
         setFormError((r.data && r.data.message) || 'We couldn\'t send the email right now — try again in a few minutes, or use Google below.');
       } else {
-        setFormError((r.data && r.data.message) || 'Request failed.');
+        setFormError(authErrorMessage(r, 'Request failed.'));
       }
       updateSubmitState('forgot');
       return;
@@ -803,7 +836,11 @@
       : await apiResetPassword({ token: state.resetToken, password });
     setLoading(false, 'Update password →');
     if (!r.ok) {
-      setFormError((r.data && r.data.message) || 'Reset failed.');
+      if (handleAuthNetworkFailure(r)) {
+        updateSubmitState('reset');
+        return;
+      }
+      setFormError(authErrorMessage(r, 'Reset failed.'));
       updateSubmitState('reset');
       return;
     }

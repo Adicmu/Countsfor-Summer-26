@@ -29,6 +29,11 @@ def _csv(env_value: str) -> list[str]:
     return [v.strip() for v in (env_value or "").split(",") if v.strip()]
 
 
+def recovery_deploy_enabled() -> bool:
+    """One-shot recovery when Render free Postgres/trial expired blocks deploy."""
+    return os.environ.get("ALLOW_BOOTSTRAP_SKIP", "").strip().lower() in ("1", "true", "yes")
+
+
 def _resolve_database_url() -> str:
     """Resolve SQLAlchemy URI. Never silently use SQLite on Render or production."""
     raw = (os.environ.get("DATABASE_URL") or "").strip()

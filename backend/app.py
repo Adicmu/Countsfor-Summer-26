@@ -16,7 +16,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from sqlalchemy import inspect, text
 
-from .config import Config
+from .config import Config, recovery_deploy_enabled
 from .db import db
 from .db_schema import REQUIRED_TABLES, database_host, redact_database_url
 
@@ -83,13 +83,14 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
                 present = set(inspect(db.engine).get_table_names())
                 missing = REQUIRED_TABLES - present
                 if missing:
-                    return jsonify(
+                    body = dict(
                         status="degraded",
                         database="missing_tables",
                         db_host=db_host,
                         db_target=db_target,
                         missing=sorted(missing),
-                    ), 503
+                    )
+                    return jsonify(body), 200 if recovery_deploy_enabled() else 503
                 return jsonify(
                     status="ok",
                     database="connected",
@@ -97,12 +98,13 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
                     tables=len(present),
                 )
         except Exception as exc:
-            return jsonify(
+            body = dict(
                 status="degraded",
                 database="error",
                 db_host=db_host,
                 message=str(exc),
-            ), 503
+            )
+            return jsonify(body), 200 if recovery_deploy_enabled() else 503
 
     # Friendly 404 in JSON shape
     @app.errorhandler(404)

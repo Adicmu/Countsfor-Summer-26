@@ -1,5 +1,7 @@
 # Fix Render "Exited with status 1 while building"
 
+**Free trial expired / can't upgrade?** See **`docs/RENDER_UPGRADE.md`** — recovery deploy with `ALLOW_BOOTSTRAP_SKIP=1`.
+
 Your deploy log shows **build failures** on every "Update SOC data" commit. That almost always means Render is building from the **repo root** with the default command `pip install -r requirements.txt`, but `requirements.txt` used to live only in `backend/`.
 
 This repo now includes a **root `requirements.txt`** that points at the backend. After you push, redeploy should get past the build step.

@@ -5,7 +5,9 @@ services:
   - type: web
     name: countsfor-backend
     runtime: python
-    plan: free
+    # Starter — free trial / free Postgres expiry blocks deploy + plan upgrade.
+    # Add billing in Render first, then sync this blueprint or pick Starter in Settings.
+    plan: starter
     region: ohio
     # Repo root (Option A): preDeploy/start run python -m backend.* from here.
     buildCommand: pip install -r requirements.txt
@@ -54,8 +56,12 @@ services:
         sync: false
       - key: FRONTEND_RESET_BASE
         value: https://adicmu.github.io/Countsfor-Summer-26/index.html
+      # Recovery only: set to "1" for one deploy when Postgres is expired/unreachable,
+      # then upgrade DB + web to Starter, remove this, and redeploy. See docs/RENDER_UPGRADE.md
+      - key: ALLOW_BOOTSTRAP_SKIP
+        sync: false
 
 databases:
   - name: CountsFor_Summer_2026
-    plan: free
+    plan: starter
     region: ohio
