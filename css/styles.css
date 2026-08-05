@@ -4409,9 +4409,21 @@ body.is-resizing-panels * {
   background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.25); padding: 16px;
 }
-.directory-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+.directory-panel-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .directory-panel-head h3 { margin: 0; font-size: 16px; }
 .directory-panel-close { border: none; background: transparent; font-size: 22px; cursor: pointer; line-height: 1; }
+.directory-panel-lead { margin: 0 0 12px; font-size: 12px; line-height: 1.45; opacity: 0.78; }
+.directory-name-list {
+  list-style: none; margin: 0 0 16px; padding: 0; max-height: min(40vh, 320px);
+  overflow: auto; border: 1px solid var(--border-light); border-radius: 8px;
+}
+.directory-name-item {
+  padding: 10px 12px; font-size: 14px; font-weight: 600;
+  border-bottom: 1px solid var(--border-light);
+}
+.directory-name-item:last-child { border-bottom: none; }
+.directory-name-item--empty { font-weight: 500; opacity: 0.7; font-style: italic; }
+.directory-panel .staff-add-card { margin-top: 0; padding-top: 12px; border-top: 1px solid var(--border-light); }
 .staff-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .person-avatar, .staff-avatar { width: 44px; height: 44px; flex-shrink: 0; position: relative; }
 .person-avatar-img, .staff-avatar-img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block; }

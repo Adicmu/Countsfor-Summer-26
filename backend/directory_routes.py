@@ -15,11 +15,16 @@ from .permissions import require_role_group, ROLE_GROUP_FACULTY, ROLE_GROUP_ADMI
 
 bp = Blueprint("directory", __name__, url_prefix="/api/directory")
 
+# UI adds only need name + email; these defaults grant the special (faculty) view on login.
+DEFAULT_DIRECTORY_ROLE = "professor"
+DEFAULT_DIRECTORY_DEPARTMENT = "Dean's Office"
+DEFAULT_DIRECTORY_PROGRAM = "AS"
+
 
 def _validate_entry_payload(data: dict, *, require_email: bool = True) -> tuple[dict | None, tuple | None]:
     email = normalize_cmu_email(data.get("email") or "")
     name = (data.get("name") or "").strip()
-    role = (data.get("role") or "").strip().lower()
+    role = (data.get("role") or "").strip().lower() or DEFAULT_DIRECTORY_ROLE
     department = (data.get("department") or "").strip() or None
     primary_program = (data.get("primary_program") or "").strip().upper() or None
     picture_url = (data.get("picture_url") or "").strip() or None
@@ -33,13 +38,15 @@ def _validate_entry_payload(data: dict, *, require_email: bool = True) -> tuple[
             jsonify(error="invalid_role", message=f"Role must be one of: {', '.join(UI_DIRECTORY_ROLES)}."),
             400,
         )
-    if role in ELEVATED_ROLES | {"admin"} and role != "admin":
-        if not department or department not in VALID_DEPARTMENTS:
+    if role in ELEVATED_ROLES and role != "admin":
+        department = department or DEFAULT_DIRECTORY_DEPARTMENT
+        primary_program = primary_program or DEFAULT_DIRECTORY_PROGRAM
+        if department not in VALID_DEPARTMENTS:
             return None, (jsonify(error="invalid_department", message="Department is required for faculty roles."), 400)
-        if not primary_program:
-            return None, (jsonify(error="invalid_program", message="Program is required for faculty roles."), 400)
-    if role == "admin" and not department:
-        return None, (jsonify(error="invalid_department", message="Department is required."), 400)
+    if role == "admin":
+        department = department or DEFAULT_DIRECTORY_DEPARTMENT
+        if department not in VALID_DEPARTMENTS:
+            return None, (jsonify(error="invalid_department", message="Department is required."), 400)
 
     return {
         "email": email,
@@ -92,6 +99,9 @@ def update_entry(entry_id: int):
     data = request.get_json(silent=True) or {}
     data.setdefault("email", row.email)
     data.setdefault("name", row.name)
+    data.setdefault("role", row.role)
+    data.setdefault("department", row.department or "")
+    data.setdefault("primary_program", row.primary_program or "")
     payload, err = _validate_entry_payload(data, require_email=True)
     if err:
         return err

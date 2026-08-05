@@ -1393,7 +1393,7 @@ const App = {
         </div>
       </div>
       ${(canManageDirectory(this.profile) && this.authMode === 'authed') ? `
-        <button type="button" class="directory-fab" onclick="App.toggleDirectoryPanel()" title="Directory — manage faculty access">📋 Directory</button>
+        <button type="button" class="directory-fab" onclick="App.toggleDirectoryPanel()" title="Directory — view and add faculty">📋 Directory</button>
         <div id="directoryPanelRoot" class="directory-panel-root" hidden></div>
       ` : ''}
     `;
@@ -3712,7 +3712,7 @@ const App = {
   // ══════════════════════════════════════════════════════════
   // FACULTY — Staff directory (Postgres + JSON merge)
   // ══════════════════════════════════════════════════════════
-  _staffDirState: { items: [], form: { name: '', email: '', role: 'professor', department: '', primary_program: '' } },
+  _staffDirState: { items: [], form: { name: '', email: '' } },
 
   _staffInitials(name, email) {
     const src = (name || email || '?').trim();
@@ -3786,90 +3786,49 @@ const App = {
   _renderDirectoryPanel() {
     const root = document.getElementById('directoryPanelRoot');
     if (!root) return;
-    const items = this._staffDirState.items;
+    const items = [...(this._staffDirState.items || [])].sort((a, b) =>
+      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
+    );
     const f = this._staffDirState.form;
-    const roleOpts = ['advisor', 'professor', 'area_head', 'associate_area_head', 'admin']
-      .map(r => `<option value="${r}" ${f.role === r ? 'selected' : ''}>${esc((ROLE_META[r] && ROLE_META[r].label) || r)}</option>`).join('');
-    const deptOpts = DEPARTMENT_LIST.map(d => `<option value="${esc(d)}" ${f.department === d ? 'selected' : ''}>${esc(d)}</option>`).join('');
-    const progOpts = VALID_PROGRAMS.map(p => `<option value="${p}" ${f.primary_program === p ? 'selected' : ''}>${esc(getProgramLabel(p))}</option>`).join('');
-    const rows = items.map(row => `
-      <div class="staff-row">
-        ${this._staffAvatarHtml(row.name, row.email, row.picture_url)}
-        <div class="staff-row-body">
-          <div class="staff-row-name">${esc(row.name)}</div>
-          <div class="staff-row-meta">${esc(row.email)} · ${esc((ROLE_META[row.role] && ROLE_META[row.role].label) || row.role)} · ${esc(row.department || '')}${row.primary_program ? ' · ' + esc(getProgramLabel(row.primary_program)) : ''}</div>
-        </div>
-        <div class="staff-row-actions">
-          <button type="button" class="adm-btn" onclick="App._editDirectoryRow('${esc(row.email)}')">Edit</button>
-          <button type="button" class="adm-btn" onclick="App._revokeDirectoryRow('${esc(row.email)}', '${esc(row.name)}')">Remove</button>
-        </div>
-      </div>`).join('') || '<p class="empty-text">No elevated access entries yet.</p>';
+    const names = items.map(row =>
+      `<li class="directory-name-item">${esc(row.name)}</li>`
+    ).join('') || '<li class="directory-name-item directory-name-item--empty">No one in the directory yet.</li>';
 
     root.innerHTML = `
-      <div class="directory-panel" role="dialog" aria-label="Directory management">
+      <div class="directory-panel" role="dialog" aria-label="Faculty directory">
         <header class="directory-panel-head">
           <h3>Directory</h3>
           <button type="button" class="directory-panel-close" onclick="App.toggleDirectoryPanel()" aria-label="Close">×</button>
         </header>
+        <p class="directory-panel-lead">People listed here get the faculty view when they sign in.</p>
+        <ul class="directory-name-list" aria-label="Directory members">${names}</ul>
         <div class="staff-add-card">
-          <div class="staff-add-title">${f.editEmail ? 'Edit person' : 'Add person'}</div>
+          <div class="staff-add-title">Add person</div>
           <div class="staff-add-fields">
-            <label>Name<input class="adm-search" id="staffAddName" value="${esc(f.name)}" placeholder="Full name" /></label>
-            <label>Email<input class="adm-search" id="staffAddEmail" value="${esc(f.email)}" placeholder="name@andrew.cmu.edu" ${f.editEmail ? 'readonly' : ''} /></label>
-            <label>Role<select class="adm-select" id="staffAddRole">${roleOpts}</select></label>
-            <label>Department<select class="adm-select" id="staffAddDept"><option value="">—</option>${deptOpts}</select></label>
-            <label>Program<select class="adm-select" id="staffAddProgram"><option value="">—</option>${progOpts}</select></label>
+            <label>Full name<input class="adm-search" id="staffAddName" value="${esc(f.name)}" placeholder="Full name" autocomplete="name" /></label>
+            <label>Email<input class="adm-search" id="staffAddEmail" value="${esc(f.email)}" placeholder="name@andrew.cmu.edu" autocomplete="email" inputmode="email" /></label>
           </div>
-          <button class="adm-btn adm-btn-resolve" onclick="App._submitDirectoryForm()">${f.editEmail ? 'Save changes' : 'Add to directory'}</button>
-          ${f.editEmail ? '<button type="button" class="adm-btn" onclick="App._staffDirState.form={name:\'\',email:\'\',role:\'professor\',department:\'\',primary_program:\'\'};App._renderDirectoryPanel()">Cancel edit</button>' : ''}
+          <button type="button" class="adm-btn adm-btn-resolve" onclick="App._submitDirectoryForm()">Add to directory</button>
         </div>
-        <div class="staff-list">${rows}</div>
       </div>`;
   },
 
-  _editDirectoryRow(email) {
-    const row = (this._staffDirState.items || []).find(r => r.email === email);
-    if (!row) return;
-    this._staffDirState.form = {
-      name: row.name,
-      email: row.email,
-      editEmail: row.email,
-      role: row.role,
-      department: row.department || '',
-      primary_program: row.primary_program || '',
-    };
-    this._renderDirectoryPanel();
-  },
-
-  async _revokeDirectoryRow(email, name) {
-    if (!confirm('Remove elevated access for ' + email + '?')) return;
-    const r = await apiRevokeDirectoryAccess({ email, name });
-    if (!r.ok) {
-      showToast((r.data && r.data.message) || 'Could not remove.');
-      return;
-    }
-    showToast('Access updated.');
-    await this._loadDirectoryPanel();
-  },
-
   async _submitDirectoryForm() {
-    const f = this._staffDirState.form;
     const body = {
       name: (document.getElementById('staffAddName')?.value || '').trim(),
       email: (document.getElementById('staffAddEmail')?.value || '').trim(),
-      role: document.getElementById('staffAddRole')?.value || 'professor',
-      department: document.getElementById('staffAddDept')?.value || '',
-      primary_program: document.getElementById('staffAddProgram')?.value || '',
     };
-    const r = f.editEmail
-      ? await apiUpsertDirectoryByEmail(body)
-      : await apiAddStaffMember(body);
+    if (!body.name || !body.email) {
+      showToast('Enter a full name and email.');
+      return;
+    }
+    const r = await apiAddStaffMember(body);
     if (!r.ok) {
       showToast((r.data && r.data.message) || 'Could not save.');
       return;
     }
-    showToast(f.editEmail ? 'Directory updated.' : 'Person added — they get faculty access on next login.');
-    this._staffDirState.form = { name: '', email: '', role: 'professor', department: '', primary_program: '' };
+    showToast('Person added — they get the faculty view on next login.');
+    this._staffDirState.form = { name: '', email: '' };
     await this._loadDirectoryPanel();
   },
 
