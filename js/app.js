@@ -1399,6 +1399,19 @@ const App = {
     `;
     this.applyTheme();
     this._initPanelResizer();
+    this._syncDirectoryFabLayout();
+  },
+
+  _syncDirectoryFabLayout() {
+    const onHome = !!document.querySelector('.home-foot');
+    document.body.classList.toggle('view-home', onHome);
+    const fab = document.querySelector('.directory-fab');
+    if (!fab) return;
+    if (onHome) {
+      fab.style.bottom = window.innerWidth <= 768 ? '116px' : '96px';
+    } else {
+      fab.style.bottom = '';
+    }
   },
 
   _initPanelResizer() {
@@ -2161,6 +2174,7 @@ const App = {
       this._loadStudentFlagsSummary();
     }
     this._loadPopularCourses();
+    this._syncDirectoryFabLayout();
   },
 
   _popularProgram() {
@@ -2888,6 +2902,7 @@ const App = {
 
     this._bindWishlistNoteInputs(el);
     this._schedSections = filtered;  // used by expand handler
+    this._syncDirectoryFabLayout();
   },
 
   _renderSchedRow(s) {

@@ -4403,13 +4403,22 @@ body.is-resizing-panels * {
   letter-spacing: 0.02em;
   box-shadow: 0 6px 22px rgba(196,18,48,0.38);
 }
-/* Home view footer sits at the bottom — keep the FAB above it, not on top of the note */
-body:has(.home-foot) .directory-fab {
-  bottom: calc(var(--home-foot-height, 72px) + 16px);
+/* Home footer + right-aligned note — lift the FAB and leave room for the text */
+body.view-home {
+  --home-foot-height: 72px;
+}
+body.view-home .directory-fab {
+  bottom: calc(var(--home-foot-height) + 24px);
+}
+body.view-home .home-foot-note {
+  padding-right: 170px;
 }
 @media (max-width: 768px) {
-  body:has(.home-foot) .directory-fab {
-    bottom: calc(var(--home-foot-height, 96px) + 16px);
+  body.view-home {
+    --home-foot-height: 92px;
+  }
+  body.view-home .directory-fab {
+    bottom: calc(var(--home-foot-height) + 24px);
   }
 }
 .directory-fab:hover { filter: brightness(1.05); }
