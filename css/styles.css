@@ -4395,7 +4395,7 @@ body.is-resizing-panels * {
 
 /* ── Directory FAB + panel ───────────────────────────────── */
 .directory-fab {
-  position: fixed; right: 24px; bottom: 24px; z-index: 900;
+  position: fixed; right: 24px; bottom: 72px; z-index: 900;
   padding: 14px 22px; border-radius: 999px; border: none; cursor: pointer;
   background: var(--cmu-red); color: #fff; font-weight: 800; font-size: 15px;
   letter-spacing: 0.02em;
