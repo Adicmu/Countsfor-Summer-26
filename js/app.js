@@ -2375,7 +2375,7 @@ const App = {
     ).join('');
 
     const compareBtn = vm === 'cross-program'
-      ? `<button type="button" class="home-ghost-btn" onclick="App.enterExplorer('${browseMajor}')"><span>Compare majors</span><span aria-hidden="true">→</span></button>`
+      ? `<button type="button" class="home-ghost-btn" onclick="App.enterExplorer('${browseMajor}')"><span>Compare majors</span></button>`
       : '';
 
     const dockHtml = this._renderHomeDock();
@@ -2404,7 +2404,7 @@ const App = {
 
             <div class="home-ghost-actions">
               <button type="button" class="home-primary-btn" onclick="App.enterExplorer('${browseMajor}')" title="Browse ${browseSub}">
-                <span>Browse ${browseSub}</span><span aria-hidden="true">→</span>
+                <span>Browse ${browseSub}</span>
               </button>
               ${compareBtn}
             </div>
@@ -2443,7 +2443,7 @@ const App = {
             <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('saved')">
               ${this._iconBookmarkFilled()} <span>Saved ${saved.length}</span>
             </button>
-            <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showWishlistView()">Open saved list →</button></div>
+            <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showWishlistView()">Open saved list</button></div>
           </div>`);
       }
 
@@ -2459,7 +2459,7 @@ const App = {
               <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('flagged')">
                 <span aria-hidden="true">⚑</span> <span>Flagged ${flags.length}</span>
               </button>
-              <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showStudentFlagsView()">View all →</button></div>
+              <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showStudentFlagsView()">View all</button></div>
             </div>`);
         }
       }
@@ -2478,7 +2478,7 @@ const App = {
               <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('flags')">
                 <span aria-hidden="true">⚑</span> <span>Flags ${pending}</span>
               </button>
-              <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showFlagReview()">Review queue →</button></div>
+              <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showFlagReview()">Review queue</button></div>
             </div>`);
         }
       }
@@ -2602,7 +2602,6 @@ const App = {
           <span class="home-tile-title">Saved courses</span>
           <span class="home-tile-sub">${subtext}</span>
         </span>
-        <span class="home-tile-arrow">→</span>
       </button>`;
   },
 
@@ -2629,7 +2628,6 @@ const App = {
           <span class="home-tile-title">Flagged <span class="home-tile-badge">${n}</span></span>
           <span class="home-tile-sub">${esc(preview)}</span>
         </span>
-        <span class="home-tile-arrow">→</span>
       </button>`;
   },
 
@@ -2693,7 +2691,7 @@ const App = {
       <div class="home-myflags" id="homeMyFlags">
         <div class="home-myflags-head">
           <span class="home-myflags-title">Course flags</span>
-          <button class="home-myflags-all" onclick="App.showFlagReview()">Review queue →</button>
+          <button class="home-myflags-all" onclick="App.showFlagReview()">Review queue</button>
         </div>
         <div class="home-myflags-chips">
           ${chip(c.pending,   'Pending',   'pending',   'mf-pending')}
@@ -2761,7 +2759,7 @@ const App = {
     el.innerHTML = `
       <div class="adm-view">
         <div class="adm-header">
-          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
           <div class="adm-title">Your flags <span class="adm-count">· ${s.total || 0}</span></div>
         </div>
         <div class="adm-tabs">
@@ -2823,7 +2821,7 @@ const App = {
     el.innerHTML = `
       <div class="dc-list-view">
         <div class="dc-list-header">
-          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
           <div class="dc-list-count">${list.length} courses count for both ${p} and ${s}</div>
         </div>
         <div class="dc-list">${rowsHtml || '<div class="empty-state"><div class="empty-text">No double-counter courses found.</div></div>'}</div>
@@ -3527,7 +3525,7 @@ const App = {
     el.innerHTML = `
       <div class="wl-view">
         <div class="wl-header">
-          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
           <div class="wl-title">Saved courses${courses.length ? ` <span class="wl-count">· ${courses.length}</span>` : ''}</div>
           <p class="wl-hint">Add a note on each course. Faculty advisors can read these when you share favorites.</p>
         </div>
@@ -3588,7 +3586,7 @@ const App = {
     el.innerHTML = `
       <div class="adm-view">
         <div class="adm-header">
-          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
           <div class="adm-title">Flagged courses <span class="adm-count">· ${items.length}</span></div>
         </div>
         <p class="adm-hint">Read-only. Students cannot submit flags. Faculty report and resolve issues.</p>
@@ -3623,7 +3621,7 @@ const App = {
     el.innerHTML = `
       <div class="adm-view">
         <div class="adm-header">
-          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
           <div class="adm-title">Student favorites <span class="adm-count">· ${students.length} students</span></div>
         </div>
         <div class="sf-list">${blocks}</div>
@@ -3807,7 +3805,12 @@ const App = {
   // ══════════════════════════════════════════════════════════
   // FACULTY — Staff directory (Postgres + JSON merge)
   // ══════════════════════════════════════════════════════════
-  _staffDirState: { items: [], form: { name: '', email: '' } },
+  _staffDirState: {
+    items: [],
+    tab: 'add',
+    search: '',
+    form: { name: '', email: '', role: 'professor', department: '', primary_program: '' },
+  },
 
   _staffInitials(name, email) {
     const src = (name || email || '?').trim();
@@ -3856,6 +3859,7 @@ const App = {
       return;
     }
     this._directoryPanelOpen = true;
+    this._staffDirState.tab = 'add';
     const root = document.getElementById('directoryPanelRoot');
     if (!root) return;
     root.hidden = false;
@@ -3881,13 +3885,59 @@ const App = {
   _renderDirectoryPanel() {
     const root = document.getElementById('directoryPanelRoot');
     if (!root) return;
-    const items = [...(this._staffDirState.items || [])].sort((a, b) =>
-      (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' })
-    );
-    const f = this._staffDirState.form;
-    const names = items.map(row =>
-      `<li class="directory-name-item">${esc(row.name)}</li>`
-    ).join('') || '<li class="directory-name-item directory-name-item--empty">No one in the directory yet.</li>';
+    const st = this._staffDirState;
+    const tab = st.tab || 'add';
+    const f = st.form;
+    const roleOpts = ['advisor', 'professor', 'area_head', 'associate_area_head', 'admin']
+      .map(r => `<option value="${r}" ${f.role === r ? 'selected' : ''}>${esc((ROLE_META[r] && ROLE_META[r].label) || r)}</option>`).join('');
+    const deptOpts = DEPARTMENT_LIST.map(d => `<option value="${esc(d)}" ${f.department === d ? 'selected' : ''}>${esc(d)}</option>`).join('');
+    const progOpts = VALID_PROGRAMS.map(p => `<option value="${p}" ${f.primary_program === p ? 'selected' : ''}>${esc(getProgramLabel(p))}</option>`).join('');
+
+    const addPanel = `
+      <div class="staff-add-card">
+        <p class="directory-panel-lead">Directory members get the faculty view on sign-in. Role <strong>Admin</strong> grants full admin access.</p>
+        <div class="staff-add-title">${f.editEmail ? 'Edit person' : 'Add person'}</div>
+        <div class="staff-add-fields">
+          <label>Full name<input class="adm-search" id="staffAddName" value="${esc(f.name)}" placeholder="Full name" autocomplete="name" /></label>
+          <label>Email<input class="adm-search" id="staffAddEmail" value="${esc(f.email)}" placeholder="name@andrew.cmu.edu" autocomplete="email" inputmode="email" ${f.editEmail ? 'readonly' : ''} /></label>
+          <label>Role<select class="adm-select" id="staffAddRole">${roleOpts}</select></label>
+          <label>Department<select class="adm-select" id="staffAddDept"><option value="">—</option>${deptOpts}</select></label>
+          <label>Program<select class="adm-select" id="staffAddProgram"><option value="">—</option>${progOpts}</select></label>
+        </div>
+        <div class="directory-form-actions">
+          <button type="button" class="adm-btn adm-btn-resolve" onclick="App._submitDirectoryForm()">${f.editEmail ? 'Save changes' : 'Add to directory'}</button>
+          ${f.editEmail ? '<button type="button" class="adm-btn" onclick="App._cancelDirectoryEdit()">Cancel</button>' : ''}
+        </div>
+      </div>`;
+
+    const q = (st.search || '').trim().toLowerCase();
+    const filtered = [...(st.items || [])]
+      .filter(row => {
+        if (!q) return true;
+        const hay = `${row.name || ''} ${row.email || ''}`.toLowerCase();
+        return hay.includes(q);
+      })
+      .sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+
+    const searchRows = filtered.map(row => `
+      <div class="staff-row">
+        ${this._staffAvatarHtml(row.name, row.email, row.picture_url)}
+        <div class="staff-row-body">
+          <div class="staff-row-name">${esc(row.name)}</div>
+          <div class="staff-row-meta">${esc(row.email)} · ${esc((ROLE_META[row.role] && ROLE_META[row.role].label) || row.role)} · ${esc(row.department || '')}${row.primary_program ? ' · ' + esc(getProgramLabel(row.primary_program)) : ''}</div>
+        </div>
+        <div class="staff-row-actions">
+          <button type="button" class="adm-btn" onclick="App._editDirectoryRow('${esc(row.email)}')">Edit</button>
+          <button type="button" class="adm-btn" onclick="App._revokeDirectoryRow('${esc(row.email)}', '${esc(row.name)}')">Remove</button>
+        </div>
+      </div>`).join('') || '<p class="empty-text">No matches.</p>';
+
+    const searchPanel = `
+      <div class="directory-search-panel">
+        <label class="directory-search-label" for="directorySearchInput">Search by name or email</label>
+        <input type="search" class="adm-search directory-search-input" id="directorySearchInput" value="${esc(st.search || '')}" placeholder="Start typing a name…" oninput="App._onDirectorySearchInput(this.value)" />
+        <div class="staff-list">${searchRows}</div>
+      </div>`;
 
     root.innerHTML = `
       <div class="directory-panel" role="dialog" aria-label="Faculty directory">
@@ -3895,36 +3945,94 @@ const App = {
           <h3>Directory</h3>
           <button type="button" class="directory-panel-close" onclick="App.toggleDirectoryPanel()" aria-label="Close">×</button>
         </header>
-        <p class="directory-panel-lead">People listed here get the faculty view when they sign in.</p>
-        <ul class="directory-name-list" aria-label="Directory members">${names}</ul>
-        <div class="staff-add-card">
-          <div class="staff-add-title">Add person</div>
-          <div class="staff-add-fields">
-            <label>Full name<input class="adm-search" id="staffAddName" value="${esc(f.name)}" placeholder="Full name" autocomplete="name" /></label>
-            <label>Email<input class="adm-search" id="staffAddEmail" value="${esc(f.email)}" placeholder="name@andrew.cmu.edu" autocomplete="email" inputmode="email" /></label>
-          </div>
-          <button type="button" class="adm-btn adm-btn-resolve" onclick="App._submitDirectoryForm()">Add to directory</button>
+        <div class="directory-tabs" role="tablist" aria-label="Directory sections">
+          <button type="button" class="directory-tab ${tab === 'add' ? 'is-active' : ''}" role="tab" aria-selected="${tab === 'add' ? 'true' : 'false'}" onclick="App._setDirectoryTab('add')">Add person</button>
+          <button type="button" class="directory-tab ${tab === 'search' ? 'is-active' : ''}" role="tab" aria-selected="${tab === 'search' ? 'true' : 'false'}" onclick="App._setDirectoryTab('search')">Search</button>
         </div>
+        ${tab === 'add' ? addPanel : searchPanel}
       </div>`;
   },
 
+  _setDirectoryTab(tab) {
+    this._staffDirState.tab = tab;
+    this._renderDirectoryPanel();
+    if (tab === 'search') {
+      const input = document.getElementById('directorySearchInput');
+      if (input) input.focus();
+    }
+  },
+
+  _onDirectorySearchInput(value) {
+    this._staffDirState.search = value;
+    this._renderDirectoryPanel();
+    const input = document.getElementById('directorySearchInput');
+    if (input) {
+      input.focus();
+      input.setSelectionRange(input.value.length, input.value.length);
+    }
+  },
+
+  _editDirectoryRow(email) {
+    const row = (this._staffDirState.items || []).find(r => r.email === email);
+    if (!row) return;
+    this._staffDirState.tab = 'add';
+    this._staffDirState.form = {
+      name: row.name,
+      email: row.email,
+      editEmail: row.email,
+      role: row.role,
+      department: row.department || '',
+      primary_program: row.primary_program || '',
+    };
+    this._renderDirectoryPanel();
+  },
+
+  _cancelDirectoryEdit() {
+    this._staffDirState.form = { name: '', email: '', role: 'professor', department: '', primary_program: '' };
+    this._renderDirectoryPanel();
+  },
+
+  async _revokeDirectoryRow(email, name) {
+    if (!confirm('Remove ' + (name || email) + ' from the directory? They will lose elevated access on next login.')) return;
+    const row = (this._staffDirState.items || []).find(r => r.email === email);
+    const r = row && row.id
+      ? await apiDeleteDirectoryEntry(row.id)
+      : await apiRevokeDirectoryAccess({ email, name });
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Could not remove.');
+      return;
+    }
+    showToast('Removed from directory.');
+    await this._loadDirectoryPanel();
+  },
+
   async _submitDirectoryForm() {
+    const f = this._staffDirState.form;
     const body = {
       name: (document.getElementById('staffAddName')?.value || '').trim(),
       email: (document.getElementById('staffAddEmail')?.value || '').trim(),
+      role: document.getElementById('staffAddRole')?.value || 'professor',
+      department: document.getElementById('staffAddDept')?.value || '',
+      primary_program: document.getElementById('staffAddProgram')?.value || '',
     };
     if (!body.name || !body.email) {
       showToast('Enter a full name and email.');
       return;
     }
-    const r = await apiAddStaffMember(body);
+    const r = f.editEmail
+      ? await apiUpsertDirectoryByEmail(body)
+      : await apiAddStaffMember(body);
     if (!r.ok) {
       showToast((r.data && r.data.message) || 'Could not save.');
       return;
     }
-    showToast('Person added — they get the faculty view on next login.');
-    this._staffDirState.form = { name: '', email: '' };
+    const roleLabel = (ROLE_META[body.role] && ROLE_META[body.role].label) || body.role;
+    showToast(f.editEmail
+      ? 'Directory updated.'
+      : `Added — ${roleLabel === 'Admin' ? 'admin' : 'faculty'} access on next login.`);
+    this._staffDirState.form = { name: '', email: '', role: 'professor', department: '', primary_program: '' };
     await this._loadDirectoryPanel();
+    this._setDirectoryTab('search');
   },
 
   // ══════════════════════════════════════════════════════════
@@ -3967,7 +4075,7 @@ const App = {
     el.innerHTML = `
       <div class="adm-view">
         <div class="adm-header">
-          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
           <div class="adm-title">User roles <span class="adm-count">· ${items.length}</span></div>
         </div>
         <div class="adm-search-row">
@@ -4132,7 +4240,7 @@ const App = {
     el.innerHTML = `
       <div class="adm-view">
         <div class="adm-header">
-          <button class="dc-back-link" onclick="App.renderLeftEmpty()">← Back to home</button>
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
           <div class="adm-title">Flag review <span class="adm-count">· ${s.total}</span></div>
         </div>
         <div class="adm-tabs">

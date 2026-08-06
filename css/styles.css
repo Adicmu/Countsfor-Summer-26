@@ -4559,7 +4559,7 @@ body.view-home .home-foot-note {
 .directory-panel-root { position: fixed; inset: 0; z-index: 950; background: rgba(0,0,0,0.35); display: flex; align-items: flex-end; justify-content: flex-end; padding: 16px; }
 .directory-panel-root[hidden] { display: none !important; }
 .directory-panel {
-  width: min(420px, 100%); max-height: min(85vh, 720px); overflow: auto;
+  width: min(460px, 100%); max-height: min(85vh, 720px); overflow: auto;
   background: var(--bg-card); border: 1px solid var(--border-light); border-radius: 12px;
   box-shadow: 0 8px 32px rgba(0,0,0,0.25); padding: 16px;
 }
@@ -4567,17 +4567,30 @@ body.view-home .home-foot-note {
 .directory-panel-head h3 { margin: 0; font-size: 16px; }
 .directory-panel-close { border: none; background: transparent; font-size: 22px; cursor: pointer; line-height: 1; }
 .directory-panel-lead { margin: 0 0 12px; font-size: 12px; line-height: 1.45; opacity: 0.78; }
-.directory-name-list {
-  list-style: none; margin: 0 0 16px; padding: 0; max-height: min(40vh, 320px);
-  overflow: auto; border: 1px solid var(--border-light); border-radius: 8px;
+.directory-panel-lead strong { color: var(--cmu-red); font-weight: 700; }
+.directory-tabs {
+  display: flex; gap: 4px; margin: 0 0 12px; padding: 4px;
+  background: var(--bg-secondary); border-radius: 10px;
 }
-.directory-name-item {
-  padding: 10px 12px; font-size: 14px; font-weight: 600;
-  border-bottom: 1px solid var(--border-light);
+.directory-tab {
+  flex: 1; margin: 0; padding: 8px 10px; border: none; border-radius: 8px;
+  background: transparent; font-family: inherit; font-size: 13px; font-weight: 600;
+  color: var(--text-secondary); cursor: pointer;
 }
-.directory-name-item:last-child { border-bottom: none; }
-.directory-name-item--empty { font-weight: 500; opacity: 0.7; font-style: italic; }
-.directory-panel .staff-add-card { margin-top: 0; padding-top: 12px; border-top: 1px solid var(--border-light); }
+.directory-tab.is-active {
+  background: var(--bg-card); color: var(--text-primary); font-weight: 700;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.directory-search-panel { display: flex; flex-direction: column; gap: 10px; }
+.directory-search-label {
+  font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  opacity: 0.78;
+}
+.directory-search-input { width: 100%; }
+.directory-form-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.directory-panel .staff-add-card { margin-top: 0; padding-top: 0; border-top: none; }
+.directory-panel .staff-list { max-height: min(42vh, 340px); overflow: auto; }
+.home-tile-arrow { display: none !important; }
 .staff-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
 .person-avatar, .staff-avatar { width: 44px; height: 44px; flex-shrink: 0; position: relative; }
 .person-avatar-img, .staff-avatar-img { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; display: block; }
