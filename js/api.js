@@ -137,17 +137,35 @@ const CF_BACKEND_URL = getBackendUrl();
 
 const CF_AUTH_TOKEN_KEY = 'cf_auth_token';
 
+// Two buckets on purpose. localStorage survives a browser restart and backs the
+// "Keep me signed in" opt-in; sessionStorage dies with the tab and is the default.
+// Read checks localStorage first so a remembered session wins.
 function getAuthToken() {
-  try { return sessionStorage.getItem(CF_AUTH_TOKEN_KEY) || ''; } catch { return ''; }
+  try {
+    return localStorage.getItem(CF_AUTH_TOKEN_KEY)
+      || sessionStorage.getItem(CF_AUTH_TOKEN_KEY)
+      || '';
+  } catch { return ''; }
 }
 
+// Writes to whichever bucket already holds a token, so refreshed tokens do not
+// silently downgrade a remembered session to a tab-only one.
 function saveAuthToken(token) {
   if (!token) return;
+  try {
+    if (localStorage.getItem(CF_AUTH_TOKEN_KEY)) {
+      localStorage.setItem(CF_AUTH_TOKEN_KEY, token);
+      return;
+    }
+  } catch {}
   try { sessionStorage.setItem(CF_AUTH_TOKEN_KEY, token); } catch {}
 }
 
+// Must clear BOTH, or signing out leaves a 30-day token behind and the user
+// cannot actually log out.
 function clearAuthToken() {
   try { sessionStorage.removeItem(CF_AUTH_TOKEN_KEY); } catch {}
+  try { localStorage.removeItem(CF_AUTH_TOKEN_KEY); } catch {}
 }
 
 // Public Google OAuth client ID. Set this in index.html via
@@ -173,6 +191,12 @@ async function apiFetch(path, opts = {}) {
     credentials: 'include',
     headers: { 'Accept': 'application/json' },
   };
+  // Never hang forever on a cold-starting backend. Default covers a full
+  // Render free-tier wake; callers with a local fallback pass something short.
+  const timeoutMs = opts.timeoutMs || 75000;
+  if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) {
+    init.signal = AbortSignal.timeout(timeoutMs);
+  }
   const authToken = getAuthToken();
   if (authToken) init.headers['Authorization'] = 'Bearer ' + authToken;
   if (opts.body !== undefined) {
@@ -183,7 +207,14 @@ async function apiFetch(path, opts = {}) {
   try {
     res = await fetch(url, init);
   } catch (e) {
-    return { ok: false, status: 0, error: 'network', message: e.message, data: null };
+    const timedOut = e && (e.name === 'TimeoutError' || e.name === 'AbortError');
+    return {
+      ok: false,
+      status: 0,
+      error: timedOut ? 'timeout' : 'network',
+      message: timedOut ? 'The server took too long to respond.' : e.message,
+      data: null,
+    };
   }
   let data = null;
   if (res.status !== 204) {
@@ -296,5 +327,6 @@ async function apiRecordCourseSearch(course_code, semester_code) {
 }
 async function apiGetPopularCourses(program, semester, limit) {
   const q = new URLSearchParams({ program, semester, limit: String(limit || 5) });
-  return apiFetch('/api/search-analytics/popular?' + q.toString());
+  // Short leash — the home screen already shows a local fallback list.
+  return apiFetch('/api/search-analytics/popular?' + q.toString(), { timeoutMs: 8000 });
 }

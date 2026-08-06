@@ -175,7 +175,7 @@ def revoke_access():
     )
     db.session.add(row)
     db.session.commit()
-    return jsonify(ok=True, message="Access revoked — user will be a student on next login.")
+    return jsonify(ok=True, message="Access revoked. User will be a student on next login.")
 
 
 # Legacy routes (keep for older frontend builds)

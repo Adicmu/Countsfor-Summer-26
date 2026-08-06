@@ -34,6 +34,33 @@ def recovery_deploy_enabled() -> bool:
     return os.environ.get("ALLOW_BOOTSTRAP_SKIP", "").strip().lower() in ("1", "true", "yes")
 
 
+# Repo root, i.e. the parent of the backend/ package.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+
+def _absolutize_sqlite(uri: str) -> str:
+    """Anchor a relative SQLite path to the repo root.
+
+    A relative URI like `sqlite:///countsfor.db` is resolved by Flask-SQLAlchemy
+    against `app.instance_path`, and that differs by entry point: running
+    `python -m backend.app` makes the app name `__main__` so instance_path becomes
+    `backend/instance/`, while gunicorn importing `backend.app:create_app()` makes it
+    a package so instance_path becomes `<repo>/instance/`. The dev server and
+    gunicorn therefore read *different database files* from identical config, which
+    silently produced three stray countsfor.db files and an account that existed in
+    one of them but not the others. Anchoring to the repo root removes the ambiguity.
+
+    Postgres and absolute SQLite URIs are returned untouched.
+    """
+    prefix = "sqlite:///"
+    if not uri.startswith(prefix):
+        return uri
+    path = uri[len(prefix):]
+    if not path or path.startswith("/"):  # ':memory:' or already absolute
+        return uri
+    return prefix + str(_PROJECT_ROOT / "instance" / Path(path).name)
+
+
 def _resolve_database_url() -> str:
     """Resolve SQLAlchemy URI. Never silently use SQLite on Render or production."""
     raw = (os.environ.get("DATABASE_URL") or "").strip()
@@ -43,7 +70,7 @@ def _resolve_database_url() -> str:
     if raw:
         if raw.startswith("postgres://"):
             raw = raw.replace("postgres://", "postgresql://", 1)
-        return raw
+        return _absolutize_sqlite(raw)
 
     if on_render:
         raise RuntimeError(
@@ -58,7 +85,7 @@ def _resolve_database_url() -> str:
 
     allow_sqlite = os.environ.get("ALLOW_SQLITE", "").lower() in ("1", "true", "yes")
     if allow_sqlite or not is_production:
-        return "sqlite:///countsfor.db"
+        return _absolutize_sqlite("sqlite:///countsfor.db")
 
     raise RuntimeError(
         "DATABASE_URL is unset. Set DATABASE_URL or ALLOW_SQLITE=1 for local SQLite dev."

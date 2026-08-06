@@ -3,12 +3,14 @@
    Carnegie Mellon University in Qatar
    ============================================================ */
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Fraunces:opsz,wght@9..144,600&display=swap');
 
 /* ---------- CSS Custom Properties (Light Theme) ---------- */
 :root {
   /* Heritage / tartan (aligned with landing.css) */
   --cf-parchment: #F5F0EA;
+  /* Red as TEXT — same as brand red in light, lightened in dark for contrast */
+  --cmu-red-text: #C41230;
   --cf-maroon: #7A0F1F;
   --cf-black: #262626;
   --cf-line: #E2DACF;
@@ -103,6 +105,8 @@
 
 /* ---------- Dark Theme ---------- */
 [data-theme="dark"] {
+  --cf-parchment: #262019;
+  --cmu-red-text: #F87171;
   --bg-primary: #0B0F19;
   --bg-secondary: #141924;
   --bg-tertiary: #1E2736;
@@ -337,6 +341,7 @@ body {
 .navbar-brand .subtitle {
   font-size:0.7rem;
   font-weight:500;
+  white-space:nowrap;
   color:var(--text-tertiary);
   letter-spacing:0;
 }
@@ -753,6 +758,34 @@ body.is-resizing-panels * {
   box-shadow:var(--shadow-focus);
   background:var(--bg-card);
 }
+/* One-click clear (×) for search inputs */
+.search-clear {
+  position:absolute;
+  right:8px;
+  top:50%;
+  transform:translateY(-50%);
+  width:24px;
+  height:24px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  border:0;
+  border-radius:50%;
+  background:var(--bg-secondary);
+  color:var(--text-tertiary);
+  font-size:16px;
+  line-height:1;
+  cursor:pointer;
+  padding:0;
+  transition:background var(--transition), color var(--transition);
+}
+.search-clear:hover {
+  background:var(--border-light);
+  color:var(--text-primary);
+}
+/* display:flex above would defeat the hidden attribute — keep it authoritative */
+.search-clear[hidden] { display:none; }
+.search-wrapper .search-input { padding-right:36px; }
 /* Typeahead dropdown */
 .typeahead {
   position:absolute;
@@ -1108,14 +1141,16 @@ body.is-resizing-panels * {
 
 /* Tree search */
 .tree-search {
+  position:relative;
   padding:10px 16px;
   border-bottom:var(--panel-divider);
   flex-shrink:0;
 }
+.tree-search .search-clear { right:24px; width:20px; height:20px; font-size:14px; }
 .tree-search input {
   width:100%;
   height:32px;
-  padding:0 10px;
+  padding:0 30px 0 10px; /* room for the × clear button */
   border:1px solid var(--border-light);
   border-radius:var(--radius-sm);
   background:var(--bg-secondary);
@@ -2266,51 +2301,51 @@ body.is-resizing-panels * {
   background: var(--bg-primary);
   overflow: hidden;
 }
+/* Tartan sett, whispered: a large-scale weave — one broad red band pair and a
+   single gold thread per tile, crossing warp/weft — kept far below legibility
+   thresholds so it reads as cloth texture, not grid lines. */
 .home-page::before {
   content: "";
   position: absolute;
   inset: 0;
   z-index: 0;
   pointer-events: none;
-  opacity: 0.35;
-  background:
-    repeating-linear-gradient(90deg, transparent 0 64px,
-      rgba(196, 18, 48, 0.12) 64px 68px, transparent 68px 96px,
-      rgba(38, 38, 38, 0.08) 96px 97px, transparent 97px 132px,
-      rgba(184, 134, 11, 0.1) 132px 133px, transparent 133px 134px),
-    repeating-linear-gradient(0deg, transparent 0 64px,
-      rgba(196, 18, 48, 0.12) 64px 68px, transparent 68px 96px,
-      rgba(38, 38, 38, 0.08) 96px 97px, transparent 97px 132px,
-      rgba(184, 134, 11, 0.1) 132px 133px, transparent 133px 134px);
-}
-/* Dark theme: recolor the decorative plaid for the dark canvas and render
-   the CMU wordmark logo white so it stays visible. */
-[data-theme="dark"] .home-page::before {
   opacity: 0.5;
   background:
-    repeating-linear-gradient(90deg, transparent 0 64px,
-      rgba(255, 255, 255, 0.05) 64px 68px, transparent 68px 96px,
-      rgba(255, 255, 255, 0.03) 96px 97px, transparent 97px 132px,
-      rgba(224, 168, 46, 0.06) 132px 133px, transparent 133px 134px),
-    repeating-linear-gradient(0deg, transparent 0 64px,
-      rgba(255, 255, 255, 0.05) 64px 68px, transparent 68px 96px,
-      rgba(255, 255, 255, 0.03) 96px 97px, transparent 97px 132px,
-      rgba(224, 168, 46, 0.06) 132px 133px, transparent 133px 134px);
+    repeating-linear-gradient(90deg,
+      transparent 0 96px,
+      rgba(196, 18, 48, 0.05) 96px 120px, transparent 120px 128px,
+      rgba(196, 18, 48, 0.05) 128px 152px, transparent 152px 200px,
+      rgba(184, 134, 11, 0.07) 200px 202px, transparent 202px 224px),
+    repeating-linear-gradient(0deg,
+      transparent 0 96px,
+      rgba(196, 18, 48, 0.05) 96px 120px, transparent 120px 128px,
+      rgba(196, 18, 48, 0.05) 128px 152px, transparent 152px 200px,
+      rgba(184, 134, 11, 0.07) 200px 202px, transparent 202px 224px);
+}
+/* Dark theme: same sett woven in white/gold so it sits into the charcoal.
+   (Also renders the CMU wordmark logo white further below.) */
+[data-theme="dark"] .home-page::before {
+  opacity: 0.6;
+  background:
+    repeating-linear-gradient(90deg,
+      transparent 0 96px,
+      rgba(255, 255, 255, 0.025) 96px 120px, transparent 120px 128px,
+      rgba(255, 255, 255, 0.025) 128px 152px, transparent 152px 200px,
+      rgba(224, 168, 46, 0.05) 200px 202px, transparent 202px 224px),
+    repeating-linear-gradient(0deg,
+      transparent 0 96px,
+      rgba(255, 255, 255, 0.025) 96px 120px, transparent 120px 128px,
+      rgba(255, 255, 255, 0.025) 128px 152px, transparent 152px 200px,
+      rgba(224, 168, 46, 0.05) 200px 202px, transparent 202px 224px);
 }
 [data-theme="dark"] .home-foot-logo img {
   filter: brightness(0) invert(1);
   opacity: 0.75;
 }
 
-.home-plaid {
-  position: relative;
-  z-index: 2;
-  flex-shrink: 0;
-  height: 6px;
-  background:
-    repeating-linear-gradient(90deg, var(--cmu-red) 0 18px, var(--charcoal) 18px 36px),
-    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.15) 0 2px, transparent 2px 6px);
-}
+/* (the old 6px .home-plaid strip is gone — the tartan lives in the
+   background texture above instead) */
 
 .home-main {
   position: relative;
@@ -2322,8 +2357,8 @@ body.is-resizing-panels * {
   overflow-y: auto;
   overflow-x: hidden;
 }
-.home-main-spacer { flex: 1 1 0; min-height: 0; }
-.home-main-spacer-bottom { flex: 0.55 1 0; }
+.home-main-spacer { flex: 0.6 1 0; min-height: 24px; }
+.home-main-spacer-bottom { flex: 0.42 1 0; min-height: 20px; }
 
 .home-hero {
   width: min(100%, 720px);
@@ -2332,18 +2367,19 @@ body.is-resizing-panels * {
   text-align: center;
   flex-shrink: 0;
 }
-.home-hero-head { margin-bottom: 28px; }
+.home-hero-head { margin-bottom: 20px; }
 .home-hero-title {
-  font-size: clamp(2.2rem, 5vw, 3.2rem);
-  font-weight: 800;
-  line-height: 1.08;
-  letter-spacing: -0.03em;
+  font-family: 'Fraunces', Georgia, 'Times New Roman', serif;
+  font-size: clamp(2.5rem, 5.4vw, 3.7rem);
+  font-weight: 600;
+  line-height: 1.06;
+  letter-spacing: -0.015em;
   color: var(--text-primary);
-  margin: 0 0 10px;
+  margin: 0 0 12px;
 }
 .home-hero-accent {
   display: block;
-  width: 40px;
+  width: 56px;
   height: 3px;
   background: var(--gold);
   margin: 0 auto 14px;
@@ -2371,7 +2407,11 @@ body.is-resizing-panels * {
 }
 .home-hero-search:focus-within {
   border-color: var(--cmu-red);
-  box-shadow: 0 0 0 4px rgba(196, 18, 48, 0.3);
+  box-shadow: 0 0 0 3px rgba(196, 18, 48, 0.15);
+}
+[data-theme="dark"] .home-hero-search:focus-within {
+  border-color: var(--cmu-red-text);
+  box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.18);
 }
 .home-hero-search.is-loading .home-search-input { padding-right: 36px; }
 .home-search-icon { font-size: 20px; flex-shrink: 0; opacity: 0.7; }
@@ -2386,6 +2426,18 @@ body.is-resizing-panels * {
   font-family: inherit;
 }
 .home-search-input::placeholder { color: var(--text-tertiary); font-size: 0.95em; }
+/* our × replaces the native WebKit one */
+.home-search-input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+.home-hero-search .search-clear {
+  position: static;
+  transform: none;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  font-size: 20px;
+}
+/* while the spinner is up it occupies the same corner — yield to it */
+.home-hero-search.is-loading .search-clear { visibility: hidden; }
 .home-search-spinner {
   position: absolute;
   right: 18px;
@@ -2399,6 +2451,7 @@ body.is-resizing-panels * {
 @keyframes home-spin { to { transform: rotate(360deg); } }
 
 .home-typeahead.typeahead {
+  text-align: left;
   top: calc(100% + 8px);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-soft);
@@ -2466,7 +2519,7 @@ body.is-resizing-panels * {
   align-items: center;
   gap: 8px;
   padding: 10px 18px;
-  border: 1.5px solid var(--text-primary);
+  border: 1.5px solid var(--border-medium);
   border-radius: 999px;
   background: transparent;
   color: var(--text-primary);
@@ -2474,11 +2527,32 @@ body.is-resizing-panels * {
   font-size: 0.88rem;
   font-weight: 600;
   cursor: pointer;
-  transition: background 120ms ease, color 120ms ease;
+  transition: background 120ms ease, color 120ms ease, border-color 120ms ease;
 }
 .home-ghost-btn:hover {
+  border-color: var(--text-primary);
   background: var(--text-primary);
   color: var(--text-inverse);
+}
+/* Primary action — the one filled element in the hero */
+.home-primary-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: 1.5px solid var(--cmu-red);
+  border-radius: 999px;
+  background: var(--cmu-red);
+  color: #fff;
+  font-family: inherit;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+.home-primary-btn:hover {
+  background: #A50E28;
+  border-color: #A50E28;
 }
 
 /* Dock — overlay slot avoids hero shift when pills appear */
@@ -2559,34 +2633,57 @@ body.is-resizing-panels * {
 }
 
 .home-quickstart {
-  width: min(100%, 1040px);
-  margin: 32px auto 0;
+  width: min(100%, 1000px);
+  margin: 30px auto 0;
   padding: 0 24px 24px;
   flex-shrink: 0;
 }
+/* Section label flanked by short gold threads — the sett surfacing as UI */
 .home-quickstart-label {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
   font-size: 11px;
   font-weight: 800;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-tertiary);
-  margin: 0 0 14px;
+  margin: 0 0 16px;
   text-align: center;
+}
+.home-quickstart-label::before,
+.home-quickstart-label::after {
+  content: "";
+  width: 28px;
+  height: 2px;
+  background: var(--gold);
+  opacity: 0.55;
+  border-radius: 1px;
+}
+/* GenEd categories: a wrapping band of navigation chips, not a card */
+.home-gened-band {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 8px;
+  margin: 0 0 18px;
 }
 .home-quickstart-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 16px;
+  align-items: start;
 }
 .home-qs-card {
   background: var(--bg-card);
   border: 1px solid var(--border-light);
   border-radius: var(--radius-lg);
-  padding: 18px;
+  padding: 18px 20px;
   box-shadow: var(--shadow-soft);
 }
 .home-qs-title {
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   font-weight: 700;
   color: var(--text-primary);
   margin: 0 0 6px;
@@ -2595,11 +2692,6 @@ body.is-resizing-panels * {
   font-size: 0.78rem;
   color: var(--text-tertiary);
   margin: 0 0 10px;
-}
-.home-qs-loading {
-  font-size: 0.84rem;
-  color: var(--text-tertiary);
-  padding: 8px 0;
 }
 .home-qs-list {
   list-style: none;
@@ -2621,14 +2713,14 @@ body.is-resizing-panels * {
   cursor: pointer;
   border-bottom: 1px solid var(--bg-secondary);
 }
-.home-qs-link:hover { color: var(--cmu-red); }
+.home-qs-link:hover { color: var(--cmu-red-text); }
 .home-qs-code {
   display: inline-block;
   min-width: 4.5em;
   font-family: 'JetBrains Mono', monospace;
   font-weight: 700;
   font-size: 0.78rem;
-  color: var(--cmu-red);
+  color: var(--cmu-red-text);
   margin-right: 8px;
 }
 .home-qs-chips {
@@ -3028,6 +3120,48 @@ body.is-resizing-panels * {
   .cc-head { padding: 14px 16px 10px; }
   .cc-section-cf { padding: 0 16px 14px; }
   .cc-desc { padding: 0 16px 14px; }
+}
+
+/* ── Focused mode, desktop: full-width card, larger type ──
+   Scoped to .layout-focused ≥861px so split mode, the mobile lens, and the
+   ≤700px stacking above are untouched. Overrides the 720px cap at the
+   .layout-focused .cc-card rule (same specificity, later in file). */
+@media (min-width: 861px) {
+  .layout-focused .panel-body:has(.cc-card) {
+    padding: 0 clamp(24px, 3vw, 56px) 32px;
+  }
+  .layout-focused .cc-card { max-width: 1500px; }
+
+  /* Head */
+  .layout-focused .cc-head { padding: 22px 28px 14px; }
+  .layout-focused .cc-code { font-size: clamp(30px, 2.2vw, 36px); }
+  .layout-focused .cc-name { font-size: 15px; }
+
+  /* About | semester columns — keep 2-col, absorb width with gap */
+  .layout-focused .cc-cols { gap: clamp(28px, 4vw, 64px); padding: 20px 28px; }
+  .layout-focused .cc-h4 { font-size: 12.5px; margin-bottom: 10px; }
+  .layout-focused .cc-kv { font-size: 14px; padding: 9px 0; }
+  .layout-focused .cc-k { min-width: 76px; }
+
+  /* Counts For — wider min column so 4 programs sit comfortably in one row */
+  .layout-focused .cc-section-cf { padding: 6px 28px 20px; }
+  .layout-focused .cc-cf-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+  }
+  .layout-focused .cc-cf-badge { font-size: 12px; }
+  .layout-focused .cc-cf-col-count { font-size: 11.5px; }
+  .layout-focused .cc-cf-item { padding: 9px 11px; }
+  .layout-focused .cc-cf-item-label { font-size: 13.5px; }
+  .layout-focused .cc-cf-item-type { font-size: 10.5px; }
+
+  /* Description — bigger type, measure capped for readability. Pad the whole
+     section (label + text together) so it aligns with the 28px content gutter. */
+  .layout-focused .cc-desc { font-size: 15.5px; line-height: 1.65; max-width: 78ch; }
+  .layout-focused .cc-card > .cc-section:last-child:not(.cc-section-cf) { padding: 0 28px 22px; }
+  .layout-focused .cc-card > .cc-section:last-child:not(.cc-section-cf) .cc-desc { padding: 0; }
+  .layout-focused .cc-empty { font-size: 13.5px; }
+  .layout-focused .cc-more { font-size: 12.5px; }
 }
 
 /* ════════════════════════════════════════════════════════════
@@ -4458,3 +4592,33 @@ body.view-home .home-foot-note {
 .adm-btn-dismiss { color: var(--text-tertiary); }
 .adm-btn-note { color: var(--major-ba-text); border-color: var(--major-ba-border); }
 .adm-btn-note:hover { background: var(--major-ba-bg); }
+
+/* ════════════════════════════════════════════════════════════
+   Dark-theme parity fixes (UX review 2026-07-17)
+   Red used as TEXT routes through --cmu-red-text (light: brand
+   red; dark: lightened for 4.5:1+). Fills stay --cmu-red.
+   ════════════════════════════════════════════════════════════ */
+.navbar-brand { color: var(--cmu-red-text); }
+[data-theme="dark"] .explore-btn-inline {
+  color: var(--cmu-red-text);
+  border-color: color-mix(in srgb, var(--cmu-red) 55%, var(--cmu-red-text));
+}
+[data-theme="dark"] .tr-leaf-flag-badge,
+[data-theme="dark"] .cc-flag-badge { color: var(--cmu-red-text); }
+[data-theme="dark"] .home-chip:hover {
+  border-color: color-mix(in srgb, var(--cmu-red-text) 45%, var(--border-light));
+}
+/* Rule chips ("≥19 units") lighten whatever accent they carry */
+[data-theme="dark"] .tr-rule {
+  color: color-mix(in srgb, var(--tr-accent, var(--cmu-red)) 45%, #fff);
+}
+/* Course-note panel: parchment token now has a dark value; the textarea
+   was riding on UA white — give it real surfaces */
+.wl-note-input { background: var(--bg-card); color: var(--text-primary); }
+/* Course-card delivery pills — mirror the themed .dm-* variants */
+[data-theme="dark"] .cc-dm-remote   { background: rgba(129, 140, 248, 0.16); color: #A5B4FC; }
+[data-theme="dark"] .cc-dm-inperson { background: rgba(52, 211, 153, 0.14); color: #34D399; }
+/* REQUIRED chip inverts instead of vanishing into the dark card */
+[data-theme="dark"] .cc-cf-item-type-req { background: #E5E7EB; color: #111827; }
+/* "+N more sections" uses the readable blue text token in dark */
+[data-theme="dark"] .cc-more { color: var(--major-ba-text); }

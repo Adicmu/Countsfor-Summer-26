@@ -3,13 +3,24 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <meta name="description" content="CountsFor — See what courses count for at CMU-Q, in the majors and in General Education." />
+  <meta name="description" content="CountsFor: see every CMU-Q course and exactly which major and General Education requirements it satisfies." />
   <meta name="theme-color" content="#C41230" />
   <meta name="cf-backend-url" content="https://countsfor-summer-26.onrender.com" />
+  <link rel="preconnect" href="https://countsfor-summer-26.onrender.com" crossorigin />
+  <script>
+    // Wake the free-tier backend as early as possible (fire-and-forget).
+    (function () {
+      var h = location.hostname;
+      if (h === 'localhost' || h === '127.0.0.1' || h === '') return; // local dev uses localhost:5050
+      var meta = document.querySelector('meta[name="cf-backend-url"]');
+      var url = meta && meta.getAttribute('content');
+      if (url) fetch(url.replace(/\/$/, '') + '/health', { mode: 'no-cors', cache: 'no-store' }).catch(function () {});
+    })();
+  </script>
   <meta name="cf-google-client-id" content="378923997481-bgnvhg3gsgka5ptijjjsb80q4k7kc2vg.apps.googleusercontent.com" />
   <!-- Google Identity Services — used on the landing for Google-based password recovery. -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
-  <title>CountsFor — CMU-Q Curriculum Explorer</title>
+  <title>CountsFor: CMU-Q Curriculum Explorer</title>
   <link rel="icon" type="image/png" href="docs/scotty-portrait.png" />
   <link rel="apple-touch-icon" href="docs/scotty-portrait.png" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -45,19 +56,39 @@
     <header class="landing-brand">
       <img
         class="landing-brand__scotty"
-        src="docs/scotty-portrait.png"
+        src="assets/img/scotty-head.png"
         alt="Scotty, the Carnegie Mellon University mascot"
-        width="96"
-        height="96"
+        width="72"
+        height="72"
         decoding="async"
       />
       <div class="landing-brand__rule" aria-hidden="true"></div>
       <p class="landing-brand__eyebrow">CMU-Q CURRICULUM EXPLORER</p>
       <h1 class="landing-brand__wordmark">CountsFor</h1>
       <p class="landing-brand__tagline">
-        See what courses count for at CMU-Q — in the majors and in General Education.
+        Every CMU-Q course, and exactly which requirements it satisfies.
       </p>
     </header>
+
+    <!-- First-run explainer. Hidden by js/landing.js on the forgot/reset views,
+         where the visitor is plainly not a first-time user. -->
+    <ol class="landing-intro" id="cfIntro">
+      <li class="landing-intro__step">
+        <span class="landing-intro__num" aria-hidden="true">1</span>
+        <strong class="landing-intro__title">Search any course</strong>
+        <span class="landing-intro__detail">Find it by number, title, or keyword across the full catalog.</span>
+      </li>
+      <li class="landing-intro__step">
+        <span class="landing-intro__num" aria-hidden="true">2</span>
+        <strong class="landing-intro__title">See what it counts for</strong>
+        <span class="landing-intro__detail">Every major requirement and General Education category it fulfills, side by side.</span>
+      </li>
+      <li class="landing-intro__step">
+        <span class="landing-intro__num" aria-hidden="true">3</span>
+        <strong class="landing-intro__title">Plan your semester</strong>
+        <span class="landing-intro__detail">Save a shortlist, add your own notes, and share it with your advisor.</span>
+      </li>
+    </ol>
 
     <main class="landing-card" id="landingCard" aria-live="polite">
       <!-- Sign in / Create account / Forgot / Reset panels rendered by js/landing.js -->
@@ -65,10 +96,10 @@
 
     <div class="landing-guest-row">
       <button type="button" id="cfGuestBtn" class="landing-guest">Continue as guest →</button>
-      <p class="landing-guest-note">Browse every course and requirement — nothing is saved to a server.</p>
+      <p class="landing-guest-note">Browse every course and requirement. Nothing is saved to a server.</p>
     </div>
   </div>
   <script src="js/utils.js"></script>
-  <script src="js/landing.js?v=network-err-v1"></script>
+  <script src="js/landing.js?v=2026-07-27"></script>
 </body>
 </html>
