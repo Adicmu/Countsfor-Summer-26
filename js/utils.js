@@ -1,0 +1,105 @@
+// ============================================================
+// CountsFor — Utilities
+// ============================================================
+
+/** Match backend normalize_cmu_email — always send @andrew.cmu.edu to the API. */
+function normalizeCmuEmail(raw) {
+  const e = (raw || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+$/.test(e)) return null;
+  const parts = e.split('@');
+  const local = parts[0];
+  const domain = parts[1];
+  if (domain === 'cmu.edu' || domain === 'qatar.cmu.edu') {
+    return local + '@andrew.cmu.edu';
+  }
+  if (domain === 'andrew.cmu.edu') return e;
+  return null;
+}
+
+function debounce(fn, ms = 250) {
+  let t;
+  return function (...args) { clearTimeout(t); t = setTimeout(() => fn.apply(this, args), ms); };
+}
+
+function esc(s) {
+  if (!s) return '';
+  const m = { '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#039;' };
+  return String(s).replace(/[&<>"']/g, c => m[c]);
+}
+
+function loadStore(key, def) {
+  try { const v = localStorage.getItem(key); return v ? JSON.parse(v) : def; } catch { return def; }
+}
+
+function saveStore(key, val) {
+  try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+}
+
+let _toastTimer;
+function showToast(msg) {
+  let el = document.getElementById('toast');
+  if (!el) { el = document.createElement('div'); el.id = 'toast'; el.className = 'toast'; document.body.appendChild(el); }
+  el.textContent = msg;
+  el.classList.add('visible');
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('visible'), 2200);
+}
+
+function formatPrereq(text) {
+  if (!text || text === 'None' || text === 'none') return null;
+  return text;
+}
+
+/**
+ * Quote one CSV field. Doubling the quote is the RFC 4180 escape, and quoting
+ * unconditionally keeps commas, newlines and leading zeros in course codes intact.
+ */
+function _csvCell(value) {
+  return '"' + String(value ?? '').replace(/"/g, '""') + '"';
+}
+
+function _csvRow(cells) {
+  return cells.map(_csvCell).join(',');
+}
+
+/**
+ * Download rows as a real CSV file.
+ *
+ * This previously emitted SpreadsheetML 2003 XML under a .xls extension. Excel
+ * accepted it only after a "format does not match extension" warning, and Google
+ * Sheets, Numbers and Quick Look rendered it as a blank grid, which made a
+ * perfectly good export look like missing data. CSV opens correctly everywhere and
+ * needs no library. The sheetName argument is kept for call-site compatibility but
+ * a CSV has no named sheets, so it is unused.
+ */
+function downloadExcelSheet(filename, sheetName, headers, rows, metaRows) {
+  const lines = [];
+  if (metaRows && metaRows.length) {
+    for (const row of metaRows) lines.push(_csvRow(row));
+    lines.push('');
+  }
+  lines.push(_csvRow(headers));
+  for (const row of rows) lines.push(_csvRow(row));
+
+  // CRLF per RFC 4180, and a UTF-8 BOM so Excel on Windows reads accented course
+  // titles (e.g. "Français") as UTF-8 instead of mojibake.
+  const csv = '﻿' + lines.join('\r\n') + '\r\n';
+
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename.endsWith('.csv') ? filename : filename.replace(/\.xls$/i, '') + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function slugifyFilename(text) {
+  return String(text || '')
+    .replace(/[^\w\s-]+/g, '')
+    .trim()
+    .replace(/\s+/g, '_')
+    .slice(0, 72) || 'export';
+}
