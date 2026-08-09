@@ -29,6 +29,7 @@ jobs:
           single-commit: true
 
       - name: Point GitHub Pages at gh-pages branch
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
