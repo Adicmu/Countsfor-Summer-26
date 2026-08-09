@@ -147,6 +147,9 @@ EXPECTED_GENED_MAPPINGS = {
         "BS": [BS_NTB_PATH],
         "CS": [CS_CAT3_PATH, CS_HUMANITIES_PATH],
     },
+    "79-232": {
+        "IS": [IS_CONTEXTUAL_PATH],
+    },
 }
 
 

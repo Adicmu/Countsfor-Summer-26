@@ -99,7 +99,19 @@ def test_79_286_has_contextual_thinking():
     assert IS_CONTEXTUAL_PATH in is_paths
 
 
+def test_79_232_has_contextual_thinking():
+    courses = _load_courses("data/courses.json")
+    course = next(c for c in courses if c["course_code"] == "79-232")
+    is_paths = {
+        r["requirement"]
+        for r in (course.get("requirements") or {}).get("IS") or []
+        if r.get("type") is True
+    }
+    assert IS_CONTEXTUAL_PATH in is_paths
+
+
 def test_expected_mapping_table_covers_user_courses():
     assert "82-314" in EXPECTED_GENED_MAPPINGS
     assert "79-286" in EXPECTED_GENED_MAPPINGS
+    assert "79-232" in EXPECTED_GENED_MAPPINGS
     assert "82-411" not in EXPECTED_GENED_MAPPINGS

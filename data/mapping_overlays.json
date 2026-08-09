@@ -41,6 +41,24 @@
       }
     },
     {
+      "id": "is-contextual-qatar-history",
+      "note": "79-232 History of Qatar — IS Contextual Thinking.",
+      "course_codes": ["79-232"],
+      "requirements": {
+        "IS": [
+          {
+            "requirement": "GenEd---GenEd---Foundations---Contextual Thinking",
+            "type": true,
+            "major": "IS"
+          }
+        ]
+      },
+      "ensure_course_defaults": {
+        "department": "79",
+        "offered_qatar": true
+      }
+    },
+    {
       "id": "ba-global-cultural-diverse",
       "note": "BA University Core — Global, Cultural, and Diverse Perspectives.",
       "course_codes": [

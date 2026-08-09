@@ -275,6 +275,12 @@ const App = {
     for (const node of [...sections.degree, ...sections.gened]) {
       this.expandedNodes.add(major + '::' + node.path);
     }
+    // GenEd → Foundations → leaf categories (e.g. Intercultural and Global Inquiry) visible without extra clicks
+    for (const node of sections.gened || []) {
+      for (const child of node.children || []) {
+        this.expandedNodes.add(major + '::' + child.path);
+      }
+    }
   },
 
   // ══════════════════════════════════════════════════════════
@@ -1697,6 +1703,29 @@ const App = {
     return courseHasMatchingOffering(course, this._searchFilterParams());
   },
 
+  /** Requirement tree lists all mapped courses; semester applies to schedules/export only. */
+  coursePassesTreeFilter(course) {
+    if (!course) return false;
+    return courseHasMatchingOffering(course, this._searchFilterParams());
+  },
+
+  _rankCourseCodeResults(results, qNorm) {
+    return results.slice().sort((a, b) => {
+      const ac = a.course_code.replace(/-/g, '').toLowerCase();
+      const bc = b.course_code.replace(/-/g, '').toLowerCase();
+      const aPref = ac.startsWith(qNorm) ? 0 : ac.includes(qNorm) ? 1 : 2;
+      const bPref = bc.startsWith(qNorm) ? 0 : bc.includes(qNorm) ? 1 : 2;
+      if (aPref !== bPref) return aPref - bPref;
+      return ac.localeCompare(bc);
+    });
+  },
+
+  _searchResultLimit(query) {
+    const t = (query || '').trim();
+    if (/^\d{1,2}-?\d{0,3}$/.test(t)) return 20;
+    return 8;
+  },
+
   _ensureExactCourseInResults(results, query) {
     const code = normalizeCourseCode((query || '').trim());
     if (!/^\d{1,2}-\d{2,4}$/.test(code)) return results;
@@ -1856,9 +1885,10 @@ const App = {
 
     // Campus/modality only — semester filter does not apply to search
     results = results.filter(c => App.coursePassesSearchFilter(c));
+    results = App._rankCourseCodeResults(results, qNorm);
     results = App._ensureExactCourseInResults(results, query);
 
-    results = results.slice(0, 8);
+    results = results.slice(0, App._searchResultLimit(query));
     App._searchResults = results;
     App._searchIdx = -1;
 
@@ -2107,7 +2137,9 @@ const App = {
     }
 
     courseResults = App._ensureExactCourseInResults(courseResults, query);
-    courseResults = courseResults.slice(0, 6);
+    courseResults = App._rankCourseCodeResults(courseResults, qNorm);
+    const limit = App._searchResultLimit(query);
+    courseResults = courseResults.slice(0, limit);
     App._searchResults = courseResults;
 
     const idx = App._buildCategoryIndex();
@@ -2834,7 +2866,11 @@ const App = {
     if (!el) return;
 
     const deptName = getDeptName(course.course_code);
-    const semesters = sortSemesters(course.offered || []);
+    const offeringSems = sortSemesters(
+      [...new Set(getCourseOfferings(course).map(o => o.semester_code).filter(Boolean))]
+    );
+    const histSems = sortSemesters(course.offered || []);
+    const semesters = sortSemesters([...new Set([...offeringSems, ...histSems])]);
     const prereq = formatPrereq(course.prerequisites);
     const profile = this.profile;
     const facultyView = isFaculty(profile);
@@ -3133,7 +3169,10 @@ const App = {
     const matchesSearch = this.nodeMatchesSearch(node);
     if (this.treeSearchQuery && !matchesSearch) return '';
 
-    const filteredCourses = (node.courses || []).filter(c => this.filterByLocation(c));
+    const filteredCourses = (node.courses || []).filter(c => {
+      const full = lookupCourse(this.courseIndex, c.code || c.course_code) || c;
+      return this.coursePassesTreeFilter(full);
+    });
     const filteredTotalCourses = this.countFilteredCourses(node);
 
     const ruleHtml = node.rule ? `<span class="tr-rule">${esc(node.rule.label)}</span>` : '';
@@ -3349,7 +3388,10 @@ const App = {
   },
 
   countFilteredCourses(node) {
-    let count = (node.courses || []).filter(c => this.filterByLocation(c)).length;
+    let count = (node.courses || []).filter(c => {
+      const full = lookupCourse(this.courseIndex, c.code || c.course_code) || c;
+      return this.coursePassesTreeFilter(full);
+    }).length;
     if (node.children) {
       for (const child of node.children) {
         count += this.countFilteredCourses(child);
