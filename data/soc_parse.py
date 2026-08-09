@@ -154,3 +154,37 @@ def apply_campus_fix(course_number: str, title: str | None, campus: str | None) 
     if forced:
         return forced
     return campus
+
+
+def normalize_title(title: str | None) -> str:
+    """Lowercase alphanumeric title for comparison."""
+    t = (title or "").lower()
+    t = re.sub(r"[^\w\s]", " ", t)
+    return " ".join(t.split())
+
+
+_TITLE_STOP = frozenset({"in", "the", "and", "for", "of", "a", "to", "with", "at"})
+
+
+def _title_tokens(title: str | None) -> set[str]:
+    return {
+        tok
+        for tok in normalize_title(title).split()
+        if len(tok) > 2 and tok not in _TITLE_STOP
+    }
+
+
+def titles_match(catalog_title: str | None, soc_title: str | None) -> bool:
+    """True when catalog and SOC titles refer to the same course."""
+    a = normalize_title(catalog_title)
+    b = normalize_title(soc_title)
+    if not a or not b:
+        return True
+    if a == b or b.startswith(a) or a.startswith(b):
+        return True
+    catalog_tokens = _title_tokens(catalog_title)
+    soc_tokens = _title_tokens(soc_title)
+    if not catalog_tokens or not soc_tokens:
+        return True
+    overlap = len(catalog_tokens & soc_tokens)
+    return overlap > 0

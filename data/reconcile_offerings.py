@@ -16,6 +16,7 @@ from soc_parse import (  # noqa: E402
     code_to_course_number,
     course_number_to_code,
     normalize_course_code,
+    titles_match,
 )
 
 SOC_PATH = os.environ.get("SOC_JSON_PATH", str(ROOT / "data" / "soc.json"))
@@ -67,6 +68,34 @@ def campus_flags_from_offerings(offerings: list[dict]) -> tuple[bool, bool]:
     qatar = any(o.get("campus") == "Qatar" for o in offerings)
     pitts = any(o.get("campus") == "Pittsburgh" for o in offerings)
     return qatar, pitts
+
+
+def resolve_catalog_soc_offerings(
+    course: dict,
+    offerings: list[dict],
+    meta: dict | None,
+) -> list[dict]:
+    """Attach SOC offerings only when titles align; handle reused course numbers."""
+    if not offerings:
+        return []
+
+    soc_title = ((meta or {}).get("title") or "").strip()
+    catalog_name = (course.get("course_name") or "").strip()
+    if not soc_title or titles_match(catalog_name, soc_title):
+        return offerings
+
+    # CMU reused this number for a different course — drop stale catalog title.
+    if catalog_name and catalog_name != soc_title:
+        course["previous_course_name"] = catalog_name
+    course["course_name"] = soc_title
+    course.pop("soc_title", None)
+    units_raw = (meta or {}).get("units")
+    if units_raw is not None:
+        try:
+            course["units"] = int(units_raw) if str(units_raw).isdigit() else course.get("units")
+        except (TypeError, ValueError):
+            pass
+    return offerings
 
 
 def reconcile_course(course: dict, offerings: list[dict]) -> None:
@@ -155,10 +184,12 @@ def reconcile_file(courses_path: str, soc_path: str) -> dict:
         if code and code != course.get("course_code"):
             course["course_code"] = code
         offs = by_code.get(code, [])
+        meta = meta_by_code.get(code)
+        resolved_offs = resolve_catalog_soc_offerings(course, offs, meta)
         old_q, old_p = course.get("offered_qatar"), course.get("offered_pitts")
-        reconcile_course(course, offs)
+        reconcile_course(course, resolved_offs)
         if (
-            course.get("offerings") != offs
+            course.get("offerings") != resolved_offs
             or course.get("offered_qatar") != old_q
             or course.get("offered_pitts") != old_p
         ):

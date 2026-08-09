@@ -56,6 +56,35 @@ def test_course_number_to_code_uses_normalizer():
     assert course_number_to_code("82101.0") == "82-101"
 
 
+def test_titles_match_same_course():
+    from soc_parse import titles_match
+
+    assert titles_match("Arranged Marriage", "Arranged Marriage")
+    assert titles_match("Topics in Rhetoric: Language", "Topics in Rhetoric: Language")
+
+
+def test_titles_mismatch_reused_number():
+    from soc_parse import titles_match
+
+    assert not titles_match(
+        "Gender and Sexuality in Performance",
+        "Arranged Marriage",
+    )
+
+
+def test_titles_match_soc_subtitle_suffix():
+    from soc_parse import titles_match
+
+    assert titles_match(
+        "Biology for Life Special Topics Micro",
+        "Biology for Life Special Topics Micro : Understanding the Demented and Delusional Brain",
+    )
+    assert titles_match(
+        "Special Topics: Nanotechnology in Context",
+        "Special Topics: Nanotechnology in Context : Nanotechnology in Context",
+    )
+
+
 def test_department_list_parses_soc_form():
     from soc_departments import parse_department_list
 
