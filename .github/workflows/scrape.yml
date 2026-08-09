@@ -51,12 +51,9 @@ jobs:
             echo "pushed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # Pushes made with GITHUB_TOKEN don't fire pages.yml's `on: push`,
-      # so dispatch the deploy explicitly whenever new data landed.
+      # SOC bot pushes do not trigger pages.yml; redeploy explicitly on Adicmu only.
       - name: Deploy updated data to GitHub Pages
         if: steps.commit.outputs.pushed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          sleep 60
-          gh workflow run pages.yml --ref main
+        run: gh workflow run pages.yml --ref main

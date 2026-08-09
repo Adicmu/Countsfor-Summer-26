@@ -3,32 +3,36 @@ name: Deploy frontend to GitHub Pages
 on:
   push:
     branches: [main, master]
-    paths-ignore:
-      - 'data/soc.json'
-      - 'data/courses.json'
-      - 'data_all_courses.json'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
-  id-token: write
 
 concurrency:
-  group: pages
+  group: pages-adicmu
   cancel-in-progress: true
 
 jobs:
   deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+    if: github.repository == 'Adicmu/Countsfor-Summer-26'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/upload-pages-artifact@v3
+
+      - name: Publish site to gh-pages branch
+        uses: JamesIves/github-pages-deploy-action@v4
         with:
-          path: .
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+          folder: .
+          branch: gh-pages
+          clean: true
+          single-commit: true
+
+      - name: Point GitHub Pages at gh-pages branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X PUT "repos/${{ github.repository }}/pages" \
+            -f build_type=legacy \
+            -f "source[branch]=gh-pages" \
+            -f "source[path]=/"
