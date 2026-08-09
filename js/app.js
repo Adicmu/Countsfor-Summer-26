@@ -1365,7 +1365,7 @@ const App = {
       ${this.isGuest ? this._guestBannerHtml() : ''}
       <nav class="navbar">
         <div class="navbar-left-group">
-          <div class="navbar-brand" onclick="App.reset()"><img class="navbar-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" /><span class="navbar-wordmark">CountsFor</span> <span class="subtitle">CMU-Q</span></div>
+          <div class="navbar-brand" onclick="App.reset()"><img class="navbar-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" /><span class="navbar-wordmark">CountsFor</span></div>
           ${this._roleBadgeHtml()}
           ${this._navbarWishlistHtml()}
         </div>

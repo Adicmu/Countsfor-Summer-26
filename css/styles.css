@@ -3204,10 +3204,15 @@ body.is-resizing-panels * {
   border-bottom: 2px solid var(--cmu-red);
 }
 .navbar-scotty {
-  width: 22px; height: 22px;
+  width: 28px;
+  height: 28px;
   object-fit: contain;
   display: block;
   flex-shrink: 0;
+  border-radius: 50%;
+  background: #fff;
+  padding: 3px;
+  box-sizing: border-box;
 }
 .navbar-wordmark {
   display: inline-block;
