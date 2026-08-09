@@ -563,32 +563,31 @@ const MODALITY_OPTIONS = [
   { id: 'hybrid', label: 'Hybrid' },
 ];
 
+function normalizeSemesterCode(raw) {
+  if (!raw || typeof raw !== 'string') return null;
+  const code = raw.trim();
+  if (/^[FSMN]\d{2}$/i.test(code)) return code.toUpperCase();
+  const hit = SEMESTER_OPTIONS.find(s => s.label === code || s.code === code);
+  return hit ? hit.code : null;
+}
+
 /**
- * The subset of SEMESTER_OPTIONS that the loaded catalog actually has offerings for.
- *
- * The picker used to list every option unconditionally. Summer (M26/M25) has zero
- * offerings in the bundled data, so choosing it filtered out all 5,495 courses that
- * carry an offerings array and left only the ~839 with an empty one, which read as
- * "the app is broken" rather than "there is no summer data". Deriving the list from
- * the data means summer reappears on its own once the SOC scrape provides it.
- *
- * `alwaysInclude` keeps the current selection present so the <select> can never end
- * up with no matching option.
+ * Semesters that appear in the bundled catalog's live offerings.
+ * Summer (M-prefix) is included whenever the SOC scrape provides it.
  */
 function availableSemesterOptions(courses, alwaysInclude) {
   const present = new Set();
   for (const c of courses || []) {
     for (const o of (c && Array.isArray(c.offerings) ? c.offerings : [])) {
-      const code = o && (o.semester_code || o.semesterCode || o.semester);
+      const code = normalizeSemesterCode(o.semester_code || o.semesterCode || o.semester);
       if (code) present.add(code);
     }
   }
-  // Decide the fallback on whether we saw ANY offering data, not on whether the
-  // filtered list is empty. Checking the filtered list would treat "catalog not
-  // loaded yet, but alwaysInclude is set" as a valid one-item result and strip the
-  // picker down to a single un-switchable semester.
   if (present.size === 0) return SEMESTER_OPTIONS.slice();
-  if (alwaysInclude) present.add(alwaysInclude);
+  if (alwaysInclude) {
+    const normalized = normalizeSemesterCode(alwaysInclude) || alwaysInclude;
+    if (normalized) present.add(normalized);
+  }
   return SEMESTER_OPTIONS.filter(s => present.has(s.code));
 }
 

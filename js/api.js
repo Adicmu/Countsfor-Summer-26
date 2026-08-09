@@ -10,6 +10,14 @@ const API_BASE = 'https://countsfor.qatar.cmu.edu/api';
 const GITHUB_RAW = 'https://raw.githubusercontent.com/open-cmuq/CountsFor/main/backend/data';
 const LOCAL_DATA = 'data/courses.json';
 
+function _bundledDataUrl(path) {
+  const meta = typeof document !== 'undefined'
+    ? document.querySelector('meta[name="cf-build"]')
+    : null;
+  const tag = (meta && meta.getAttribute('content')) || 'dev';
+  return `${path}?v=${encodeURIComponent(tag)}`;
+}
+
 const _cache = new Map();
 const CACHE_TTL = 10 * 60 * 1000; // 10 min
 
@@ -56,7 +64,7 @@ async function fetchAllCourses() {
   // 1. Bundled data first — it ships with every deploy (kept fresh by the
   //    scrape workflow), so nobody waits on a remote fetch failing.
   try {
-    const data = await _get(LOCAL_DATA);
+    const data = await _get(_bundledDataUrl(LOCAL_DATA));
     const courses = data.courses || [];
     if (courses.length > 0) {
       console.log(`[API] ✓ Local data — ${courses.length} courses`);

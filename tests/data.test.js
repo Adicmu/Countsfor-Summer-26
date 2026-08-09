@@ -227,6 +227,24 @@ test('requirementLeafLabel: strips GenEd path to leaf', () => {
   );
 });
 
+test('availableSemesterOptions: includes summer when catalog has M26 offerings', () => {
+  const courses = [{
+    course_code: '15-122',
+    offerings: [{ semester_code: 'F26', campus: 'Qatar', modality: 'In Person' }],
+  }, {
+    course_code: '21-127',
+    offerings: [{ semester: 'Summer 2026', semester_code: 'M26', campus: 'Pittsburgh', modality: 'In Person' }],
+  }];
+  const opts = availableSemesterOptions(courses, 'F26');
+  assertTrue(opts.some(s => s.code === 'M26'));
+  assertTrue(opts.some(s => s.code === 'F26'));
+});
+
+test('normalizeSemesterCode: accepts label or code', () => {
+  assertEqual(normalizeSemesterCode('M26'), 'M26');
+  assertEqual(normalizeSemesterCode('Summer 2026'), 'M26');
+});
+
 // ── summarizeFlagsByStatus ──────────────────────────────────
 
 test('summarizeFlagsByStatus: counts each status, ignores unknown and null', () => {

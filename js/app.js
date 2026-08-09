@@ -1138,6 +1138,7 @@ const App = {
     annotateDoubleCounters(this.courses, this.profile, this.minorCourseList);
     this.renderShell();
     this.bindGlobalEvents();
+    this._refreshSemesterOptions();
     this.renderLeftEmpty();
     this.renderTree();
     showToast(kind === 'faculty'
@@ -1433,6 +1434,9 @@ const App = {
     this.applyTheme();
     this._initPanelResizer();
     this._syncDirectoryFabLayout();
+    if (this.courses && this.courses.length) {
+      this._refreshSemesterOptions();
+    }
   },
 
   _syncDirectoryFabLayout() {
@@ -2939,7 +2943,7 @@ const App = {
         const typeCls = m.isGenEd ? 'gened' : 'req';
         const safePath = m.fullPath.replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/'/g,'&#39;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
         return `
-          <div class="cc-cf-item" data-nav-major="${majorCode}" data-nav-path="${safePath}">
+          <div class="cc-cf-item" data-nav-major="${majorCode}" data-nav-path="${safePath}" title="${esc(formatRequirementPath(m.fullPath))}">
             <span class="cc-cf-item-label">${esc(m.shortLabel)}</span>
             <span class="cc-cf-item-type cc-cf-item-type-${typeCls}">${typeLabel}</span>
           </div>`;
@@ -3153,6 +3157,8 @@ const App = {
       return;
     }
     let html = '';
+    const filterHint = `<div class="tree-filter-hint" aria-live="polite">Tree filtered: ${esc(this._activeFilterSummary().join(' · '))}</div>`;
+    html += filterHint;
     // degree + gened both render as a flat list of cards — no separate section headers
     for (const node of [...sections.degree, ...sections.gened]) {
       html += this.renderTreeNode(node, this.activeMajor, 0);
@@ -3170,11 +3176,13 @@ const App = {
     const matchesSearch = this.nodeMatchesSearch(node);
     if (this.treeSearchQuery && !matchesSearch) return '';
 
+    const filteredTotalCourses = this.countFilteredCourses(node);
+    if (filteredTotalCourses === 0) return '';
+
     const filteredCourses = (node.courses || []).filter(c => {
       const full = lookupCourse(this.courseIndex, c.code || c.course_code) || c;
       return this.coursePassesTreeFilter(full);
     });
-    const filteredTotalCourses = this.countFilteredCourses(node);
 
     const ruleHtml = node.rule ? `<span class="tr-rule">${esc(node.rule.label)}</span>` : '';
     const countHtml = (!expanded && filteredTotalCourses > 0 && isExpandable)
@@ -3409,9 +3417,11 @@ const App = {
     if (node.label.toLowerCase().includes(q)) return true;
     if (node.rawLabel && node.rawLabel.toLowerCase().includes(q)) return true;
 
-    // Check courses
+    // Check courses (respect active semester/campus/modality filters)
     if (node.courses) {
       for (const c of node.courses) {
+        const full = lookupCourse(this.courseIndex, c.code || c.course_code) || c;
+        if (!this.coursePassesTreeFilter(full)) continue;
         if (c.code.toLowerCase().replace(/-/g, '').includes(q.replace(/-/g, ''))) return true;
         if (c.name && c.name.toLowerCase().includes(q)) return true;
       }
