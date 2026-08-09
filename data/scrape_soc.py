@@ -63,6 +63,14 @@ from soc_departments import (  # noqa: E402
 BASE = os.environ.get("SOC_BASE_URL", "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet")
 SEARCH = BASE + "/search"
 MIN_COURSES_FOR_VALID_SCRAPE = int(os.environ.get("MIN_COURSES_FOR_VALID_SCRAPE", "100"))
+# Summer (M-prefix) semesters list far fewer courses than fall/spring.
+MIN_COURSES_FOR_SUMMER_SCRAPE = int(os.environ.get("MIN_COURSES_FOR_SUMMER_SCRAPE", "10"))
+
+
+def scrape_threshold(semester_code: str) -> int:
+    if semester_code and semester_code[0].upper() == "M":
+        return MIN_COURSES_FOR_SUMMER_SCRAPE
+    return MIN_COURSES_FOR_VALID_SCRAPE
 OUTPUT_PATH = os.environ.get("SOC_OUTPUT_PATH", "data/soc.json")
 LOCATIONS_TO_SCRAPE = SOC_LOCATION_CODES
 
@@ -123,7 +131,7 @@ def get_semester_list_for_scrape(form_html=None):
 
 # ---------- Main scrape per semester ----------
 
-def scrape_semester(semester_code, dept_list):
+def scrape_semester(semester_code, dept_list, min_courses=None):
     """
     For each (department, campus) pair, fetch the listing and parse it.
     Courses that appear at multiple campuses are merged into a single entry
@@ -187,8 +195,9 @@ def scrape_semester(semester_code, dept_list):
     total_sections = sum(len(c['sections']) for c in all_courses)
     print(f"\n  -> {len(all_courses)} courses, {total_sections} sections")
 
-    if len(all_courses) < MIN_COURSES_FOR_VALID_SCRAPE:
-        print(f"  Below threshold ({MIN_COURSES_FOR_VALID_SCRAPE}) -- "
+    threshold = min_courses if min_courses is not None else scrape_threshold(semester_code)
+    if len(all_courses) < threshold:
+        print(f"  Below threshold ({threshold}) -- "
               f"treating as not-yet-released.")
         return None, None
 
@@ -243,13 +252,19 @@ def main():
     print(f"Departments: {len(dept_list)}")
 
     timestamp = datetime.now(timezone.utc).isoformat()
+    prior = load_existing()
+    prior_semesters = prior.get("semesters") or {}
     scraped_semesters: dict = {}
     new_semesters_seen = []
 
     for sem_code, sem_label in semester_list:
         courses, summary = scrape_semester(sem_code, dept_list)
         if courses is None:
-            print(f"  Skipped {sem_code} — no schedule data yet.")
+            if sem_code in prior_semesters:
+                print(f"  Kept prior {sem_code} data from last successful scrape.")
+                scraped_semesters[sem_code] = prior_semesters[sem_code]
+            else:
+                print(f"  Skipped {sem_code} — no schedule data yet.")
             continue
 
         scraped_semesters[sem_code] = {
@@ -265,6 +280,11 @@ def main():
     if not scraped_semesters:
         print("\nNo valid data scraped for any semester on the SOC form. Aborting write.")
         sys.exit(1)
+
+    # Keep semesters from prior runs that are no longer on the SOC form.
+    for sem_code, sem_data in prior_semesters.items():
+        if sem_code not in scraped_semesters:
+            scraped_semesters[sem_code] = sem_data
 
     existing = {
         'metadata': {},

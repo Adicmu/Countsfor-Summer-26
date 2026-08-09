@@ -274,3 +274,21 @@ test('findTreeNode and collectCoursesForRequirement gather descendant courses', 
   assertEqual(collectCoursesForRequirement(leaf, c => c.offered_qatar).length, 2);
   assertEqual(collectCoursesForRequirement(leaf, c => c.offered_pitts).length, 0);
 });
+
+test('semesterLabel: M-prefix codes read as Summer', () => {
+  assertEqual(semesterLabel('M20'), 'Summer 2020');
+  assertEqual(semesterLabel('M17'), 'Summer 2017');
+  assertEqual(semesterLabel('M26'), 'Summer 2026');
+});
+
+test('courseHasMatchingOffering: semester filter excludes other terms', () => {
+  const course = {
+    offerings: [
+      { semester_code: 'F26', campus: 'Qatar', modality: 'In Person' },
+      { semester_code: 'S26', campus: 'Qatar', modality: 'In Person' },
+    ],
+  };
+  assertEqual(courseHasMatchingOffering(course, { semesterCode: 'F26', locationFilter: 'all', modalityFilter: 'all' }), true);
+  assertEqual(courseHasMatchingOffering(course, { semesterCode: 'M26', locationFilter: 'all', modalityFilter: 'all' }), false);
+  assertEqual(courseHasMatchingOffering(course, { locationFilter: 'all', modalityFilter: 'all' }), true);
+});

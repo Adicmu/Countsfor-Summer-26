@@ -1709,10 +1709,10 @@ const App = {
     return courseHasMatchingOffering(course, this._searchFilterParams());
   },
 
-  /** Requirement tree lists all mapped courses; semester applies to schedules/export only. */
+  /** Requirement tree respects semester + campus + modality; search does not use semester. */
   coursePassesTreeFilter(course) {
     if (!course) return false;
-    return courseHasMatchingOffering(course, this._searchFilterParams());
+    return courseHasMatchingOffering(course, this._filterParams());
   },
 
   _rankCourseCodeResults(results, qNorm) {
@@ -2910,7 +2910,7 @@ const App = {
     // About column rows
     const aboutRows = `
       <div class="cc-kv"><span class="cc-k">Dept</span><span class="cc-v">${esc(deptName)} (${esc(course.course_code.split('-')[0])})</span></div>
-      <div class="cc-kv"><span class="cc-k">Offered</span><span class="cc-v">${semesters.length ? semesters.map(esc).join(' · ') : 'Not listed'}</span></div>
+      <div class="cc-kv"><span class="cc-k">Offered</span><span class="cc-v">${semesters.length ? semesters.map(s => esc(semesterLabel(s))).join(' · ') : 'Not listed'}</span></div>
       <div class="cc-kv"><span class="cc-k">Where</span><span class="cc-v">${whereStr}</span></div>
       <div class="cc-kv"><span class="cc-k">Prereq</span><span class="cc-v">${prereq ? esc(prereq) : '<em>None</em>'}</span></div>
     `;
