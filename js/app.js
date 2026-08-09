@@ -2046,12 +2046,9 @@ const App = {
       ta.innerHTML = '<div class="typeahead-item" style="cursor:default;color:var(--text-tertiary);font-size:0.8rem;">No categories found</div>';
     } else {
       ta.innerHTML = results.map((r, i) => {
-        const breadcrumb = r.parts.length > 1 ? esc(r.parts.slice(0, -1).join(' › ')) : '';
         return '<div class="typeahead-item" data-cat-idx="' + i + '" onclick="App.selectCategoryResult(' + i + ')">' +
           '<span class="typeahead-cat-major typeahead-cat-major-' + r.major.toLowerCase() + '">' + r.major + '</span>' +
-          '<span class="typeahead-name"><strong>' + esc(r.leaf) + '</strong>' +
-            (breadcrumb ? '<span class="typeahead-cat-crumb"> · ' + breadcrumb + '</span>' : '') +
-          '</span>' +
+          '<span class="typeahead-name"><strong>' + esc(r.leaf) + '</strong></span>' +
           '<span class="typeahead-units">' + r.count + ' ' + (r.count === 1 ? 'course' : 'courses') + '</span>' +
         '</div>';
       }).join('');
@@ -2188,12 +2185,9 @@ const App = {
         html += '<div class="typeahead-group-label">Categories</div>';
         html += catResults.map((r, i) => {
           const uidx = flat.findIndex(f => f.kind === 'category' && f.idx === i);
-          const breadcrumb = r.parts.length > 1 ? esc(r.parts.slice(0, -1).join(' › ')) : '';
           return '<div class="typeahead-item" data-unified-idx="' + uidx + '" onclick="App.selectUnifiedResult(' + uidx + ')">' +
             '<span class="typeahead-cat-major typeahead-cat-major-' + r.major.toLowerCase() + '">' + r.major + '</span>' +
-            '<span class="typeahead-name"><strong>' + esc(r.leaf) + '</strong>' +
-              (breadcrumb ? '<span class="typeahead-cat-crumb"> · ' + breadcrumb + '</span>' : '') +
-            '</span>' +
+            '<span class="typeahead-name"><strong>' + esc(r.leaf) + '</strong></span>' +
             '<span class="typeahead-units">' + r.count + ' ' + (r.count === 1 ? 'course' : 'courses') + '</span>' +
           '</div>';
         }).join('');

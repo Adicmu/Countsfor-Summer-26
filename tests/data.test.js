@@ -213,6 +213,20 @@ test('getCourseMappings: shows leaf category only', () => {
   assertEqual(m.CS[0].shortLabel, 'Leaf');
 });
 
+test('getCourseMappings: IGI path shows leaf only, not parent breadcrumb', () => {
+  const m = getCourseMappings(makeCourse('82-101', {
+    IS: ['GenEd---GenEd---Foundations---Intercultural and Global Inquiry'],
+  }));
+  assertEqual(m.IS[0].shortLabel, 'Intercultural & Global Inquiry');
+});
+
+test('requirementLeafLabel: strips GenEd path to leaf', () => {
+  assertEqual(
+    requirementLeafLabel('GenEd---GenEd---Foundations---Intercultural and Global Inquiry'),
+    'Intercultural & Global Inquiry'
+  );
+});
+
 // ── summarizeFlagsByStatus ──────────────────────────────────
 
 test('summarizeFlagsByStatus: counts each status, ignores unknown and null', () => {

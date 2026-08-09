@@ -394,10 +394,16 @@ function formatRequirementPath(path) {
   return path.split('---').map(p => (LABEL_OVERRIDES[p] || p)).join(' > ');
 }
 
+function requirementLeafLabel(requirementPath) {
+  const parts = (requirementPath || '').split('---').filter(Boolean);
+  if (!parts.length) return '';
+  const leaf = parts[parts.length - 1];
+  return LABEL_OVERRIDES[leaf] || leaf;
+}
+
 // ── Get display-ready mappings for a course ─────────────────
-// Shows the leaf category name (e.g. "Intercultural & Global Inquiry").
+// Shows the leaf category only (e.g. "Intercultural & Global Inquiry").
 function getCourseMappings(course) {
-  const depth = 1;
   const mappings = {};
 
   for (const majorCode of MAJOR_ORDER) {
@@ -406,18 +412,9 @@ function getCourseMappings(course) {
 
     mappings[majorCode] = reqs.map(req => {
       const parts = req.requirement.split('---');
-      // Show the last `depth` meaningful segments.
-      let shortLabel;
-      if (parts.length >= depth + 1) {
-        shortLabel = parts.slice(-depth).map(p => LABEL_OVERRIDES[p] || p).join(' → ');
-      } else if (parts.length >= 2) {
-        shortLabel = parts.slice(1).map(p => LABEL_OVERRIDES[p] || p).join(' → ');
-      } else {
-        shortLabel = (LABEL_OVERRIDES[parts[0]] || parts[0]);
-      }
 
       return {
-        shortLabel,
+        shortLabel: requirementLeafLabel(req.requirement),
         fullPath: req.requirement,
         isGenEd: req.type,
         parts: parts,
