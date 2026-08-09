@@ -1861,7 +1861,8 @@ const App = {
   handleSearch: debounce(function(query) {
     const ta = document.getElementById('typeahead');
     if (!ta) return;
-    const q = query.trim().toLowerCase().replace(/-/g, '');
+    const raw = query.trim();
+    const q = raw.toLowerCase().replace(/-/g, '');
     if (q.length < 2) { ta.classList.remove('visible'); return; }
 
     let results = App.courses.filter(c => {
@@ -1885,8 +1886,8 @@ const App = {
 
     // Campus/modality only — semester filter does not apply to search
     results = results.filter(c => App.coursePassesSearchFilter(c));
-    results = App._rankCourseCodeResults(results, qNorm);
-    results = App._ensureExactCourseInResults(results, query);
+    results = App._rankCourseCodeResults(results, q);
+    results = App._ensureExactCourseInResults(results, raw);
 
     results = results.slice(0, App._searchResultLimit(query));
     App._searchResults = results;
@@ -1963,18 +1964,18 @@ const App = {
     this.selectedCourse = course;
     if (wasEmpty) this.renderShell();
     const input = document.getElementById('courseSearch');
-    if (input) input.value = course.course_code;
+    if (input) {
+      input.value = course.course_code;
+      this._syncSearchClear(input);
+    }
     this.renderCourseCard(course);
   },
 
   selectSearchResult(idx) {
     const course = this._searchResults[idx];
     if (!course) return;
-    const wasEmpty = !this.selectedCourse;
-    if (!wasEmpty) {
-      const ta = document.getElementById('typeahead');
-      if (ta) ta.classList.remove('visible');
-    }
+    const ta = document.getElementById('typeahead');
+    if (ta) ta.classList.remove('visible');
     this._selectCourse(course);
   },
 
