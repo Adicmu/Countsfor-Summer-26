@@ -275,11 +275,17 @@ const App = {
     for (const node of [...sections.degree, ...sections.gened]) {
       this.expandedNodes.add(major + '::' + node.path);
     }
-    // GenEd → Foundations → leaf categories (e.g. Intercultural and Global Inquiry) visible without extra clicks
+    // GenEd → Foundations → leaf categories (e.g. IGI) visible without extra clicks
     for (const node of sections.gened || []) {
-      for (const child of node.children || []) {
-        this.expandedNodes.add(major + '::' + child.path);
-      }
+      this._expandTreePaths(major, node, 3);
+    }
+  },
+
+  _expandTreePaths(major, node, maxDepth, depth = 0) {
+    if (!node || depth > maxDepth) return;
+    if (node.path) this.expandedNodes.add(major + '::' + node.path);
+    for (const child of node.children || []) {
+      this._expandTreePaths(major, child, maxDepth, depth + 1);
     }
   },
 

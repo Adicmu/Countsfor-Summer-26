@@ -395,11 +395,11 @@ function formatRequirementPath(path) {
 }
 
 // ── Get display-ready mappings for a course ─────────────────
-// opts.full → faculty view: show a deeper breadcrumb (last 3 path segments
-// instead of 2) so faculty maintaining mappings see more of the path.
+// opts.full → faculty view: show a deeper breadcrumb (last 3 path segments).
+// Student/default view: leaf category only (e.g. "Intercultural & Global Inquiry").
 function getCourseMappings(course, opts = {}) {
   const full = !!(opts && opts.full);
-  const depth = full ? 3 : 2;
+  const depth = full ? 3 : 1;
   const mappings = {};
 
   for (const majorCode of MAJOR_ORDER) {

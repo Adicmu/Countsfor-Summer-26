@@ -208,9 +208,9 @@ test('orderCfColumns: only includes programs that have mappings', () => {
 
 // ── getCourseMappings depth (student vs faculty) ────────────
 
-test('getCourseMappings: student lens shows last 2 path segments', () => {
+test('getCourseMappings: student lens shows leaf category only', () => {
   const m = getCourseMappings(makeCourse('X', { CS: ['Root---Mid---Sub---Leaf'] }));
-  assertEqual(m.CS[0].shortLabel, 'Sub → Leaf');
+  assertEqual(m.CS[0].shortLabel, 'Leaf');
 });
 
 test('getCourseMappings: full (faculty) shows last 3 path segments', () => {
