@@ -629,7 +629,7 @@
         passwordField('cfRegPass2', 'Confirm password', { autocomplete: 'new-password' }) +
         '</div>' +
         '<div class="landing-form-actions">' +
-        '<button type="submit" class="landing-submit" id="cfAuthSubmit" disabled>Create account →</button>' +
+        '<button type="submit" class="landing-submit" id="cfAuthSubmit" disabled>Create account</button>' +
         '</div>' +
         '</form>' +
         '</div>',
@@ -853,7 +853,7 @@
       return;
     }
     if (!validatePasswordMatch('cfRegPass', 'cfRegPass2', 'cfRegPass2Msg')) return;
-    setLoading(true, 'Create account →');
+    setLoading(true, 'Create account');
     const regBody = {
       email: normalizeCmuEmailLocal(email) || email,
       password,
@@ -865,7 +865,7 @@
       showWakingLabel();
       r = await apiRegister(regBody);
     }
-    setLoading(false, 'Create account →');
+    setLoading(false, 'Create account');
     if (isUnreachable(r)) {
       showUnreachable(r);
       updateSubmitState('register');
