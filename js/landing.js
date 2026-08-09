@@ -706,7 +706,7 @@
         '<button type="button" class="landing-link-btn" data-view="forgot">Forgot password?</button>' +
         '</div>' +
         '<div class="landing-form-actions">' +
-        '<button type="submit" class="landing-submit" id="cfAuthSubmit" disabled>Sign in →</button>' +
+        '<button type="submit" class="landing-submit" id="cfAuthSubmit" disabled>Sign in</button>' +
         '</div>' +
         '</form>' +
         '</div>',
@@ -792,7 +792,7 @@
     }
     // Read the checkbox before any await, while the panel is still on screen.
     const persist = wantsPersistentSession();
-    setLoading(true, 'Sign in →');
+    setLoading(true, 'Sign in');
     const body = { email: normalizeCmuEmailLocal(email) || email, password };
     let r = await apiLogin(body);
     // A cold free-tier backend often drops the first request and answers the
@@ -802,7 +802,7 @@
       showWakingLabel();
       r = await apiLogin(body);
     }
-    setLoading(false, 'Sign in →');
+    setLoading(false, 'Sign in');
     if (isUnreachable(r)) {
       showUnreachable(r);
       updateSubmitState('signin');
