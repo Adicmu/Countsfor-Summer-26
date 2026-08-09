@@ -4568,6 +4568,14 @@ body.view-home .home-foot-note {
   }
 }
 .directory-fab:hover { filter: brightness(1.05); }
+/* Tree open (split layout): FAB sits over the requirement map — use navbar link */
+body.view-split .directory-fab { display: none; }
+.nav-directory { display: none; }
+body.view-split .nav-directory {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
 .directory-panel-root { position: fixed; inset: 0; z-index: 950; background: rgba(0,0,0,0.35); display: flex; align-items: flex-end; justify-content: flex-end; padding: 16px; }
 .directory-panel-root[hidden] { display: none !important; }
 .directory-panel {

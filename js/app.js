@@ -1390,6 +1390,7 @@ const App = {
             </div>
           </div>
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
+          ${(canManageDirectory(this.profile) && this.authMode === 'authed') ? '<button type="button" class="nav-admin nav-directory" onclick="App.toggleDirectoryPanel()" title="Faculty directory">📋 Directory</button>' : ''}
           ${canManageUsers(this.authedUser) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
           ${(canFlagCourses(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review and resolve course flags">Flag review</button>' : ''}
           ${(isFaculty(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showStudentFavorites()" title="View student saved courses and notes">Student favorites</button>' : ''}
@@ -1441,10 +1442,12 @@ const App = {
 
   _syncDirectoryFabLayout() {
     const onHome = !!document.querySelector('.home-foot');
+    const onSplit = this.layoutMode === 'split';
     document.body.classList.toggle('view-home', onHome);
+    document.body.classList.toggle('view-split', onSplit);
     const fab = document.querySelector('.directory-fab');
     if (!fab) return;
-    if (onHome) {
+    if (onHome && !onSplit) {
       fab.style.bottom = window.innerWidth <= 768 ? '116px' : '96px';
     } else {
       fab.style.bottom = '';
@@ -1835,6 +1838,7 @@ const App = {
     if (explBtn) explBtn.style.display = 'none';
     // Render tree if not yet rendered
     this.renderTree();
+    this._syncDirectoryFabLayout();
     // Navigate to specific node if provided
     if (major && path) {
       setTimeout(() => this.navigateToReqNode(major, path), 100);
@@ -1859,6 +1863,7 @@ const App = {
     if (leftPanel) leftPanel.classList.remove('hidden-mobile');
     // Re-render the course card to show the Explore button again
     if (this.selectedCourse) this.renderCourseCard(this.selectedCourse);
+    this._syncDirectoryFabLayout();
   },
 
   // ══════════════════════════════════════════════════════════
