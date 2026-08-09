@@ -34,6 +34,7 @@ const DEPARTMENT_LIST = [
   'Computer Science',
   'Information Systems',
   "Dean's Office",
+  'Education Office',
 ];
 
 const FACULTY_ROLE_TITLES = ['professor', 'area_head', 'associate_area_head', 'advisor'];

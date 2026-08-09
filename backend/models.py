@@ -41,6 +41,7 @@ VALID_DEPARTMENTS = (
     "Computer Science",
     "Information Systems",
     "Dean's Office",
+    "Education Office",
 )
 
 
