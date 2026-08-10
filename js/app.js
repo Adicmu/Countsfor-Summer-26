@@ -2416,10 +2416,6 @@ const App = {
       `<button type="button" class="home-chip" onclick="App.runHomeSearchChip('${c.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}')">${esc(c)}</button>`
     ).join('');
 
-    const compareBtn = vm === 'cross-program'
-      ? `<button type="button" class="home-ghost-btn" onclick="App.enterExplorer('${browseMajor}')"><span>Compare majors</span></button>`
-      : '';
-
     const dockHtml = this._renderHomeDock();
     const quickStartHtml = this._renderQuickStart(browseMajor);
 
@@ -2448,7 +2444,6 @@ const App = {
               <button type="button" class="home-primary-btn" onclick="App.enterExplorer('${browseMajor}')" title="Browse ${browseSub}">
                 <span>Browse ${browseSub}</span>
               </button>
-              ${compareBtn}
             </div>
 
             <div class="home-dock-slot ${dockHtml ? 'has-dock' : ''}" id="homeDock">${dockHtml}</div>
