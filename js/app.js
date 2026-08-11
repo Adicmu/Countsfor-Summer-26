@@ -1368,6 +1368,7 @@ const App = {
           <div class="navbar-brand" onclick="App.reset()"><img class="navbar-scotty" src="assets/img/scotty-head.png" alt="" aria-hidden="true" /><span class="navbar-wordmark">CountsFor</span></div>
           ${this._roleBadgeHtml()}
           ${this._navbarWishlistHtml()}
+          ${this._navbarPlanHtml()}
         </div>
         <div class="navbar-right">
           <div class="navbar-filters-wrap">
@@ -1622,6 +1623,18 @@ const App = {
         }
         if (action === 'wishlist') this.toggleWishlist(code);
         if (action === 'flag')     this.openFlagModal(code);
+        if (action === 'plan-toggle') {
+          this.togglePlanOffering({
+            course_code: code,
+            semester_code: actionBtn.dataset.semesterCode,
+            section: actionBtn.dataset.section,
+            campus: actionBtn.dataset.campus,
+            days_times: actionBtn.dataset.daysTimes,
+            modality: actionBtn.dataset.modality,
+          });
+        }
+        if (action === 'plan-remove') this.removeFromPlan(actionBtn.dataset.planId);
+        if (action === 'plan-add-first') this.addFirstSectionToPlan(code);
         return;
       }
 
@@ -1752,6 +1765,7 @@ const App = {
     this.activeSemester = code;
     this._refreshFilters();
     if (this._homeView === 'home') this._loadPopularCourses();
+    if (this._homeView === 'plan') this.showPlanView();
     showToast('Showing ' + semesterLabel(code));
   },
 
@@ -2444,6 +2458,11 @@ const App = {
               <button type="button" class="home-primary-btn" onclick="App.enterExplorer('${browseMajor}')" title="Browse ${browseSub}">
                 <span>Browse ${browseSub}</span>
               </button>
+              ${isStudent(this.profile) ? `
+              <button type="button" class="home-ghost-btn" onclick="App.showPlanView()" title="Build a weekly schedule from course sections">
+                ${this._iconCalendar()}
+                <span>Plan your schedule</span>
+              </button>` : ''}
             </div>
 
             <div class="home-dock-slot ${dockHtml ? 'has-dock' : ''}" id="homeDock">${dockHtml}</div>
@@ -2481,6 +2500,24 @@ const App = {
               ${this._iconBookmarkFilled()} <span>Saved ${saved.length}</span>
             </button>
             <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showWishlistView()">Open saved list</button></div>
+          </div>`);
+      }
+
+      const planned = this._getPlanItemsForSemester(this.activeSemester);
+      if (planned.length) {
+        const units = this._planUnitsTotal(planned);
+        const items = planned.map(item => {
+          const c = lookupCourse(this.courseIndex, item.course_code);
+          const name = c ? c.course_name : '';
+          const time = item.days_times && item.days_times !== 'TBA' ? ` · ${esc(item.days_times)}` : '';
+          return `<button type="button" class="home-dock-item" onclick="App.showPlanView()">${esc(item.course_code)}${name ? ' · ' + esc(name) : ''}${time}</button>`;
+        }).join('');
+        pills.push(`
+          <div class="home-dock-pill" data-dock="plan">
+            <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('plan')">
+              ${this._iconCalendar()} <span>Plan ${planned.length}${units ? ` · ${units}u` : ''}</span>
+            </button>
+            <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showPlanView()">Open schedule</button></div>
           </div>`);
       }
 
@@ -2607,6 +2644,39 @@ const App = {
         <span class="nav-wish-label">${label}</span>
         ${countChip}
       </button>`;
+  },
+
+  _navbarPlanHtml() {
+    if (!isStudent(this.profile)) return '';
+    const planned = this._getPlanItemsForSemester(this.activeSemester);
+    const count = planned.length;
+    const units = this._planUnitsTotal(planned);
+    const countChip = count > 0 ? `<span class="nav-plan-count">${count}</span>` : '';
+    const label = count > 0 ? `Plan · ${units || '?'}u` : 'Plan schedule';
+    return `
+      <button class="nav-plan" onclick="App.showPlanView()" title="Plan your weekly schedule" aria-label="Plan your schedule">
+        ${this._iconCalendar()}
+        <span class="nav-plan-label">${label}</span>
+        ${countChip}
+      </button>`;
+  },
+
+  _refreshNavPlanCount() {
+    const btn = document.querySelector('.nav-plan');
+    if (!btn) return;
+    const planned = this._getPlanItemsForSemester(this.activeSemester);
+    const count = planned.length;
+    const units = this._planUnitsTotal(planned);
+    const existing = btn.querySelector('.nav-plan-count');
+    const label = btn.querySelector('.nav-plan-label');
+    if (count > 0) {
+      if (label) label.textContent = `Plan · ${units || '?'}u`;
+      if (existing) existing.textContent = String(count);
+      else btn.insertAdjacentHTML('beforeend', `<span class="nav-plan-count">${count}</span>`);
+    } else {
+      if (label) label.textContent = 'Plan schedule';
+      if (existing) existing.remove();
+    }
   },
 
   // Refresh just the navbar count without re-rendering the whole shell.
@@ -2921,7 +2991,7 @@ const App = {
       const mod = this.modalityFilter !== 'all' ? (' · ' + (MODALITY_OPTIONS.find(m => m.id === this.modalityFilter) || {}).label) : '';
       schedHtml = `<div class="cc-empty">No matching sections for ${esc(semLabel)}${mod ? esc(mod) : ''}${this.locationFilter !== 'all' ? ' · ' + esc(campus) : ''}</div>`;
     } else {
-      const inline = filtered.slice(0, 4).map(s => this._renderSchedRow(s)).join('');
+      const inline = filtered.slice(0, 4).map(s => this._renderSchedRow(s, course.course_code)).join('');
       const extraCount = filtered.length - 4;
       const more = extraCount > 0
         ? `<button class="cc-more" onclick="App.expandScheduleV2(event)" id="cc-sched-more" data-expanded="0">+${extraCount} more sections</button>
@@ -3019,7 +3089,7 @@ const App = {
     this._syncDirectoryFabLayout();
   },
 
-  _renderSchedRow(s) {
+  _renderSchedRow(s, courseCode) {
     const time = (s.days_times && s.days_times !== 'TBA')
       ? esc(s.days_times)
       : ((s.begin_time && s.begin_time !== 'TBA')
@@ -3034,7 +3104,13 @@ const App = {
     const mod = s.modality || s.delivery_mode || '';
     const campusBadge = s.campus ? `<span class="cc-campus-pill">${esc(s.campus)}</span>` : '';
     const dm = mod ? `<span class="cc-dm-pill ${dmCls(mod)}">${esc(mod).toUpperCase()}</span>` : '';
-    return `<div class="cc-kv"><span class="cc-k">Sec ${esc(s.section)}</span><span class="cc-v">${time} ${campusBadge} ${dm}</span></div>`;
+    let planBtn = '';
+    if (isStudent(this.profile) && courseCode) {
+      const inPlan = this._isOfferingInPlan(courseCode, s);
+      const safeTimes = esc(s.days_times || 'TBA').replace(/"/g, '&quot;');
+      planBtn = `<button type="button" class="cc-plan-btn ${inPlan ? 'is-planned' : ''}" data-action="plan-toggle" data-course-code="${esc(courseCode)}" data-semester-code="${esc(s.semester_code || this.activeSemester)}" data-section="${esc(s.section || '')}" data-campus="${esc(s.campus || '')}" data-days-times="${safeTimes}" data-modality="${esc(mod)}" title="${inPlan ? 'Remove from schedule plan' : 'Add this section to your schedule plan'}" aria-label="${inPlan ? 'Remove from schedule plan' : 'Add to schedule plan'}">${inPlan ? '✓ Planned' : '+ Plan'}</button>`;
+    }
+    return `<div class="cc-kv cc-kv-sched"><span class="cc-k">Sec ${esc(s.section)}</span><span class="cc-v">${time} ${campusBadge} ${dm} ${planBtn}</span></div>`;
   },
 
   expandScheduleV2(e) {
@@ -3046,7 +3122,7 @@ const App = {
     const sections = (this._schedSections || []).slice(4);
     if (!expanded) {
       extra.style.display = 'block';
-      extra.innerHTML = sections.map(s => this._renderSchedRow(s)).join('');
+      extra.innerHTML = sections.map(s => this._renderSchedRow(s, this.selectedCourse ? this.selectedCourse.course_code : '')).join('');
       btn.textContent = 'Hide extra sections';
       btn.dataset.expanded = '1';
     } else {
@@ -3372,6 +3448,21 @@ const App = {
           ${saved ? this._iconBookmarkFilled() : this._iconBookmarkOutline()}
           <span>${saved ? 'Saved ✓' : 'Save course'}</span>
         </button>`);
+      const plannedCount = this._getPlanItemsForCourse(course.course_code, this.activeSemester).length;
+      const sections = filterOfferings(getCourseOfferings(course), this._filterParams());
+      if (plannedCount > 0) {
+        parts.push(`
+          <button class="cc-action cc-action-plan is-planned" onclick="App.showPlanView()" aria-label="View in schedule plan">
+            ${this._iconCalendar()}
+            <span>In plan ✓</span>
+          </button>`);
+      } else if (sections.length) {
+        parts.push(`
+          <button class="cc-action cc-action-plan" data-action="plan-add-first" data-course-code="${esc(course.course_code)}" aria-label="Add first section to schedule plan">
+            ${this._iconCalendar()}
+            <span>Add to plan</span>
+          </button>`);
+      }
     }
     if (canFlagCourses(this.profile) && (this.authMode === 'authed' || this.isGuest)) {
       parts.push(`
@@ -3394,6 +3485,9 @@ const App = {
   },
   _iconFlag() {
     return '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M3 2v12"/><path d="M3 2.5h8.5L9.7 5.2 11.5 8H3"/></svg>';
+  },
+  _iconCalendar() {
+    return '<svg viewBox="0 0 16 16" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><rect x="2.5" y="3.5" width="11" height="10.5" rx="1.5"/><path d="M5 2v2M11 2v2M2.5 6.5h11"/></svg>';
   },
 
   countFilteredCourses(node) {
@@ -3618,6 +3712,284 @@ const App = {
         showToast('Note saved on this device. Could not sync to server.');
       }
     }
+  },
+
+  // ══════════════════════════════════════════════════════════
+  // SCHEDULE PLAN (students only)
+  // ══════════════════════════════════════════════════════════
+  // Storage: localStorage['cf_plan'] = [{ id, course_code, semester_code, section, campus, days_times, modality }, ...]
+
+  _normalizePlanItem(item) {
+    const base = {
+      course_code: item.course_code,
+      semester_code: item.semester_code || this.activeSemester,
+      section: item.section || '',
+      campus: item.campus || '',
+      days_times: item.days_times || 'TBA',
+      modality: item.modality || '',
+    };
+    return { ...base, id: item.id || planOfferingKey(base.course_code, base) };
+  },
+
+  _getPlanItems() {
+    const raw = loadStore('cf_plan', []);
+    return raw.map(x => this._normalizePlanItem(x)).filter(x => x.course_code);
+  },
+
+  _savePlanItems(list) {
+    saveStore('cf_plan', list.map(x => this._normalizePlanItem(x)));
+  },
+
+  _getPlanItemsForSemester(semesterCode) {
+    const code = semesterCode || this.activeSemester;
+    return this._getPlanItems().filter(i => i.semester_code === code);
+  },
+
+  _getPlanItemsForCourse(courseCode, semesterCode) {
+    return this._getPlanItemsForSemester(semesterCode).filter(i => i.course_code === courseCode);
+  },
+
+  _isOfferingInPlan(courseCode, offering) {
+    const id = planOfferingKey(courseCode, offering);
+    return this._getPlanItems().some(i => i.id === id);
+  },
+
+  _planUnitsTotal(items) {
+    let total = 0;
+    const seen = new Set();
+    for (const item of items || []) {
+      if (seen.has(item.course_code)) continue;
+      seen.add(item.course_code);
+      const c = lookupCourse(this.courseIndex, item.course_code);
+      total += Number(c && c.units) || 0;
+    }
+    return total;
+  },
+
+  _planBlockPalette() {
+    return [
+      { bg: 'rgba(196,18,48,0.14)', border: 'rgba(196,18,48,0.45)', text: 'var(--cmu-red)' },
+      { bg: 'rgba(37,99,235,0.12)', border: 'rgba(37,99,235,0.4)', text: '#2563EB' },
+      { bg: 'rgba(5,150,105,0.12)', border: 'rgba(5,150,105,0.4)', text: 'var(--major-bs-text)' },
+      { bg: 'rgba(217,119,6,0.12)', border: 'rgba(217,119,6,0.42)', text: 'var(--major-is-text)' },
+      { bg: 'rgba(124,58,237,0.12)', border: 'rgba(124,58,237,0.4)', text: '#7C3AED' },
+      { bg: 'rgba(14,116,144,0.12)', border: 'rgba(14,116,144,0.4)', text: '#0E7490' },
+    ];
+  },
+
+  addFirstSectionToPlan(courseCode) {
+    if (!isStudent(this.profile)) return;
+    const course = lookupCourse(this.courseIndex, courseCode);
+    if (!course) return;
+    const sections = filterOfferings(getCourseOfferings(course), this._filterParams());
+    if (!sections.length) {
+      showToast('No sections match your current filters.');
+      return;
+    }
+    this.togglePlanOffering({
+      course_code: courseCode,
+      semester_code: sections[0].semester_code || this.activeSemester,
+      section: sections[0].section,
+      campus: sections[0].campus,
+      days_times: sections[0].days_times || 'TBA',
+      modality: sections[0].modality || '',
+    }, { forceAdd: true });
+  },
+
+  togglePlanOffering(offering, opts) {
+    if (!isStudent(this.profile)) {
+      showToast('Schedule planning is available to students only.');
+      return;
+    }
+    const normalized = this._normalizePlanItem(offering);
+    if (!normalized.course_code) return;
+    const list = this._getPlanItems();
+    const idx = list.findIndex(i => i.id === normalized.id);
+    if (idx === -1) {
+      list.push(normalized);
+      this._savePlanItems(list);
+      showToast('Added to your schedule plan');
+    } else if (!opts || !opts.forceAdd) {
+      list.splice(idx, 1);
+      this._savePlanItems(list);
+      showToast('Removed from schedule plan');
+    } else {
+      return;
+    }
+    this._refreshPlanSurfaces(normalized.course_code);
+  },
+
+  removeFromPlan(planId) {
+    if (!planId) return;
+    const list = this._getPlanItems();
+    const idx = list.findIndex(i => i.id === planId);
+    if (idx === -1) return;
+    const code = list[idx].course_code;
+    list.splice(idx, 1);
+    this._savePlanItems(list);
+    showToast('Removed from schedule plan');
+    this._refreshPlanSurfaces(code);
+  },
+
+  _refreshPlanSurfaces(courseCode) {
+    this._refreshNavPlanCount();
+    if (this._homeView === 'plan') this.showPlanView();
+    else if (this._homeView === 'home') this._refreshHomeDock();
+    if (this.selectedCourse && this.selectedCourse.course_code === courseCode) {
+      this.renderCourseCard(this.selectedCourse);
+    }
+  },
+
+  _renderPlanCalendar(items, conflicts) {
+    const palette = this._planBlockPalette();
+    const courseColor = {};
+    let colorIdx = 0;
+    for (const item of items) {
+      if (!courseColor[item.course_code]) {
+        courseColor[item.course_code] = palette[colorIdx % palette.length];
+        colorIdx++;
+      }
+    }
+
+    const timed = [];
+    const tba = [];
+    for (const item of items) {
+      const parsed = parseDaysTimes(item.days_times);
+      if (parsed.parseable) timed.push({ item, parsed });
+      else tba.push({ item, parsed });
+    }
+
+    const spanMin = PLAN_CAL_END_MIN - PLAN_CAL_START_MIN;
+    const timeLabels = [];
+    for (let m = PLAN_CAL_START_MIN; m <= PLAN_CAL_END_MIN; m += 60) {
+      timeLabels.push(`<div class="plan-cal-time" style="top:${((m - PLAN_CAL_START_MIN) / spanMin) * 100}%">${esc(formatPlanMinutes(m))}</div>`);
+    }
+
+    const cols = PLAN_DAY_COLUMNS.map(col => {
+      const blocks = timed.filter(({ parsed }) => parsed.days.includes(col.code)).map(({ item, parsed }) => {
+        const top = ((parsed.startMin - PLAN_CAL_START_MIN) / spanMin) * 100;
+        const height = Math.max(((parsed.endMin - parsed.startMin) / spanMin) * 100, 3.5);
+        const colors = courseColor[item.course_code];
+        const conflict = conflicts.has(item.id);
+        const c = lookupCourse(this.courseIndex, item.course_code);
+        const title = `${item.course_code} · Sec ${item.section}\n${parsed.raw}`;
+        return `
+          <button type="button" class="plan-block ${conflict ? 'is-conflict' : ''}" style="top:${top}%;height:${height}%;background:${colors.bg};border-color:${colors.border};color:${colors.text}" title="${esc(title)}" onclick="App.selectCourseFromTree('${esc(item.course_code)}')">
+            <span class="plan-block-code">${esc(item.course_code)}</span>
+            <span class="plan-block-sec">Sec ${esc(item.section)}</span>
+            <span class="plan-block-time">${esc(formatPlanMinutes(parsed.startMin))}–${esc(formatPlanMinutes(parsed.endMin))}</span>
+            ${conflict ? '<span class="plan-block-warn" aria-label="Time conflict">!</span>' : ''}
+          </button>`;
+      }).join('');
+      return `
+        <div class="plan-cal-col">
+          <div class="plan-cal-col-head">${esc(col.label)}</div>
+          <div class="plan-cal-col-body">${blocks}</div>
+        </div>`;
+    }).join('');
+
+    const tbaHtml = tba.length ? `
+      <section class="plan-tba" aria-label="Courses without listed times">
+        <h3 class="plan-tba-title">No time listed</h3>
+        <div class="plan-tba-list">
+          ${tba.map(({ item, parsed }) => {
+            const c = lookupCourse(this.courseIndex, item.course_code);
+            const days = parsed.days.length ? parsed.days.join('') : '';
+            return `
+              <div class="plan-tba-row">
+                <button type="button" class="plan-tba-main" onclick="App.selectCourseFromTree('${esc(item.course_code)}')">
+                  <span class="plan-tba-code">${esc(item.course_code)}</span>
+                  <span class="plan-tba-name">${esc(c ? c.course_name : '')}</span>
+                  <span class="plan-tba-meta">Sec ${esc(item.section)}${days ? ' · ' + esc(days) : ''}${item.campus ? ' · ' + esc(item.campus) : ''}</span>
+                </button>
+                <button type="button" class="plan-tba-remove" data-action="plan-remove" data-plan-id="${esc(item.id)}" aria-label="Remove from plan">Remove</button>
+              </div>`;
+          }).join('')}
+        </div>
+      </section>` : '';
+
+    if (!items.length) {
+      return `
+        <div class="plan-empty">
+          <div class="plan-empty-icon">${this._iconCalendar()}</div>
+          <div class="plan-empty-title">Your schedule is empty</div>
+          <div class="plan-empty-hint">Open a course and tap <strong>+ Plan</strong> on a section row, or use <strong>Add to plan</strong> on the course card.</div>
+        </div>`;
+    }
+
+    return `
+      <div class="plan-cal-wrap">
+        <div class="plan-cal">
+          <div class="plan-cal-axis">
+            <div class="plan-cal-axis-head"></div>
+            <div class="plan-cal-axis-body">${timeLabels.join('')}</div>
+          </div>
+          ${cols}
+        </div>
+      </div>
+      ${tbaHtml}`;
+  },
+
+  _renderPlanList(items, conflicts) {
+    if (!items.length) return '';
+    return `
+      <section class="plan-list" aria-label="Planned courses">
+        <h3 class="plan-list-title">Course list</h3>
+        <div class="plan-list-rows">
+          ${items.map(item => {
+            const c = lookupCourse(this.courseIndex, item.course_code);
+            const conflict = conflicts.has(item.id);
+            return `
+              <div class="plan-list-row ${conflict ? 'is-conflict' : ''}">
+                <button type="button" class="plan-list-main" onclick="App.selectCourseFromTree('${esc(item.course_code)}')">
+                  <span class="plan-list-code">${esc(item.course_code)}</span>
+                  <span class="plan-list-body">
+                    <span class="plan-list-name">${esc(c ? c.course_name : '')}</span>
+                    <span class="plan-list-meta">Sec ${esc(item.section)} · ${esc(item.days_times || 'TBA')}${item.campus ? ' · ' + esc(item.campus) : ''}${c && c.units ? ' · ' + c.units + 'u' : ''}${conflict ? ' · Time conflict' : ''}</span>
+                  </span>
+                </button>
+                <button type="button" class="plan-list-remove" data-action="plan-remove" data-plan-id="${esc(item.id)}" aria-label="Remove from plan">Remove</button>
+              </div>`;
+          }).join('')}
+        </div>
+      </section>`;
+  },
+
+  showPlanView() {
+    if (!isStudent(this.profile)) return;
+    this._homeView = 'plan';
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+
+    const items = this._getPlanItemsForSemester(this.activeSemester);
+    const conflicts = findPlanConflicts(items);
+    const units = this._planUnitsTotal(items);
+    const semLabel = semesterLabel(this.activeSemester);
+    const conflictPairs = countPlanConflictPairs(items);
+    const conflictNote = conflictPairs
+      ? `<span class="plan-stat plan-stat-warn">${conflictPairs} time conflict${conflictPairs === 1 ? '' : 's'}</span>`
+      : '';
+
+    el.innerHTML = `
+      <div class="plan-view">
+        <div class="plan-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
+          <div class="plan-title-row">
+            <h2 class="plan-title">Your schedule</h2>
+            <span class="plan-sem">${esc(semLabel)}</span>
+          </div>
+          <p class="plan-lead">Add sections from course cards to see them on a weekly calendar. Change semester with the navbar filter.</p>
+          <div class="plan-stats">
+            <span class="plan-stat">${items.length} course${items.length === 1 ? '' : 's'}</span>
+            <span class="plan-stat">${units || 0} units</span>
+            ${conflictNote}
+          </div>
+        </div>
+        ${this._renderPlanCalendar(items, conflicts)}
+        ${this._renderPlanList(items, conflicts)}
+      </div>
+    `;
+    this._syncDirectoryFabLayout();
   },
 
   async showStudentFlagsView() {

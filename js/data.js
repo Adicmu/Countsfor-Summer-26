@@ -677,6 +677,114 @@ function courseHasMatchingOffering(course, filters) {
   return filterOfferings(all, filters).length > 0;
 }
 
+// ── Schedule planning helpers ────────────────────────────────
+const PLAN_DAY_COLUMNS = [
+  { code: 'U', label: 'Sun' },
+  { code: 'M', label: 'Mon' },
+  { code: 'T', label: 'Tue' },
+  { code: 'W', label: 'Wed' },
+  { code: 'R', label: 'Thu' },
+  { code: 'F', label: 'Fri' },
+];
+
+const PLAN_CAL_START_MIN = 7 * 60;   // 7:00 AM
+const PLAN_CAL_END_MIN = 22 * 60;    // 10:00 PM
+
+function parseTimeToMinutes(hour, minute, meridiem) {
+  let h = Number(hour);
+  const m = Number(minute);
+  const ampm = (meridiem || '').toUpperCase();
+  if (ampm === 'PM' && h < 12) h += 12;
+  if (ampm === 'AM' && h === 12) h = 0;
+  return h * 60 + m;
+}
+
+function formatPlanMinutes(totalMin) {
+  if (totalMin == null || Number.isNaN(totalMin)) return '';
+  let h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  if (h > 12) h -= 12;
+  if (h === 0) h = 12;
+  return `${h}:${String(m).padStart(2, '0')} ${ampm}`;
+}
+
+/**
+ * Parse CMU-style days_times strings, e.g. "UTR 08:30AM-09:45AM".
+ * Day letters: U=Sun, M=Mon, T=Tue, W=Wed, R=Thu, F=Fri.
+ */
+function parseDaysTimes(raw) {
+  const text = (raw || '').trim();
+  if (!text || text === 'TBA') {
+    return { parseable: false, days: [], startMin: null, endMin: null, raw: text || 'TBA' };
+  }
+  const full = text.match(/^([UMTWRF]+)\s+(\d{1,2}):(\d{2})\s*(AM|PM)\s*-\s*(\d{1,2}):(\d{2})\s*(AM|PM)/i);
+  if (full) {
+    return {
+      parseable: true,
+      days: full[1].toUpperCase().split(''),
+      startMin: parseTimeToMinutes(full[2], full[3], full[4]),
+      endMin: parseTimeToMinutes(full[5], full[6], full[7]),
+      raw: text,
+    };
+  }
+  const daysOnly = text.match(/^([UMTWRF]+)$/i);
+  if (daysOnly) {
+    return {
+      parseable: false,
+      days: daysOnly[1].toUpperCase().split(''),
+      startMin: null,
+      endMin: null,
+      raw: text,
+    };
+  }
+  return { parseable: false, days: [], startMin: null, endMin: null, raw: text };
+}
+
+function planOfferingKey(courseCode, offering) {
+  const o = offering || {};
+  return [
+    courseCode || '',
+    o.semester_code || '',
+    o.section || '',
+    o.campus || '',
+  ].join('::');
+}
+
+function planEntriesOverlap(a, b) {
+  if (!a || !b) return false;
+  if (a.semester_code !== b.semester_code) return false;
+  const pa = parseDaysTimes(a.days_times);
+  const pb = parseDaysTimes(b.days_times);
+  if (!pa.parseable || !pb.parseable) return false;
+  const sharedDays = pa.days.filter(d => pb.days.includes(d));
+  if (!sharedDays.length) return false;
+  return pa.startMin < pb.endMin && pb.startMin < pa.endMin;
+}
+
+function findPlanConflicts(items) {
+  const conflicts = new Set();
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      if (planEntriesOverlap(items[i], items[j])) {
+        conflicts.add(items[i].id);
+        conflicts.add(items[j].id);
+      }
+    }
+  }
+  return conflicts;
+}
+
+function countPlanConflictPairs(items) {
+  let pairs = 0;
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      if (planEntriesOverlap(items[i], items[j])) pairs++;
+    }
+  }
+  return pairs;
+}
+
 // ── Minor course lists (T5) ──────────────────────────────────
 function courseCountsForMinor(course, minorCode, minorCourseList) {
   if (!minorCode || !course) return false;

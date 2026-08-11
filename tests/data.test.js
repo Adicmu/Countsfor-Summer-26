@@ -324,3 +324,37 @@ test('courseHasMatchingOffering: semester filter excludes other terms', () => {
   assertEqual(courseHasMatchingOffering(course, { semesterCode: 'M26', locationFilter: 'all', modalityFilter: 'all' }), false);
   assertEqual(courseHasMatchingOffering(course, { locationFilter: 'all', modalityFilter: 'all' }), true);
 });
+
+// ── Schedule planning helpers ────────────────────────────────
+
+test('parseDaysTimes: parses CMU-style meeting strings', () => {
+  const parsed = parseDaysTimes('UTR 08:30AM-09:45AM');
+  assertEqual(parsed.parseable, true);
+  assertEqual(parsed.days.join(''), 'UTR');
+  assertEqual(parsed.startMin, 8 * 60 + 30);
+  assertEqual(parsed.endMin, 9 * 60 + 45);
+});
+
+test('parseDaysTimes: TBA and days-only strings are not timed', () => {
+  assertEqual(parseDaysTimes('TBA').parseable, false);
+  const daysOnly = parseDaysTimes('MWF');
+  assertEqual(daysOnly.parseable, false);
+  assertEqual(daysOnly.days.join(''), 'MWF');
+});
+
+test('planEntriesOverlap: detects same-day time overlap in one semester', () => {
+  const a = { semester_code: 'F26', days_times: 'UTR 08:30AM-09:45AM' };
+  const b = { semester_code: 'F26', days_times: 'UTR 09:00AM-10:15AM' };
+  const c = { semester_code: 'F26', days_times: 'MWF 08:30AM-09:45AM' };
+  assertEqual(planEntriesOverlap(a, b), true);
+  assertEqual(planEntriesOverlap(a, c), false);
+});
+
+test('countPlanConflictPairs: counts unique overlapping pairs', () => {
+  const items = [
+    { id: 'a', semester_code: 'F26', days_times: 'UTR 08:30AM-09:45AM' },
+    { id: 'b', semester_code: 'F26', days_times: 'UTR 09:00AM-10:15AM' },
+    { id: 'c', semester_code: 'F26', days_times: 'MWF 08:30AM-09:45AM' },
+  ];
+  assertEqual(countPlanConflictPairs(items), 1);
+});
