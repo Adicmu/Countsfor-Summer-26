@@ -97,6 +97,7 @@ def parse_courses(html, dept_code, dept_name):
     all_tds = re.findall(r'<td[^>]*>(.*?)</td>', html, re.DOTALL)
 
     current_course = None
+    last_section = None
     for i in range(0, len(all_tds) - 9, 10):
         cells = [re.sub(r'<[^>]+>', '', t).replace('&nbsp;', '').strip()
                  for t in all_tds[i:i + 10]]
@@ -111,10 +112,22 @@ def parse_courses(html, dept_code, dept_name):
                 'sections': []
             }
             courses.append(current_course)
+            last_section = None
 
-        if current_course and sec:
+        if not current_course:
+            continue
+
+        sec = (sec or '').strip()
+        has_schedule = bool(days or begin or end)
+        if sec:
+            last_section = sec
+
+        effective_sec = sec or last_section
+        # SOC continuation rows leave section blank but repeat meeting times
+        # for the same section (e.g. W meets MW and UT at different hours).
+        if effective_sec and (sec or has_schedule):
             current_course['sections'].append({
-                'section': sec, 'mini': mini, 'days': days,
+                'section': effective_sec, 'mini': mini, 'days': days,
                 'begin_time': begin, 'end_time': end,
                 'location': location, 'delivery_mode': delivery
             })

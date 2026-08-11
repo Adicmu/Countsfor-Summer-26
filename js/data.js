@@ -748,6 +748,7 @@ function planOfferingKey(courseCode, offering) {
     o.semester_code || '',
     o.section || '',
     o.campus || '',
+    o.days_times || '',
   ].join('::');
 }
 
