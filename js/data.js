@@ -752,6 +752,51 @@ function planOfferingKey(courseCode, offering) {
   ].join('::');
 }
 
+/** Groups offerings that share section + campus + semester (multi-meeting sections). */
+function planSectionKey(courseCode, offering) {
+  const o = offering || {};
+  return [
+    courseCode || '',
+    o.semester_code || '',
+    o.section || '',
+    o.campus || '',
+  ].join('::');
+}
+
+function offeringDaysTimes(o) {
+  if (!o) return 'TBA';
+  if (o.days_times && o.days_times !== 'TBA') return o.days_times;
+  if (o.begin_time && o.begin_time !== 'TBA' && o.end_time) {
+    return `${o.days || 'TBA'} ${o.begin_time}-${o.end_time}`;
+  }
+  return 'TBA';
+}
+
+function groupOfferingsBySection(offerings) {
+  const groups = [];
+  const index = new Map();
+  for (const o of offerings || []) {
+    const key = [
+      o.semester_code || '',
+      o.section || '',
+      o.campus || '',
+    ].join('::');
+    if (!index.has(key)) {
+      const g = {
+        semester_code: o.semester_code,
+        section: o.section,
+        campus: o.campus,
+        modality: o.modality || o.delivery_mode || '',
+        meetings: [],
+      };
+      index.set(key, g);
+      groups.push(g);
+    }
+    index.get(key).meetings.push(o);
+  }
+  return groups;
+}
+
 function planEntriesOverlap(a, b) {
   if (!a || !b) return false;
   if (a.semester_code !== b.semester_code) return false;

@@ -4035,6 +4035,22 @@ body.is-resizing-panels * {
   align-items: center;
   gap: 6px;
 }
+.cc-kv-sched-group .cc-v {
+  align-items: flex-start;
+}
+.cc-sched-meetings {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.cc-sched-meeting {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: var(--text-primary);
+}
 .cc-plan-btn {
   margin-left: auto;
   padding: 2px 8px;

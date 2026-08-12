@@ -358,3 +358,15 @@ test('countPlanConflictPairs: counts unique overlapping pairs', () => {
   ];
   assertEqual(countPlanConflictPairs(items), 1);
 });
+
+test('groupOfferingsBySection: merges multi-meeting rows under one section', () => {
+  const offerings = [
+    { semester_code: 'F26', section: 'W', campus: 'Qatar', days_times: 'MW 10:00AM-10:50AM' },
+    { semester_code: 'F26', section: 'W', campus: 'Qatar', days_times: 'UT 10:00AM-11:15AM' },
+    { semester_code: 'F26', section: 'A', campus: 'Qatar', days_times: 'TR 09:00AM-09:50AM' },
+  ];
+  const groups = groupOfferingsBySection(offerings);
+  assertEqual(groups.length, 2);
+  assertEqual(groups[0].section, 'W');
+  assertEqual(groups[0].meetings.length, 2);
+});
