@@ -8,6 +8,13 @@ Scrapes each (semester, department) once per configured campus, then merges
 courses that appear at multiple campuses. Each section is tagged with its
 campus; each course's `campus` field lists every campus it runs at.
 
+Continuation rows: SOC often lists extra meeting times on rows with a blank
+section cell (same section, different days/times). parse_courses() inherits
+the previous section letter for those rows.
+
+Scheduled daily via .github/workflows/scrape.yml on Adicmu/main:
+  scrape_soc.py → reconcile_offerings.py → mapping overlays → validate → commit → Pages
+
 Output structure:
 {
   "metadata": {...},

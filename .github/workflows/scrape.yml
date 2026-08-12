@@ -4,13 +4,20 @@ on:
   schedule:
     # Daily at 12:00 UTC (~3pm Qatar / ~7am US East)
     - cron: '0 12 * * *'
-    # Extra runs during typical registration months (valid GitHub cron only)
+    # Weekday morning run during registration season
     - cron: '0 6 * * 1-5'
   workflow_dispatch:
 
+# Full scrape + reconcile can run 30–90 minutes on CI.
+concurrency:
+  group: soc-scrape-${{ github.repository }}
+  cancel-in-progress: false
+
 jobs:
   scrape:
+    if: github.repository == 'Adicmu/Countsfor-Summer-26'
     runs-on: ubuntu-latest
+    timeout-minutes: 120
     permissions:
       contents: write
       actions: write
@@ -24,6 +31,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Run SOC parser tests
+        run: python -m pytest data/tests/test_scrape_soc.py data/tests/test_soc_parse.py -q
+
       - name: Run SOC scraper
         run: python data/scrape_soc.py
 
@@ -36,12 +46,15 @@ jobs:
       - name: Validate SOC coverage in CountsFor catalog
         run: python data/validate_soc_coverage.py
 
+      - name: Bump frontend cache tag for fresh courses.json
+        run: python scripts/bump_cf_build.py
+
       - name: Commit data if it changed
         id: commit
         run: |
           git config user.name  "soc-bot"
           git config user.email "soc-bot@users.noreply.github.com"
-          git add data/soc.json data/courses.json data_all_courses.json
+          git add data/soc.json data/courses.json data_all_courses.json app.html
           if git diff --staged --quiet; then
             echo "No changes — nothing to commit."
             echo "pushed=false" >> "$GITHUB_OUTPUT"
@@ -51,7 +64,7 @@ jobs:
             echo "pushed=true" >> "$GITHUB_OUTPUT"
           fi
 
-      # SOC bot pushes do not trigger pages.yml; redeploy explicitly on Adicmu only.
+      # SOC bot pushes do not trigger pages.yml; redeploy explicitly.
       - name: Deploy updated data to GitHub Pages
         if: steps.commit.outputs.pushed == 'true'
         env:
