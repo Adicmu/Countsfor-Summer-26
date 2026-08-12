@@ -16,6 +16,7 @@ from soc_parse import (  # noqa: E402
     code_to_course_number,
     course_number_to_code,
     normalize_course_code,
+    parse_soc_units,
     titles_match,
 )
 
@@ -90,7 +91,10 @@ def resolve_catalog_soc_offerings(
     course["course_name"] = soc_title
     course.pop("soc_title", None)
     units_raw = (meta or {}).get("units")
-    if units_raw is not None:
+    parsed_units = parse_soc_units(units_raw)
+    if parsed_units is not None:
+        course["units"] = parsed_units
+    elif units_raw is not None:
         try:
             course["units"] = int(units_raw) if str(units_raw).isdigit() else course.get("units")
         except (TypeError, ValueError):
@@ -98,7 +102,7 @@ def resolve_catalog_soc_offerings(
     return offerings
 
 
-def reconcile_course(course: dict, offerings: list[dict]) -> None:
+def reconcile_course(course: dict, offerings: list[dict], meta: dict | None = None) -> None:
     qatar, pitts = campus_flags_from_offerings(offerings)
     forced = apply_campus_fix(
         code_to_course_number(course.get("course_code", "")),
@@ -109,6 +113,11 @@ def reconcile_course(course: dict, offerings: list[dict]) -> None:
         qatar, pitts = True, False
     elif forced == "Pittsburgh":
         qatar, pitts = False, True
+
+    if meta:
+        parsed_units = parse_soc_units(meta.get("units"))
+        if parsed_units is not None:
+            course["units"] = parsed_units
 
     course["offerings"] = offerings
     course["offered_qatar"] = qatar
@@ -137,10 +146,12 @@ def stub_course_from_soc(code: str, offerings: list[dict], meta: dict | None = N
     """Minimal course row for SOC-only courses not yet in the catalog."""
     prefix = code.split("-")[0]
     units_raw = (meta or {}).get("units") or (offerings[0].get("units") if offerings else "")
-    try:
-        units = int(units_raw) if str(units_raw).isdigit() else 0
-    except (TypeError, ValueError):
-        units = 0
+    units = parse_soc_units(units_raw)
+    if units is None:
+        try:
+            units = int(units_raw) if str(units_raw).isdigit() else 0
+        except (TypeError, ValueError):
+            units = 0
     title = (meta or {}).get("title") or code
     sem_codes = sorted({o.get("semester_code") for o in offerings if o.get("semester_code")})
     course = {
@@ -160,7 +171,7 @@ def stub_course_from_soc(code: str, offerings: list[dict], meta: dict | None = N
         "soc_department": (meta or {}).get("department"),
         "soc_ingested": True,
     }
-    reconcile_course(course, offerings)
+    reconcile_course(course, offerings, meta)
     return course
 
 
@@ -187,7 +198,7 @@ def reconcile_file(courses_path: str, soc_path: str) -> dict:
         meta = meta_by_code.get(code)
         resolved_offs = resolve_catalog_soc_offerings(course, offs, meta)
         old_q, old_p = course.get("offered_qatar"), course.get("offered_pitts")
-        reconcile_course(course, resolved_offs)
+        reconcile_course(course, resolved_offs, meta)
         if (
             course.get("offerings") != resolved_offs
             or course.get("offered_qatar") != old_q

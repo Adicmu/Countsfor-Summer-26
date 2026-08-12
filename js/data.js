@@ -831,6 +831,39 @@ function countPlanConflictPairs(items) {
   return pairs;
 }
 
+function planBlocksTimeOverlap(a, b) {
+  const pa = a.parsed || a;
+  const pb = b.parsed || b;
+  if (!pa || !pb || pa.startMin == null || pb.startMin == null) return false;
+  return pa.startMin < pb.endMin && pb.startMin < pa.endMin;
+}
+
+/** Side-by-side column layout for overlapping blocks on one calendar day. */
+function layoutPlanDayBlocks(entries) {
+  if (!entries || !entries.length) return [];
+
+  const sorted = entries.slice().sort(
+    (a, b) => a.parsed.startMin - b.parsed.startMin || a.parsed.endMin - b.parsed.endMin
+  );
+
+  const colEnds = [];
+  const withCol = sorted.map(entry => {
+    let col = colEnds.findIndex(end => end <= entry.parsed.startMin);
+    if (col === -1) {
+      col = colEnds.length;
+      colEnds.push(0);
+    }
+    colEnds[col] = entry.parsed.endMin;
+    return { ...entry, col };
+  });
+
+  return withCol.map(entry => {
+    const overlapping = withCol.filter(other => planBlocksTimeOverlap(entry, other));
+    const totalCols = Math.max(...overlapping.map(o => o.col)) + 1;
+    return { ...entry, totalCols };
+  });
+}
+
 // ── Minor course lists (T5) ──────────────────────────────────
 function courseCountsForMinor(course, minorCode, minorCourseList) {
   if (!minorCode || !course) return false;

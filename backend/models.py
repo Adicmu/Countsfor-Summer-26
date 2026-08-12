@@ -36,7 +36,8 @@ FLAG_STATUSES = ("pending", "reviewed", "resolved", "dismissed")
 
 VALID_DEPARTMENTS = (
     "Business Administration",
-    "Arts and Sciences",
+    "Mathematical and Physical Sciences (MPS)",
+    "Humanities and Social Sciences (H&SS)",
     "Biological Sciences",
     "Computer Science",
     "Information Systems",

@@ -105,6 +105,7 @@ def parse_courses(html, dept_code, dept_name):
 
     current_course = None
     last_section = None
+    last_section_row = None
     for i in range(0, len(all_tds) - 9, 10):
         cells = [re.sub(r'<[^>]+>', '', t).replace('&nbsp;', '').strip()
                  for t in all_tds[i:i + 10]]
@@ -120,6 +121,7 @@ def parse_courses(html, dept_code, dept_name):
             }
             courses.append(current_course)
             last_section = None
+            last_section_row = None
 
         if not current_course:
             continue
@@ -133,11 +135,17 @@ def parse_courses(html, dept_code, dept_name):
         # SOC continuation rows leave section blank but repeat meeting times
         # for the same section (e.g. W meets MW and UT at different hours).
         if effective_sec and (sec or has_schedule):
-            current_course['sections'].append({
+            if not location and last_section_row:
+                location = last_section_row.get('location') or location
+            if not delivery and last_section_row:
+                delivery = last_section_row.get('delivery_mode') or delivery
+            row = {
                 'section': effective_sec, 'mini': mini, 'days': days,
                 'begin_time': begin, 'end_time': end,
                 'location': location, 'delivery_mode': delivery
-            })
+            }
+            current_course['sections'].append(row)
+            last_section_row = row
     return courses
 
 

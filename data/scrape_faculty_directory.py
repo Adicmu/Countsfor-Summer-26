@@ -50,6 +50,22 @@ AREA_HEAD_RE = re.compile(
     re.I,
 )
 
+MPS_TITLE_RE = re.compile(
+    r"\b(mathematical sciences?|physics|chemistry|statistics(?: and data science)?|data science)\b",
+    re.I,
+)
+
+MPS = "Mathematical and Physical Sciences (MPS)"
+HSS = "Humanities and Social Sciences (H&SS)"
+
+
+def normalize_department(department: str, titles: str = "") -> str:
+    """Map legacy Arts & Sciences taxonomy to MPS or H&SS from job titles."""
+    dept = (department or "").strip()
+    if dept.lower() in ("arts and sciences", "arts & sciences"):
+        return MPS if MPS_TITLE_RE.search(titles or "") else HSS
+    return dept
+
 
 def dept_to_program(dept_names: list[str] | str | None) -> str | None:
     if not dept_names:
@@ -131,8 +147,8 @@ def scrape_cmuq_faculty() -> list[dict]:
             dept_raw = tax.get("department-names") or []
             if isinstance(dept_raw, str):
                 dept_raw = [dept_raw]
-            department = dept_raw[0] if dept_raw else ""
             titles = (info.get("titles") or hit.get("titles") or "").strip()
+            department = normalize_department(dept_raw[0] if dept_raw else "", titles)
             program = dept_to_program(dept_raw) or "CS"
 
             rows.append({

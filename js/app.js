@@ -3756,11 +3756,10 @@ const App = {
   _sectionMeetingsForPlan(courseCode, semesterCode, section, campus) {
     const course = lookupCourse(this.courseIndex, courseCode);
     if (!course) return [];
-    const params = this._filterParams();
-    return filterOfferings(getCourseOfferings(course), params).filter(o =>
-      (o.section || '') === (section || '')
+    return getCourseOfferings(course).filter(o =>
+      (o.semester_code || this.activeSemester) === semesterCode
+      && (o.section || '') === (section || '')
       && (o.campus || '') === (campus || '')
-      && (o.semester_code || params.semesterCode) === semesterCode
     );
   },
 
@@ -3807,12 +3806,12 @@ const App = {
 
   _planBlockPalette() {
     return [
-      { bg: 'rgba(196,18,48,0.14)', border: 'rgba(196,18,48,0.45)', text: 'var(--cmu-red)' },
-      { bg: 'rgba(37,99,235,0.12)', border: 'rgba(37,99,235,0.4)', text: '#2563EB' },
-      { bg: 'rgba(5,150,105,0.12)', border: 'rgba(5,150,105,0.4)', text: 'var(--major-bs-text)' },
-      { bg: 'rgba(217,119,6,0.12)', border: 'rgba(217,119,6,0.42)', text: 'var(--major-is-text)' },
-      { bg: 'rgba(124,58,237,0.12)', border: 'rgba(124,58,237,0.4)', text: '#7C3AED' },
-      { bg: 'rgba(14,116,144,0.12)', border: 'rgba(14,116,144,0.4)', text: '#0E7490' },
+      { bg: '#FECDD3', border: '#C41230', text: '#7F1024' },
+      { bg: '#BFDBFE', border: '#2563EB', text: '#1E3A8A' },
+      { bg: '#A7F3D0', border: '#059669', text: '#065F46' },
+      { bg: '#FDE68A', border: '#D97706', text: '#92400E' },
+      { bg: '#DDD6FE', border: '#7C3AED', text: '#5B21B6' },
+      { bg: '#A5F3FC', border: '#0891B2', text: '#155E75' },
     ];
   },
 
@@ -3955,19 +3954,27 @@ const App = {
     }
 
     const cols = PLAN_DAY_COLUMNS.map(col => {
-      const blocks = timed.filter(({ parsed }) => parsed.days.includes(col.code)).map(({ item, parsed }) => {
-        const top = ((parsed.startMin - PLAN_CAL_START_MIN) / spanMin) * 100;
-        const height = Math.max(((parsed.endMin - parsed.startMin) / spanMin) * 100, 3.5);
+      const dayEntries = timed
+        .filter(({ parsed }) => parsed.days.includes(col.code))
+        .map(({ item, parsed }) => ({
+          item,
+          parsed,
+          top: ((parsed.startMin - PLAN_CAL_START_MIN) / spanMin) * 100,
+          height: Math.max(((parsed.endMin - parsed.startMin) / spanMin) * 100, 3.5),
+        }));
+      const laid = layoutPlanDayBlocks(dayEntries);
+      const blocks = laid.map(({ item, parsed, top, height, col, totalCols }) => {
+        const widthPct = 100 / totalCols;
+        const leftPct = col * widthPct;
+        const inset = totalCols > 1 ? 1 : 2;
         const colors = courseColor[item.course_code];
-        const conflict = conflicts.has(item.id);
         const c = lookupCourse(this.courseIndex, item.course_code);
         const title = `${item.course_code} · Sec ${item.section}\n${parsed.raw}`;
         return `
-          <button type="button" class="plan-block ${conflict ? 'is-conflict' : ''}" style="top:${top}%;height:${height}%;background:${colors.bg};border-color:${colors.border};color:${colors.text}" title="${esc(title)}" onclick="App.selectCourseFromTree('${esc(item.course_code)}')">
+          <button type="button" class="plan-block" style="top:${top}%;height:${height}%;left:calc(${leftPct}% + ${inset}px);width:calc(${widthPct}% - ${inset * 2}px);background:${colors.bg};border-color:${colors.border};color:${colors.text}" title="${esc(title)}" onclick="App.selectCourseFromTree('${esc(item.course_code)}')">
             <span class="plan-block-code">${esc(item.course_code)}</span>
             <span class="plan-block-sec">Sec ${esc(item.section)}</span>
             <span class="plan-block-time">${esc(formatPlanMinutes(parsed.startMin))}–${esc(formatPlanMinutes(parsed.endMin))}</span>
-            ${conflict ? '<span class="plan-block-warn" aria-label="Time conflict">!</span>' : ''}
           </button>`;
       }).join('');
       return `

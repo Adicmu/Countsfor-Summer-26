@@ -29,7 +29,8 @@ const PROGRAM_FULL_NAME = PROGRAM_GROUPS.reduce((acc, p) => { acc[p.id] = p.labe
 /** CMU-Q departments for faculty/admin profiles (not student majors). */
 const DEPARTMENT_LIST = [
   'Business Administration',
-  'Arts and Sciences',
+  'Mathematical and Physical Sciences (MPS)',
+  'Humanities and Social Sciences (H&SS)',
   'Biological Sciences',
   'Computer Science',
   'Information Systems',

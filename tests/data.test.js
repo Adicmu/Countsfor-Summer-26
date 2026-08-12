@@ -370,3 +370,26 @@ test('groupOfferingsBySection: merges multi-meeting rows under one section', () 
   assertEqual(groups[0].section, 'W');
   assertEqual(groups[0].meetings.length, 2);
 });
+
+test('layoutPlanDayBlocks: places overlapping blocks side by side', () => {
+  const a = { item: { id: 'a' }, parsed: { startMin: 600, endMin: 675 } };
+  const b = { item: { id: 'b' }, parsed: { startMin: 630, endMin: 705 } };
+  const c = { item: { id: 'c' }, parsed: { startMin: 720, endMin: 795 } };
+  const laid = layoutPlanDayBlocks([a, b, c]);
+  const la = laid.find(x => x.item.id === 'a');
+  const lb = laid.find(x => x.item.id === 'b');
+  const lc = laid.find(x => x.item.id === 'c');
+  assertEqual(la.totalCols, 2);
+  assertEqual(lb.totalCols, 2);
+  assertEqual(la.col === lb.col, false);
+  assertEqual(lc.totalCols, 1);
+  assertEqual(lc.col, 0);
+});
+
+test('layoutPlanDayBlocks: non-overlapping blocks use full width', () => {
+  const a = { item: { id: 'a' }, parsed: { startMin: 600, endMin: 650 } };
+  const b = { item: { id: 'b' }, parsed: { startMin: 660, endMin: 710 } };
+  const laid = layoutPlanDayBlocks([a, b]);
+  assertEqual(laid[0].totalCols, 1);
+  assertEqual(laid[1].totalCols, 1);
+});

@@ -72,6 +72,15 @@ def test_titles_mismatch_reused_number():
     )
 
 
+def test_parse_soc_units_variants():
+    from soc_parse import parse_soc_units
+
+    assert parse_soc_units("10") == 10
+    assert parse_soc_units("12.0") == 12
+    assert parse_soc_units("1-3") == 1
+    assert parse_soc_units("") is None
+
+
 def test_titles_match_soc_subtitle_suffix():
     from soc_parse import titles_match
 
