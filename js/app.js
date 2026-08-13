@@ -2490,8 +2490,6 @@ const App = {
           </div>`);
       }
 
-      }
-
       if (this.authMode === 'authed') {
         const st = this._studentFlagsState;
         if (st && st.loaded && (st.items || []).length) {
