@@ -1391,7 +1391,6 @@ const App = {
             </div>
           </div>
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
-          ${(canManageDirectory(this.profile) && this.authMode === 'authed') ? '<button type="button" class="nav-admin nav-directory" onclick="App.toggleDirectoryPanel()" title="Faculty directory">📋 Directory</button>' : ''}
           ${canManageUsers(this.authedUser) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
           ${(canFlagCourses(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review and resolve course flags">Flag review</button>' : ''}
           ${(isFaculty(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showStudentFavorites()" title="View student saved courses and notes">Student favorites</button>' : ''}
@@ -1683,10 +1682,8 @@ const App = {
     const sel = document.getElementById('semesterSelect');
     if (!sel) return;
     const opts = availableSemesterOptions(this.courses, this.activeSemester);
-    // If the active semester has no data at all, fall back to the first one that does
-    // rather than leaving the user on a filter that matches nothing.
-    if (!opts.some(s => s.code === this.activeSemester) && opts.length) {
-      this.activeSemester = opts[0].code;
+    if (this.activeSemester !== 'all' && !opts.some(s => s.code === this.activeSemester) && opts.length) {
+      this.activeSemester = opts[1]?.code || opts[0].code;
     }
     sel.innerHTML = opts
       .map(s => `<option value="${s.code}" ${this.activeSemester === s.code ? 'selected' : ''}>${esc(s.label)}</option>`)
@@ -1712,20 +1709,13 @@ const App = {
     return parts;
   },
 
-  // Search uses campus + modality only — not semester (catalog courses may lack F26 sections)
-  _searchFilterParams() {
-    return {
-      locationFilter: this.locationFilter,
-      modalityFilter: this.modalityFilter,
-    };
-  },
-
+  // Search respects semester + campus + modality (same as requirement tree).
   coursePassesSearchFilter(course) {
     if (!course) return false;
-    return courseHasMatchingOffering(course, this._searchFilterParams());
+    return courseHasMatchingOffering(course, this._filterParams());
   },
 
-  /** Requirement tree respects semester + campus + modality; search does not use semester. */
+  /** Requirement tree respects semester + campus + modality. */
   coursePassesTreeFilter(course) {
     if (!course) return false;
     return courseHasMatchingOffering(course, this._filterParams());
@@ -1909,7 +1899,7 @@ const App = {
       return false;
     });
 
-    // Campus/modality only — semester filter does not apply to search
+    // Semester + campus + modality
     results = results.filter(c => App.coursePassesSearchFilter(c));
     results = App._rankCourseCodeResults(results, q);
     results = App._ensureExactCourseInResults(results, raw);
@@ -2380,6 +2370,7 @@ const App = {
     }
 
     // Async pass: upgrade in place when real peer data arrives.
+    if (semester === 'all') return;
     const r = await apiGetPopularCourses(program, semester, limit);
     if (!r.ok || !r.data || !Array.isArray(r.data.items) || !r.data.items.length) return;
     // Stale-response guards: user may have switched semester or left home.
@@ -2454,7 +2445,7 @@ const App = {
               <button type="button" class="home-primary-btn" onclick="App.enterExplorer('${browseMajor}')" title="Browse ${browseSub}">
                 <span>Browse ${browseSub}</span>
               </button>
-              ${isStudent(this.profile) ? `
+              ${canUseSchedulePlan(this.profile) ? `
               <button type="button" class="home-ghost-btn" onclick="App.showPlanView()" title="Build a weekly schedule from course sections">
                 ${this._iconCalendar()}
                 <span>Plan your schedule</span>
@@ -2499,6 +2490,27 @@ const App = {
           </div>`);
       }
 
+      }
+
+      if (this.authMode === 'authed') {
+        const st = this._studentFlagsState;
+        if (st && st.loaded && (st.items || []).length) {
+          const flags = st.items;
+          const items = flags.map(f =>
+            `<button type="button" class="home-dock-item" onclick="App.showStudentFlagsView()">${esc(f.course_code)}</button>`
+          ).join('');
+          pills.push(`
+            <div class="home-dock-pill" data-dock="flagged">
+              <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('flagged')">
+                <span aria-hidden="true">⚑</span> <span>Flagged ${flags.length}</span>
+              </button>
+              <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showStudentFlagsView()">View all</button></div>
+            </div>`);
+        }
+      }
+    }
+
+    if (canUseSchedulePlan(this.profile)) {
       const planned = this._getPlanItemsForSemester(this.activeSemester);
       const sectionCount = this._countPlannedSections(this.activeSemester);
       if (sectionCount) {
@@ -2517,23 +2529,6 @@ const App = {
             </button>
             <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showPlanView()">Open schedule</button></div>
           </div>`);
-      }
-
-      if (this.authMode === 'authed') {
-        const st = this._studentFlagsState;
-        if (st && st.loaded && (st.items || []).length) {
-          const flags = st.items;
-          const items = flags.map(f =>
-            `<button type="button" class="home-dock-item" onclick="App.showStudentFlagsView()">${esc(f.course_code)}</button>`
-          ).join('');
-          pills.push(`
-            <div class="home-dock-pill" data-dock="flagged">
-              <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('flagged')">
-                <span aria-hidden="true">⚑</span> <span>Flagged ${flags.length}</span>
-              </button>
-              <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showStudentFlagsView()">View all</button></div>
-            </div>`);
-        }
       }
     }
 
@@ -2645,7 +2640,7 @@ const App = {
   },
 
   _navbarPlanHtml() {
-    if (!isStudent(this.profile)) return '';
+    if (!canUseSchedulePlan(this.profile)) return '';
     const planned = this._getPlanItemsForSemester(this.activeSemester);
     const count = this._countPlannedSections(this.activeSemester);
     const units = this._planUnitsTotal(planned);
@@ -3103,7 +3098,7 @@ const App = {
       return `<span class="cc-sched-meeting">${esc(time)}</span>`;
     }).join('');
     let planBtn = '';
-    if (isStudent(this.profile) && courseCode) {
+    if (canUseSchedulePlan(this.profile) && courseCode) {
       const inPlan = this._isSectionGroupInPlan(courseCode, group);
       const sem = group.semester_code || this.activeSemester;
       planBtn = `<button type="button" class="cc-plan-btn ${inPlan ? 'is-planned' : ''}" data-action="plan-toggle-section" data-course-code="${esc(courseCode)}" data-semester-code="${esc(sem)}" data-section="${esc(group.section || '')}" data-campus="${esc(group.campus || '')}" title="${inPlan ? 'Remove section from schedule plan' : 'Add this section (all meeting times) to your schedule plan'}" aria-label="${inPlan ? 'Remove section from schedule plan' : 'Add section to schedule plan'}">${inPlan ? '✓ Planned' : '+ Plan'}</button>`;
@@ -3446,6 +3441,8 @@ const App = {
           ${saved ? this._iconBookmarkFilled() : this._iconBookmarkOutline()}
           <span>${saved ? 'Saved ✓' : 'Save course'}</span>
         </button>`);
+    }
+    if (canUseSchedulePlan(this.profile)) {
       const sections = filterOfferings(getCourseOfferings(course), this._filterParams());
       const grouped = groupOfferingsBySection(sections);
       const hasPlannedSection = grouped.some(g => this._isSectionGroupInPlan(course.course_code, g));
@@ -3532,6 +3529,7 @@ const App = {
 
   // ── Cross-linking ─────────────────────────────────────────
   selectCourseFromTree(code) {
+    this.closeDirectoryPanel();
     const course = lookupCourse(this.courseIndex, code);
     if (!course) return;
     this._selectCourse(course);
@@ -3714,14 +3712,14 @@ const App = {
   },
 
   // ══════════════════════════════════════════════════════════
-  // SCHEDULE PLAN (students only)
+  // SCHEDULE PLAN (students + faculty)
   // ══════════════════════════════════════════════════════════
   // Storage: localStorage['cf_plan'] = [{ id, course_code, semester_code, section, campus, days_times, modality }, ...]
 
   _normalizePlanItem(item) {
     const base = {
       course_code: item.course_code,
-      semester_code: item.semester_code || this.activeSemester,
+      semester_code: item.semester_code || (this.activeSemester !== 'all' ? this.activeSemester : ''),
       section: item.section || '',
       campus: item.campus || '',
       days_times: item.days_times || 'TBA',
@@ -3741,6 +3739,7 @@ const App = {
 
   _getPlanItemsForSemester(semesterCode) {
     const code = semesterCode || this.activeSemester;
+    if (!code || code === 'all') return this._getPlanItems();
     return this._getPlanItems().filter(i => i.semester_code === code);
   },
 
@@ -3816,7 +3815,7 @@ const App = {
   },
 
   addFirstSectionToPlan(courseCode) {
-    if (!isStudent(this.profile)) return;
+    if (!canUseSchedulePlan(this.profile)) return;
     const course = lookupCourse(this.courseIndex, courseCode);
     if (!course) return;
     const sections = filterOfferings(getCourseOfferings(course), this._filterParams());
@@ -3830,8 +3829,8 @@ const App = {
   },
 
   togglePlanSection(courseCode, semesterCode, section, campus, opts) {
-    if (!isStudent(this.profile)) {
-      showToast('Schedule planning is available to students only.');
+    if (!canUseSchedulePlan(this.profile)) {
+      showToast('Schedule planning is not available for this account.');
       return;
     }
     const meetings = this._sectionMeetingsForPlan(courseCode, semesterCode, section, campus);
@@ -3877,8 +3876,8 @@ const App = {
   },
 
   togglePlanOffering(offering, opts) {
-    if (!isStudent(this.profile)) {
-      showToast('Schedule planning is available to students only.');
+    if (!canUseSchedulePlan(this.profile)) {
+      showToast('Schedule planning is not available for this account.');
       return;
     }
     const normalized = this._normalizePlanItem(offering);
@@ -4054,7 +4053,7 @@ const App = {
   },
 
   showPlanView() {
-    if (!isStudent(this.profile)) return;
+    if (!canUseSchedulePlan(this.profile)) return;
     this._homeView = 'plan';
     const el = document.getElementById('leftBody');
     if (!el) return;

@@ -77,7 +77,9 @@ def test_parse_soc_units_variants():
 
     assert parse_soc_units("10") == 10
     assert parse_soc_units("12.0") == 12
+    assert parse_soc_units("9.00") == 9
     assert parse_soc_units("1-3") == 1
+    assert parse_soc_units("var") is None
     assert parse_soc_units("") is None
 
 

@@ -36,23 +36,49 @@ def _save_json(path: str, data) -> None:
         f.write("\n")
 
 
+ALL_COURSES_PATH = os.environ.get("ALL_COURSES_PATH", str(ROOT / "data_all_courses.json"))
+
+
+def _semester_sort_key(code: str) -> tuple[int, int]:
+    if not code or len(code) < 3:
+        return (0, 0)
+    season_rank = {"F": 3, "S": 2, "M": 1, "N": 0}
+    try:
+        year = 2000 + int(code[1:3])
+    except ValueError:
+        year = 0
+    return (year, season_rank.get(code[0].upper(), 0))
+
+
 def offerings_from_soc(soc: dict) -> tuple[dict[str, list[dict]], dict[str, dict]]:
     """course_code -> offerings and course_code -> SOC metadata across all semesters."""
     by_code: dict[str, list[dict]] = {}
     meta_by_code: dict[str, dict] = {}
     semesters = soc.get("semesters") or {}
 
-    for sem_code, sem_data in semesters.items():
+    for sem_code in sorted(semesters.keys(), key=_semester_sort_key, reverse=True):
+        sem_data = semesters[sem_code]
         for course in sem_data.get("courses") or []:
             num = course.get("course_number") or ""
             code = course_number_to_code(num)
             title = course.get("title") or ""
             units = course.get("units")
-            meta_by_code[code] = {
-                "title": title,
-                "units": units,
-                "department": course.get("department") or course.get("department_code"),
-            }
+            parsed_units = parse_soc_units(units)
+            prev = meta_by_code.get(code)
+            if prev is None:
+                meta_by_code[code] = {
+                    "title": title,
+                    "units": units,
+                    "department": course.get("department") or course.get("department_code"),
+                }
+            else:
+                if title:
+                    prev["title"] = title
+                if parsed_units is not None:
+                    prev["units"] = units
+                dept = course.get("department") or course.get("department_code")
+                if dept:
+                    prev["department"] = dept
             for section in course.get("sections") or []:
                 off = build_offering(
                     semester_code=sem_code,

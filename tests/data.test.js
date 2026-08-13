@@ -386,6 +386,30 @@ test('layoutPlanDayBlocks: places overlapping blocks side by side', () => {
   assertEqual(lc.col, 0);
 });
 
+test('filterOfferings: semester all includes every term', () => {
+  const offerings = [
+    { semester_code: 'F26', campus: 'Qatar', modality: 'In Person', section: 'A' },
+    { semester_code: 'S26', campus: 'Qatar', modality: 'In Person', section: 'B' },
+  ];
+  const all = filterOfferings(offerings, { semesterCode: 'all', locationFilter: 'all', modalityFilter: 'all' });
+  assertEqual(all.length, 2);
+});
+
+test('semesterLabel: all semesters option', () => {
+  assertEqual(semesterLabel('all'), 'All semesters');
+});
+
+test('layoutPlanDayBlocks: different heights for partial overlap', () => {
+  const short = { item: { id: 'short' }, parsed: { startMin: 600, endMin: 650 } };
+  const long = { item: { id: 'long' }, parsed: { startMin: 600, endMin: 705 } };
+  const laid = layoutPlanDayBlocks([short, long]);
+  const ls = laid.find(x => x.item.id === 'short');
+  const ll = laid.find(x => x.item.id === 'long');
+  assertEqual(ls.totalCols, 2);
+  assertEqual(ll.totalCols, 2);
+  assertEqual(ls.col === ll.col, false);
+});
+
 test('layoutPlanDayBlocks: non-overlapping blocks use full width', () => {
   const a = { item: { id: 'a' }, parsed: { startMin: 600, endMin: 650 } };
   const b = { item: { id: 'b' }, parsed: { startMin: 660, endMin: 710 } };

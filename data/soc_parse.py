@@ -114,21 +114,26 @@ def code_to_course_number(code: str) -> str:
 
 
 def parse_soc_units(raw) -> int | None:
-    """Parse SOC unit strings: 10, 12.0, 1-3, summer one -> int when possible."""
+    """Parse SOC unit strings: 10, 12.0, 9.00, 1-3, summer one -> int when possible."""
     if raw is None:
         return None
     s = str(raw).strip()
     if not s:
         return None
+    lowered = s.lower()
+    if lowered in ("var", "variable", "tba", "n/a", "none"):
+        return None
     if s.endswith(".0") and s[:-2].isdigit():
         s = s[:-2]
     if s.isdigit():
         return int(s)
+    m = re.match(r"^(\d+(?:\.\d+)?)", s)
+    if m:
+        return int(float(m.group(1)))
     m = re.match(r"^(\d+)\s*-\s*(\d+)$", s)
     if m:
         return int(m.group(1))
-    m = re.match(r"^(\d+)", s)
-    return int(m.group(1)) if m else None
+    return None
 
 
 def build_offering(

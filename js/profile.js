@@ -177,6 +177,12 @@ function isStudent(profile) {
   return getRoleGroup(profile) === 'student';
 }
 
+/** Schedule planner is available to students and faculty (including admin). */
+function canUseSchedulePlan(profile) {
+  const g = getRoleGroup(profile);
+  return g === 'student' || g === 'faculty' || g === 'admin';
+}
+
 // ── Advisor scope ──────────────────────────────────────────
 // Advisors may advise across majors, minors, the Arts & Sciences grouping,
 // or all programs. The scope flag tells us how to interpret `primary`.

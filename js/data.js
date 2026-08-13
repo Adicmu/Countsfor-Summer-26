@@ -583,15 +583,22 @@ function availableSemesterOptions(courses, alwaysInclude) {
       if (code) present.add(code);
     }
   }
-  if (present.size === 0) return SEMESTER_OPTIONS.slice();
-  if (alwaysInclude) {
+  const allOption = { code: 'all', label: 'All semesters' };
+  let terms = present.size === 0
+    ? SEMESTER_OPTIONS.slice()
+    : SEMESTER_OPTIONS.filter(s => present.has(s.code));
+  if (alwaysInclude && alwaysInclude !== 'all') {
     const normalized = normalizeSemesterCode(alwaysInclude) || alwaysInclude;
-    if (normalized) present.add(normalized);
+    if (normalized && !terms.some(s => s.code === normalized)) {
+      const hit = SEMESTER_OPTIONS.find(s => s.code === normalized);
+      if (hit) terms = [hit, ...terms];
+    }
   }
-  return SEMESTER_OPTIONS.filter(s => present.has(s.code));
+  return [allOption, ...terms];
 }
 
 function semesterLabel(code) {
+  if (code === 'all') return 'All semesters';
   const hit = SEMESTER_OPTIONS.find(s => s.code === code);
   if (hit) return hit.label;
   if (!code || code.length < 3) return code || '';
@@ -654,7 +661,7 @@ function campusFilterMatches(offeringCampus, locationFilter) {
 
 function filterOfferings(offerings, { semesterCode, locationFilter, modalityFilter }) {
   return (offerings || []).filter(o => {
-    if (semesterCode && o.semester_code !== semesterCode) return false;
+    if (semesterCode && semesterCode !== 'all' && o.semester_code !== semesterCode) return false;
     if (!campusFilterMatches(o.campus, locationFilter)) return false;
     if (!modalityFilterMatches(o.modality, modalityFilter)) return false;
     return true;
@@ -664,7 +671,7 @@ function filterOfferings(offerings, { semesterCode, locationFilter, modalityFilt
 function courseHasMatchingOffering(course, filters) {
   const all = getCourseOfferings(course);
   if (all.length === 0) {
-    if (filters.semesterCode) {
+    if (filters.semesterCode && filters.semesterCode !== 'all') {
       const hist = Array.isArray(course.offered) ? course.offered : [];
       if (hist.length && !hist.includes(filters.semesterCode)) return false;
     }
@@ -846,22 +853,55 @@ function layoutPlanDayBlocks(entries) {
     (a, b) => a.parsed.startMin - b.parsed.startMin || a.parsed.endMin - b.parsed.endMin
   );
 
-  const colEnds = [];
-  const withCol = sorted.map(entry => {
-    let col = colEnds.findIndex(end => end <= entry.parsed.startMin);
-    if (col === -1) {
-      col = colEnds.length;
-      colEnds.push(0);
+  const parent = sorted.map((_, i) => i);
+  function find(i) {
+    let root = i;
+    while (parent[root] !== root) root = parent[root];
+    while (parent[i] !== i) {
+      const next = parent[i];
+      parent[i] = root;
+      i = next;
     }
-    colEnds[col] = entry.parsed.endMin;
-    return { ...entry, col };
+    return root;
+  }
+  function unite(a, b) {
+    const ra = find(a);
+    const rb = find(b);
+    if (ra !== rb) parent[rb] = ra;
+  }
+
+  for (let i = 0; i < sorted.length; i++) {
+    for (let j = i + 1; j < sorted.length; j++) {
+      if (planBlocksTimeOverlap(sorted[i], sorted[j])) unite(i, j);
+    }
+  }
+
+  const groups = new Map();
+  sorted.forEach((entry, i) => {
+    const g = find(i);
+    if (!groups.has(g)) groups.set(g, []);
+    groups.get(g).push(entry);
   });
 
-  return withCol.map(entry => {
-    const overlapping = withCol.filter(other => planBlocksTimeOverlap(entry, other));
-    const totalCols = Math.max(...overlapping.map(o => o.col)) + 1;
-    return { ...entry, totalCols };
-  });
+  const result = [];
+  for (const group of groups.values()) {
+    const colEnds = [];
+    const withCol = group.slice().sort(
+      (a, b) => a.parsed.startMin - b.parsed.startMin || a.parsed.endMin - b.parsed.endMin
+    ).map(entry => {
+      let col = colEnds.findIndex(end => end <= entry.parsed.startMin);
+      if (col === -1) {
+        col = colEnds.length;
+        colEnds.push(0);
+      }
+      colEnds[col] = entry.parsed.endMin;
+      return { ...entry, col };
+    });
+    const totalCols = Math.max(colEnds.length, 1);
+    withCol.forEach(entry => result.push({ ...entry, totalCols }));
+  }
+
+  return result;
 }
 
 // ── Minor course lists (T5) ──────────────────────────────────
