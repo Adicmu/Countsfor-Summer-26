@@ -73,6 +73,9 @@ class User(db.Model):
 
     flags: Mapped[list["Flag"]] = relationship(back_populates="submitter", foreign_keys="Flag.submitted_by_id")
     wishlist: Mapped[list["WishlistItem"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    schedule_plans: Mapped[list["SchedulePlan"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan", foreign_keys="SchedulePlan.user_id"
+    )
     password_reset_tokens: Mapped[list["PasswordResetToken"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
@@ -285,6 +288,98 @@ class WishlistItem(db.Model):
             "note": self.note,
             "added_at": self.added_at.isoformat() if self.added_at else None,
         }
+
+
+class SchedulePlan(db.Model):
+    """User schedule draft — synced across devices; share copies land here too."""
+    __tablename__ = "schedule_plans"
+
+    id: Mapped[str] = mapped_column(String(64), primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(200), nullable=False)
+    shared_from_user_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    shared_from_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    shared_from_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    user: Mapped[User] = relationship(back_populates="schedule_plans", foreign_keys=[user_id])
+    items: Mapped[list["SchedulePlanItem"]] = relationship(
+        back_populates="plan", cascade="all, delete-orphan", order_by="SchedulePlanItem.id"
+    )
+
+    def to_dict(self) -> dict:
+        shared_from = None
+        if self.shared_from_name or self.shared_from_email:
+            shared_from = {
+                "name": self.shared_from_name,
+                "email": self.shared_from_email,
+            }
+        return {
+            "id": self.id,
+            "name": self.name,
+            "shared_from": shared_from,
+            "items": [i.to_dict() for i in self.items],
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
+class SchedulePlanItem(db.Model):
+    __tablename__ = "schedule_plan_items"
+    __table_args__ = (
+        UniqueConstraint("plan_id", "offering_id", name="uq_plan_offering"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    plan_id: Mapped[str] = mapped_column(
+        String(64), ForeignKey("schedule_plans.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    offering_id: Mapped[str] = mapped_column(String(255), nullable=False)
+    course_code: Mapped[str] = mapped_column(String(16), nullable=False)
+    semester_code: Mapped[str] = mapped_column(String(8), nullable=False, default="")
+    section: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+    campus: Mapped[str] = mapped_column(String(64), nullable=False, default="")
+    days_times: Mapped[str] = mapped_column(String(255), nullable=False, default="TBA")
+    modality: Mapped[str] = mapped_column(String(32), nullable=False, default="")
+
+    plan: Mapped[SchedulePlan] = relationship(back_populates="items")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.offering_id,
+            "course_code": self.course_code,
+            "semester_code": self.semester_code,
+            "section": self.section,
+            "campus": self.campus,
+            "days_times": self.days_times,
+            "modality": self.modality,
+        }
+
+
+class SchedulePlanShareToken(db.Model):
+    """One-time / limited-use link to import a schedule snapshot."""
+    __tablename__ = "schedule_plan_share_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True, index=True)
+    plan_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    plan_items_json: Mapped[str] = mapped_column(Text, nullable=False)
+    created_by_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_by_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    created_by_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    use_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    max_uses: Mapped[int] = mapped_column(Integer, nullable=False, default=20)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
 
 
 class CourseSearchCount(db.Model):

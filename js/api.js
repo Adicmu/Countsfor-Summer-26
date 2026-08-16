@@ -338,3 +338,17 @@ async function apiGetPopularCourses(program, semester, limit) {
   // Short leash — the home screen already shows a local fallback list.
   return apiFetch('/api/search-analytics/popular?' + q.toString(), { timeoutMs: 8000 });
 }
+
+// ── Schedule plans (share + inbox) ────────────────────────────
+async function apiGetPlans() {
+  return apiFetch('/api/plans');
+}
+async function apiSharePlan(body) {
+  return apiFetch('/api/plans/share', { method: 'POST', body });
+}
+async function apiCreatePlanShareLink(body) {
+  return apiFetch('/api/plans/share-link', { method: 'POST', body });
+}
+async function apiAcceptPlanShare(token) {
+  return apiFetch('/api/plans/accept-share', { method: 'POST', body: { token } });
+}

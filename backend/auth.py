@@ -66,7 +66,17 @@ def _frontend_reset_url(raw_token: str) -> str:
         return f"{base}{sep}token={raw_token}"
     origins = current_app.config.get("FRONTEND_ORIGINS") or []
     origin = (origins[0] if origins else "http://localhost:8765").rstrip("/")
-    return f"{origin}/reset.html?token={raw_token}"
+    return f"{origin}/index.html?token={raw_token}"
+
+
+def _email_provider_configured(cfg) -> bool:
+    """True when Resend or SMTP is fully configured enough to send mail."""
+    if (cfg.get("RESEND_API_KEY") or "").strip() and (cfg.get("MAIL_FROM") or "").strip():
+        return True
+    host = (cfg.get("SMTP_HOST") or "").strip()
+    user = (cfg.get("SMTP_USER") or "").strip()
+    password = (cfg.get("SMTP_PASS") or "").strip()
+    return bool(host and user and password)
 
 
 def _invalidate_reset_tokens(user_id: int) -> None:
@@ -386,10 +396,7 @@ def forgot_password():
     # steers the user to Google recovery instead.
     cfg = current_app.config
     expose = os.environ.get("EXPOSE_RESET_TOKEN", "").lower() in ("1", "true", "yes")
-    provider_configured = bool(
-        (cfg.get("RESEND_API_KEY") or "").strip() and (cfg.get("MAIL_FROM") or "").strip()
-    ) or bool((cfg.get("SMTP_HOST") or "").strip())
-    if not provider_configured and not expose:
+    if not _email_provider_configured(cfg) and not expose:
         return jsonify(
             error="email_unavailable",
             google_recovery=True,
@@ -401,11 +408,18 @@ def forgot_password():
     if user is not None:
         raw_token = _create_reset_token(user)
         reset_url = _frontend_reset_url(raw_token)
-        send_password_reset_email(email, reset_url)
+        sent = send_password_reset_email(email, reset_url)
+        if not sent and not expose:
+            return jsonify(
+                error="email_failed",
+                google_recovery=True,
+                message="We couldn't send the reset email right now. Try again in a few minutes, or use Continue with Google below.",
+            ), 502
 
         if expose:
             payload["reset_token"] = raw_token
             payload["reset_url"] = reset_url
+            payload["email"] = email
 
     return jsonify(payload)
 

@@ -9,6 +9,9 @@ REQUIRED_TABLES = frozenset({
     "user_minors",
     "directory_entries",
     "course_search_counts",
+    "schedule_plans",
+    "schedule_plan_items",
+    "schedule_plan_share_tokens",
 })
 
 

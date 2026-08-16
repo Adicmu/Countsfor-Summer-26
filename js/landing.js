@@ -777,6 +777,20 @@
   }
 
   function goToApp() {
+    const params = new URLSearchParams(location.search);
+    const sharePlan = params.get('share_plan') || '';
+    if (sharePlan) {
+      location.href = APP_URL + '?share_plan=' + encodeURIComponent(sharePlan);
+      return;
+    }
+    try {
+      const stored = sessionStorage.getItem('cf_pending_share_plan');
+      if (stored) {
+        sessionStorage.removeItem('cf_pending_share_plan');
+        location.href = APP_URL + '?share_plan=' + encodeURIComponent(stored);
+        return;
+      }
+    } catch (e) { /* storage blocked */ }
     location.href = APP_URL;
   }
 
@@ -983,8 +997,10 @@
       return;
     }
     const msg = (r.data && r.data.message) || 'If an account exists for that email, a reset link has been sent.';
-    const body = document.getElementById('cfForgotBody');
-    if (body) {
+    const form = document.getElementById('cfAuthForm');
+    if (form) form.hidden = true;
+    const box = document.getElementById('cfResetLinkBox');
+    if (box) {
       let extra = '';
       if (r.data && r.data.reset_url) {
         extra = '<a class="landing-reset-link" href="' + esc(r.data.reset_url) + '">Reset my password →</a>';
@@ -998,7 +1014,8 @@
         extra = '<a class="landing-reset-link" href="' + esc(url) + '">Reset my password →</a>';
         state.resetToken = r.data.reset_token;
       }
-      body.innerHTML = '<p class="landing-reset-msg">' + esc(msg) + '</p>' + extra;
+      box.hidden = false;
+      box.innerHTML = '<p class="landing-reset-msg">' + esc(msg) + '</p>' + extra;
     }
   }
 
@@ -1087,6 +1104,10 @@
     if (guestBtn) guestBtn.addEventListener('click', enterGuestMode);
 
     const params = new URLSearchParams(location.search);
+    const sharePlan = params.get('share_plan') || '';
+    if (sharePlan) {
+      try { sessionStorage.setItem('cf_pending_share_plan', sharePlan); } catch (e) { /* storage blocked */ }
+    }
     const resetTok = params.get('token') || params.get('reset') || '';
     if (resetTok) {
       state.resetToken = resetTok;

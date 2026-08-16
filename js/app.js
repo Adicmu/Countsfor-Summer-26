@@ -46,10 +46,13 @@ const App = {
   resetEmail: '',
   resetToken: '',
   serverFlags: [],
+  _pendingSharePlanToken: null,
   async init() {
     this.applyTheme();
 
     const params = new URLSearchParams(typeof location !== 'undefined' ? location.search : '');
+    const sharePlanTok = params.get('share_plan') || '';
+    if (sharePlanTok) this._pendingSharePlanToken = sharePlanTok;
     const resetTok = params.get('token') || params.get('reset') || '';
     if (resetTok) {
       const qs = params.get('token')
@@ -79,7 +82,7 @@ const App = {
 
     if (me.status === 0) {
       if (isBackendConfigured()) {
-        location.href = 'index.html';
+        this._redirectToLogin();
         return;
       }
       // No backend configured — demo mode preserves the public GH-Pages experience.
@@ -95,7 +98,7 @@ const App = {
 
     // 401 / 403 / etc. — send to Heritage landing for sign-in.
     if (isBackendConfigured()) {
-      location.href = 'index.html';
+      this._redirectToLogin();
       return;
     }
 
@@ -108,6 +111,31 @@ const App = {
     this._afterAuthed();
   },
 
+  _redirectToLogin() {
+    if (this._pendingSharePlanToken) {
+      try { sessionStorage.setItem('cf_pending_share_plan', this._pendingSharePlanToken); } catch {}
+      location.href = 'index.html?share_plan=' + encodeURIComponent(this._pendingSharePlanToken);
+      return;
+    }
+    location.href = 'index.html';
+  },
+
+  _restorePendingSharePlan() {
+    if (this._pendingSharePlanToken) return;
+    try {
+      const stored = sessionStorage.getItem('cf_pending_share_plan');
+      if (stored) {
+        this._pendingSharePlanToken = stored;
+        sessionStorage.removeItem('cf_pending_share_plan');
+        return;
+      }
+    } catch {}
+    try {
+      const tok = new URLSearchParams(location.search).get('share_plan');
+      if (tok) this._pendingSharePlanToken = tok;
+    } catch {}
+  },
+
   _afterAuthed() {
     if (this.profile && this.profile.primary && this.profile.primary !== 'AS') {
       this.activeMajor = this.profile.primary;
@@ -117,6 +145,8 @@ const App = {
     // Best-effort one-time migration of localStorage data (idempotent on the
     // server — duplicate IDs / course codes return existing rows).
     this._syncLocalToServer();
+    this._restorePendingSharePlan();
+    this._loadServerPlans().then(() => this._handlePendingSharePlanLink());
     this.loadData();
   },
 
@@ -1025,7 +1055,13 @@ const App = {
     const r = await apiForgotPassword(normalizedEmail);
     this._setAuthLoading(false, 'Send reset link →');
     if (!r.ok) {
-      this._setAuthFormError((r.data && r.data.message) || 'Request failed.');
+      if (r.status === 503 && r.data && r.data.google_recovery) {
+        this._setAuthFormError(r.data.message || 'Use Continue with Google to reset your password.');
+      } else if (r.status === 502 && r.data && r.data.google_recovery) {
+        this._setAuthFormError(r.data.message || 'Email could not be sent. Try again or use Google sign-in.');
+      } else {
+        this._setAuthFormError((r.data && r.data.message) || 'Request failed.');
+      }
       this._updateAuthSubmitState('forgot');
       return;
     }
@@ -1635,6 +1671,7 @@ const App = {
         if (action === 'plan-create') this.createNewPlan();
         if (action === 'plan-delete') this.deletePlan(actionBtn.dataset.planId);
         if (action === 'plan-rename') this._promptRenamePlan(actionBtn.dataset.planId);
+        if (action === 'plan-share') this.openSharePlanModal(actionBtn.dataset.planId);
         return;
       }
 
@@ -1665,6 +1702,7 @@ const App = {
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') {
         this.closeFlagModal();
+        this.closeSharePlanModal();
         this.closeDirectoryPanel();
       }
     });
@@ -3903,6 +3941,185 @@ const App = {
     this.renamePlan(planId, next);
   },
 
+  _planSnapshot(planId) {
+    const plan = this._getPlanRecord(planId);
+    if (!plan) return null;
+    return {
+      name: plan.name,
+      items: (plan.items || []).map(x => this._normalizePlanItem(x)),
+    };
+  },
+
+  async _loadServerPlans() {
+    if (this.authMode !== 'authed' || !canUseSchedulePlan(this.profile)) return;
+    const r = await apiGetPlans();
+    if (!r.ok || !r.data || !Array.isArray(r.data.plans)) return;
+    let added = 0;
+    for (const sp of r.data.plans) {
+      if (this._mergeServerPlan(sp)) added++;
+    }
+    if (added && this._homeView === 'plan' && !this._planDetailId) {
+      // Caller re-renders plan library after load when needed.
+    }
+  },
+
+  _mergeServerPlan(serverPlan) {
+    if (!serverPlan || !serverPlan.id) return null;
+    const store = this._loadPlansStore();
+    if (store.plans.some(p => p.serverId === serverPlan.id)) return null;
+    const localId = 'plan-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6);
+    const plan = {
+      id: localId,
+      serverId: serverPlan.id,
+      name: serverPlan.name,
+      sharedFrom: serverPlan.shared_from || null,
+      createdAt: serverPlan.created_at || new Date().toISOString(),
+      updatedAt: serverPlan.updated_at || new Date().toISOString(),
+      items: (serverPlan.items || []).map(x => this._normalizePlanItem(x)),
+    };
+    store.plans.unshift(plan);
+    if (!store.activePlanId) store.activePlanId = plan.id;
+    this._savePlansStore(store);
+    this._refreshNavPlanCount();
+    return plan;
+  },
+
+  async _handlePendingSharePlanLink() {
+    const token = this._pendingSharePlanToken;
+    if (!token) return;
+    this._pendingSharePlanToken = null;
+    if (this.authMode !== 'authed') return;
+    if (!canUseSchedulePlan(this.profile)) return;
+    const r = await apiAcceptPlanShare(token);
+    try {
+      const clean = new URL(location.href);
+      clean.searchParams.delete('share_plan');
+      history.replaceState(null, '', clean.pathname + clean.search + clean.hash);
+    } catch {}
+    if (!r.ok) {
+      showToast(r.message || 'Could not import shared schedule.');
+      return;
+    }
+    const merged = this._mergeServerPlan(r.data.plan);
+    showToast('Shared schedule added to your library.');
+    if (merged) {
+      this._homeView = 'plan';
+      this.openPlanDetail(merged.id);
+    } else if (this._homeView === 'plan') {
+      this.showPlanView();
+    }
+  },
+
+  openSharePlanModal(planId) {
+    if (!canUseSchedulePlan(this.profile)) return;
+    if (this.authMode !== 'authed') {
+      showToast('Sign in to share schedules with others.');
+      return;
+    }
+    const snapshot = this._planSnapshot(planId);
+    if (!snapshot) return;
+    if (!snapshot.items.length) {
+      showToast('Add at least one section before sharing.');
+      return;
+    }
+    this._sharePlanState = { planId, name: snapshot.name, items: snapshot.items };
+    this.closeSharePlanModal();
+
+    const modal = document.createElement('div');
+    modal.className = 'cf-modal-backdrop';
+    modal.id = 'cfSharePlanModalRoot';
+    modal.innerHTML = `
+      <div class="cf-modal" role="dialog" aria-modal="true" aria-labelledby="cfSharePlanTitle">
+        <header class="cf-modal-head">
+          <div>
+            <h3 id="cfSharePlanTitle" class="cf-modal-title">Share schedule</h3>
+            <div class="cf-modal-sub">Send <strong>${esc(snapshot.name)}</strong> to someone on CountsFor, or copy a link they can open while signed in.</div>
+          </div>
+          <button class="cf-modal-x" aria-label="Close" onclick="App.closeSharePlanModal()">×</button>
+        </header>
+        <div class="cf-modal-body">
+          <label class="cf-share-email-wrap">
+            <span class="cf-share-label">Send to CMU email</span>
+            <input type="email" class="cf-share-email" id="cfSharePlanEmail" placeholder="name@andrew.cmu.edu" autocomplete="email" />
+          </label>
+          <p class="cf-share-hint">They will see this schedule in <strong>Your schedules</strong> the next time they open CountsFor.</p>
+          <div class="cf-share-divider"><span>or</span></div>
+          <button type="button" class="cf-btn cf-btn-secondary cf-share-link-btn" id="cfSharePlanLinkBtn" onclick="App.copySharePlanLink()">Copy share link</button>
+          <p class="cf-share-hint cf-share-hint-sub">Link works for 30 days. Anyone with the link can add a copy to their account while signed in.</p>
+        </div>
+        <footer class="cf-modal-foot">
+          <button class="cf-btn cf-btn-secondary" onclick="App.closeSharePlanModal()">Cancel</button>
+          <button class="cf-btn cf-btn-primary" id="cfSharePlanSendBtn" onclick="App.submitSharePlanEmail()">Send schedule</button>
+        </footer>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) this.closeSharePlanModal();
+    });
+    const input = document.getElementById('cfSharePlanEmail');
+    if (input) input.focus();
+  },
+
+  closeSharePlanModal() {
+    const el = document.getElementById('cfSharePlanModalRoot');
+    if (el) el.remove();
+    this._sharePlanState = null;
+  },
+
+  async submitSharePlanEmail() {
+    const st = this._sharePlanState;
+    if (!st) return;
+    const input = document.getElementById('cfSharePlanEmail');
+    const email = (input && input.value || '').trim();
+    if (!email) {
+      showToast('Enter the recipient’s email.');
+      if (input) input.focus();
+      return;
+    }
+    const btn = document.getElementById('cfSharePlanSendBtn');
+    if (btn) btn.disabled = true;
+    const r = await apiSharePlan({
+      recipient_email: email,
+      name: st.name,
+      items: st.items,
+    });
+    if (btn) btn.disabled = false;
+    if (!r.ok) {
+      showToast(r.message || 'Could not share schedule.');
+      return;
+    }
+    const who = r.data && r.data.recipient_name ? r.data.recipient_name : email;
+    showToast('Schedule sent to ' + who + '.');
+    this.closeSharePlanModal();
+  },
+
+  async copySharePlanLink() {
+    const st = this._sharePlanState;
+    if (!st) return;
+    const btn = document.getElementById('cfSharePlanLinkBtn');
+    if (btn) btn.disabled = true;
+    const r = await apiCreatePlanShareLink({ name: st.name, items: st.items });
+    if (btn) btn.disabled = false;
+    if (!r.ok || !r.data || !r.data.token) {
+      showToast(r.message || 'Could not create share link.');
+      return;
+    }
+    let url;
+    try {
+      url = new URL('app.html', location.href);
+      url.searchParams.set('share_plan', r.data.token);
+    } catch {
+      url = location.origin + '/app.html?share_plan=' + encodeURIComponent(r.data.token);
+    }
+    try {
+      await navigator.clipboard.writeText(url.toString());
+      showToast('Share link copied to clipboard.');
+    } catch {
+      prompt('Copy this share link:', url.toString());
+    }
+  },
+
   _normalizePlanItem(item) {
     const base = {
       course_code: item.course_code,
@@ -4264,13 +4481,14 @@ const App = {
       </section>`;
   },
 
-  showPlanView() {
+  async showPlanView() {
     if (!canUseSchedulePlan(this.profile)) return;
     this._homeView = 'plan';
     this._planDetailId = null;
     this._planCourseReturn = null;
     this.selectedCourse = null;
     this.renderShell();
+    if (this.authMode === 'authed') await this._loadServerPlans();
     const el = document.getElementById('leftBody');
     if (!el) return;
 
@@ -4280,6 +4498,9 @@ const App = {
       const sum = this._planSummary(plan, this.activeSemester);
       const isActive = store.activePlanId === plan.id;
       const updated = plan.updatedAt ? new Date(plan.updatedAt).toLocaleDateString() : '';
+      const sharedFrom = plan.sharedFrom && plan.sharedFrom.name
+        ? `<span class="plan-card-meta plan-card-meta-sub">From ${esc(plan.sharedFrom.name)}</span>`
+        : '';
       return `
         <article class="plan-card ${isActive ? 'is-active' : ''}">
           <button type="button" class="plan-card-main" data-action="plan-open" data-plan-id="${esc(plan.id)}">
@@ -4287,6 +4508,7 @@ const App = {
             <span class="plan-card-meta">${sum.sectionCount} section${sum.sectionCount === 1 ? '' : 's'} · ${sum.units || 0} units${sum.conflicts ? ' · ' + sum.conflicts + ' conflict' + (sum.conflicts === 1 ? '' : 's') : ''}</span>
             ${this.activeSemester !== 'all' && sum.filteredSections !== sum.sectionCount
               ? `<span class="plan-card-meta plan-card-meta-sub">${sum.filteredSections} in ${esc(semLabel)}</span>` : ''}
+            ${sharedFrom}
             ${updated ? `<span class="plan-card-meta plan-card-meta-sub">Updated ${esc(updated)}</span>` : ''}
           </button>
           <div class="plan-card-actions">
@@ -4349,6 +4571,9 @@ const App = {
     const conflictNote = conflictPairs
       ? `<span class="plan-stat plan-stat-warn">${conflictPairs} time conflict${conflictPairs === 1 ? '' : 's'}</span>`
       : '';
+    const sharedNote = plan.sharedFrom && plan.sharedFrom.name
+      ? `<p class="plan-shared-note">Shared by ${esc(plan.sharedFrom.name)}${plan.sharedFrom.email ? ' · ' + esc(plan.sharedFrom.email) : ''}</p>`
+      : '';
 
     el.innerHTML = `
       <div class="plan-view">
@@ -4358,7 +4583,11 @@ const App = {
             <h2 class="plan-title">${esc(plan.name)}</h2>
             <span class="plan-sem">${esc(semLabel)}</span>
           </div>
+          ${sharedNote}
           <p class="plan-lead">Search above and tap <strong>+ Plan</strong> to add a course, or open a course card and pick a section.</p>
+          <div class="plan-detail-actions">
+            <button type="button" class="plan-share-btn" data-action="plan-share" data-plan-id="${esc(plan.id)}">Share schedule</button>
+          </div>
           <div class="plan-stats">
             <span class="plan-stat">${sectionCount} section${sectionCount === 1 ? '' : 's'}</span>
             <span class="plan-stat">${courseCount} course${courseCount === 1 ? '' : 's'}</span>

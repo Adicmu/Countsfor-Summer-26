@@ -133,13 +133,19 @@ class Config:
     # ── Password reset email ───────────────────────────────────
     RESET_TOKEN_MINUTES = int(os.environ.get("RESET_TOKEN_MINUTES", "30"))
     # Override reset link base (default: first FRONTEND_ORIGIN + /index.html)
-    FRONTEND_RESET_BASE = os.environ.get("FRONTEND_RESET_BASE", "").strip()
+    FRONTEND_RESET_BASE = (
+        os.environ.get("FRONTEND_RESET_BASE", "").strip()
+        or os.environ.get("PUBLIC_APP_URL", "").strip()
+    )
     RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "").strip()
-    MAIL_FROM = os.environ.get("MAIL_FROM", "").strip()
+    MAIL_FROM = (
+        os.environ.get("MAIL_FROM", "").strip()
+        or os.environ.get("SMTP_FROM", "").strip()
+    )
     SMTP_HOST = os.environ.get("SMTP_HOST", "").strip()
     SMTP_PORT = int(os.environ.get("SMTP_PORT", "587"))
     SMTP_USER = os.environ.get("SMTP_USER", "").strip()
-    SMTP_PASS = os.environ.get("SMTP_PASS", "")
+    SMTP_PASS = os.environ.get("SMTP_PASS") or os.environ.get("SMTP_PASSWORD") or ""
     SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
 
     # ── CORS ──────────────────────────────────────────────────
