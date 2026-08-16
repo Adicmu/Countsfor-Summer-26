@@ -1630,6 +1630,10 @@ const App = {
         }
         if (action === 'plan-remove') this.removeFromPlan(actionBtn.dataset.planId);
         if (action === 'plan-add-first') this.addFirstSectionToPlan(code);
+        if (action === 'plan-open') this.openPlanDetail(actionBtn.dataset.planId);
+        if (action === 'plan-create') this.createNewPlan();
+        if (action === 'plan-delete') this.deletePlan(actionBtn.dataset.planId);
+        if (action === 'plan-rename') this._promptRenamePlan(actionBtn.dataset.planId);
         return;
       }
 
@@ -1751,7 +1755,10 @@ const App = {
     this.activeSemester = code;
     this._refreshFilters();
     if (this._homeView === 'home') this._loadPopularCourses();
-    if (this._homeView === 'plan') this.showPlanView();
+    if (this._homeView === 'plan') {
+      if (this._planDetailId) this.openPlanDetail(this._planDetailId);
+      else this.showPlanView();
+    }
     showToast('Showing ' + semesterLabel(code));
   },
 
@@ -2508,28 +2515,6 @@ const App = {
       }
     }
 
-    if (canUseSchedulePlan(this.profile)) {
-      const planned = this._getPlanItemsForSemester(this.activeSemester);
-      const sectionCount = this._countPlannedSections(this.activeSemester);
-      if (sectionCount) {
-        const units = this._planUnitsTotal(planned);
-        const groups = this._groupPlanItems(planned);
-        const items = groups.map(group => {
-          const c = lookupCourse(this.courseIndex, group.course_code);
-          const name = c ? c.course_name : '';
-          const times = group.meetings.map(m => m.days_times || 'TBA').join(' · ');
-          return `<button type="button" class="home-dock-item" onclick="App.showPlanView()">${esc(group.course_code)}${name ? ' · ' + esc(name) : ''} · Sec ${esc(group.section)} · ${esc(times)}</button>`;
-        }).join('');
-        pills.push(`
-          <div class="home-dock-pill" data-dock="plan">
-            <button type="button" class="home-dock-pill-btn" onclick="App.toggleHomeDock('plan')">
-              ${this._iconCalendar()} <span>Plan ${sectionCount}${units ? ` · ${units}u` : ''}</span>
-            </button>
-            <div class="home-dock-drop">${items}<button type="button" class="home-dock-all" onclick="App.showPlanView()">Open schedule</button></div>
-          </div>`);
-      }
-    }
-
     if (canFlagCourses(this.profile) && this.authMode === 'authed') {
       const st = this._myFlagsState;
       if (st && st.loaded && !st.error && st.counts) {
@@ -2639,13 +2624,18 @@ const App = {
 
   _navbarPlanHtml() {
     if (!canUseSchedulePlan(this.profile)) return '';
-    const planned = this._getPlanItemsForSemester(this.activeSemester);
-    const count = this._countPlannedSections(this.activeSemester);
+    const store = this._loadPlansStore();
+    const planCount = (store.plans || []).length;
+    const active = this._ensureActivePlan(false);
+    const planned = active ? this._getPlanItemsForSemester(this.activeSemester, active.id) : [];
+    const count = active ? this._countPlannedSections(this.activeSemester, active.id) : 0;
     const units = this._planUnitsTotal(planned);
-    const countChip = count > 0 ? `<span class="nav-plan-count">${count}</span>` : '';
-    const label = count > 0 ? `Plan · ${units || '?'}u` : 'Plan schedule';
+    const countChip = planCount > 0 ? `<span class="nav-plan-count">${planCount}</span>` : '';
+    const label = planCount > 1
+      ? `${planCount} schedules`
+      : (count > 0 ? `Plan · ${units || '?'}u` : 'Plan schedule');
     return `
-      <button class="nav-plan" onclick="App.showPlanView()" title="Plan your weekly schedule" aria-label="Plan your schedule">
+      <button class="nav-plan" onclick="App.showPlanView()" title="Your schedule plans" aria-label="Your schedule plans">
         ${this._iconCalendar()}
         <span class="nav-plan-label">${label}</span>
         ${countChip}
@@ -2655,15 +2645,18 @@ const App = {
   _refreshNavPlanCount() {
     const btn = document.querySelector('.nav-plan');
     if (!btn) return;
-    const planned = this._getPlanItemsForSemester(this.activeSemester);
-    const count = this._countPlannedSections(this.activeSemester);
+    const store = this._loadPlansStore();
+    const planCount = (store.plans || []).length;
+    const active = this._ensureActivePlan(false);
+    const planned = active ? this._getPlanItemsForSemester(this.activeSemester, active.id) : [];
+    const count = active ? this._countPlannedSections(this.activeSemester, active.id) : 0;
     const units = this._planUnitsTotal(planned);
     const existing = btn.querySelector('.nav-plan-count');
     const label = btn.querySelector('.nav-plan-label');
-    if (count > 0) {
-      if (label) label.textContent = `Plan · ${units || '?'}u`;
-      if (existing) existing.textContent = String(count);
-      else btn.insertAdjacentHTML('beforeend', `<span class="nav-plan-count">${count}</span>`);
+    if (planCount > 0) {
+      if (label) label.textContent = planCount > 1 ? `${planCount} schedules` : (count > 0 ? `Plan · ${units || '?'}u` : 'Plan schedule');
+      if (existing) existing.textContent = String(planCount);
+      else btn.insertAdjacentHTML('beforeend', `<span class="nav-plan-count">${planCount}</span>`);
     } else {
       if (label) label.textContent = 'Plan schedule';
       if (existing) existing.remove();
@@ -3446,7 +3439,7 @@ const App = {
       const hasPlannedSection = grouped.some(g => this._isSectionGroupInPlan(course.course_code, g));
       if (hasPlannedSection) {
         parts.push(`
-          <button class="cc-action cc-action-plan is-planned" onclick="App.showPlanView()" aria-label="View in schedule plan">
+          <button class="cc-action cc-action-plan is-planned" onclick="App._openActivePlanDetail()" aria-label="View in schedule plan">
             ${this._iconCalendar()}
             <span>In plan ✓</span>
           </button>`);
@@ -3710,9 +3703,153 @@ const App = {
   },
 
   // ══════════════════════════════════════════════════════════
-  // SCHEDULE PLAN (students + faculty)
+  // SCHEDULE PLAN (students + faculty) — multiple saved schedules
   // ══════════════════════════════════════════════════════════
-  // Storage: localStorage['cf_plan'] = [{ id, course_code, semester_code, section, campus, days_times, modality }, ...]
+  // Storage: localStorage['cf_plans_v2'] = { activePlanId, plans: [{ id, name, items }] }
+  _planDetailId: null,
+
+  _loadPlansStore() {
+    let store = loadStore('cf_plans_v2', null);
+    if (store && Array.isArray(store.plans)) return store;
+    const legacy = loadStore('cf_plan', []);
+    if (Array.isArray(legacy) && legacy.length) {
+      const id = 'plan-' + Date.now();
+      store = {
+        activePlanId: id,
+        plans: [{
+          id,
+          name: 'My schedule',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          items: legacy.map(x => this._normalizePlanItem(x)),
+        }],
+      };
+      saveStore('cf_plans_v2', store);
+      return store;
+    }
+    return { activePlanId: null, plans: [] };
+  },
+
+  _savePlansStore(store) {
+    saveStore('cf_plans_v2', store);
+  },
+
+  _defaultPlanName(store) {
+    const n = (store.plans || []).length + 1;
+    return `Schedule ${n}`;
+  },
+
+  _ensureActivePlan(createIfMissing) {
+    const store = this._loadPlansStore();
+    if (store.activePlanId && store.plans.some(p => p.id === store.activePlanId)) {
+      return store.plans.find(p => p.id === store.activePlanId);
+    }
+    if (store.plans.length) {
+      store.activePlanId = store.plans[0].id;
+      this._savePlansStore(store);
+      return store.plans[0];
+    }
+    if (!createIfMissing) return null;
+    const id = 'plan-' + Date.now();
+    const plan = {
+      id,
+      name: this._defaultPlanName(store),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      items: [],
+    };
+    store.plans.push(plan);
+    store.activePlanId = id;
+    this._savePlansStore(store);
+    return plan;
+  },
+
+  _setActivePlanId(planId) {
+    const store = this._loadPlansStore();
+    if (!store.plans.some(p => p.id === planId)) return;
+    store.activePlanId = planId;
+    this._savePlansStore(store);
+  },
+
+  _getPlanRecord(planId) {
+    const store = this._loadPlansStore();
+    const id = planId || store.activePlanId;
+    return store.plans.find(p => p.id === id) || null;
+  },
+
+  _updatePlanItems(planId, items) {
+    const store = this._loadPlansStore();
+    const plan = store.plans.find(p => p.id === planId);
+    if (!plan) return;
+    plan.items = items.map(x => this._normalizePlanItem(x));
+    plan.updatedAt = new Date().toISOString();
+    store.activePlanId = planId;
+    this._savePlansStore(store);
+  },
+
+  _openActivePlanDetail() {
+    const plan = this._ensureActivePlan(false);
+    if (plan) this.openPlanDetail(plan.id);
+    else this.showPlanView();
+  },
+
+  createNewPlan(name) {
+    if (!canUseSchedulePlan(this.profile)) return;
+    const store = this._loadPlansStore();
+    const id = 'plan-' + Date.now();
+    const plan = {
+      id,
+      name: (name || '').trim() || this._defaultPlanName(store),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      items: [],
+    };
+    store.plans.unshift(plan);
+    store.activePlanId = id;
+    this._savePlansStore(store);
+    this.openPlanDetail(id);
+    showToast('Created “' + plan.name + '”');
+  },
+
+  deletePlan(planId) {
+    if (!planId) return;
+    const store = this._loadPlansStore();
+    const plan = store.plans.find(p => p.id === planId);
+    if (!plan) return;
+    if (!confirm('Delete “' + plan.name + '”? This cannot be undone.')) return;
+    store.plans = store.plans.filter(p => p.id !== planId);
+    if (store.activePlanId === planId) {
+      store.activePlanId = store.plans[0] ? store.plans[0].id : null;
+    }
+    this._savePlansStore(store);
+    if (this._planDetailId === planId) this._planDetailId = null;
+    showToast('Schedule deleted');
+    this._refreshNavPlanCount();
+    if (this._homeView === 'plan') this.showPlanView();
+  },
+
+  renamePlan(planId, name) {
+    const label = (name || '').trim();
+    if (!planId || !label) return;
+    const store = this._loadPlansStore();
+    const plan = store.plans.find(p => p.id === planId);
+    if (!plan) return;
+    plan.name = label;
+    plan.updatedAt = new Date().toISOString();
+    this._savePlansStore(store);
+    if (this._homeView === 'plan') {
+      if (this._planDetailId === planId) this.openPlanDetail(planId);
+      else this.showPlanView();
+    }
+  },
+
+  _promptRenamePlan(planId) {
+    const plan = this._getPlanRecord(planId);
+    if (!plan) return;
+    const next = prompt('Rename schedule', plan.name);
+    if (next == null) return;
+    this.renamePlan(planId, next);
+  },
 
   _normalizePlanItem(item) {
     const base = {
@@ -3726,19 +3863,24 @@ const App = {
     return { ...base, id: item.id || planOfferingKey(base.course_code, base) };
   },
 
-  _getPlanItems() {
-    const raw = loadStore('cf_plan', []);
-    return raw.map(x => this._normalizePlanItem(x)).filter(x => x.course_code);
+  _getPlanItems(planId) {
+    const plan = this._getPlanRecord(planId) || this._ensureActivePlan(false);
+    if (!plan) return [];
+    return (plan.items || []).map(x => this._normalizePlanItem(x)).filter(x => x.course_code);
   },
 
-  _savePlanItems(list) {
-    saveStore('cf_plan', list.map(x => this._normalizePlanItem(x)));
+  _savePlanItems(list, planId) {
+    const plan = this._ensureActivePlan(true);
+    if (!plan) return;
+    const id = planId || plan.id;
+    this._updatePlanItems(id, list);
   },
 
-  _getPlanItemsForSemester(semesterCode) {
+  _getPlanItemsForSemester(semesterCode, planId) {
     const code = semesterCode || this.activeSemester;
-    if (!code || code === 'all') return this._getPlanItems();
-    return this._getPlanItems().filter(i => i.semester_code === code);
+    const items = this._getPlanItems(planId);
+    if (!code || code === 'all') return items;
+    return items.filter(i => i.semester_code === code);
   },
 
   _getPlanItemsForCourse(courseCode, semesterCode) {
@@ -3766,9 +3908,20 @@ const App = {
     return meetings.some(m => this._isOfferingInPlan(courseCode, m));
   },
 
-  _countPlannedSections(semesterCode) {
-    const items = this._getPlanItemsForSemester(semesterCode);
+  _countPlannedSections(semesterCode, planId) {
+    const items = this._getPlanItemsForSemester(semesterCode, planId);
     return new Set(items.map(i => planSectionKey(i.course_code, i))).size;
+  },
+
+  _planSummary(plan, semesterCode) {
+    const items = this._getPlanItemsForSemester(semesterCode || this.activeSemester, plan.id);
+    const allItems = plan.items || [];
+    const sectionCount = new Set(allItems.map(i => planSectionKey(i.course_code, i))).size;
+    const filteredSections = this._countPlannedSections(semesterCode || this.activeSemester, plan.id);
+    const units = this._planUnitsTotal(items.length ? items : allItems);
+    const courseCount = new Set((items.length ? items : allItems).map(i => i.course_code)).size;
+    const conflicts = countPlanConflictPairs(items.length ? items : allItems);
+    return { sectionCount, filteredSections, units, courseCount, conflicts, itemCount: allItems.length };
   },
 
   _groupPlanItems(items) {
@@ -3814,6 +3967,7 @@ const App = {
 
   addFirstSectionToPlan(courseCode) {
     if (!canUseSchedulePlan(this.profile)) return;
+    this._ensureActivePlan(true);
     const course = lookupCourse(this.courseIndex, courseCode);
     if (!course) return;
     const sections = filterOfferings(getCourseOfferings(course), this._filterParams());
@@ -3831,6 +3985,7 @@ const App = {
       showToast('Schedule planning is not available for this account.');
       return;
     }
+    this._ensureActivePlan(true);
     const meetings = this._sectionMeetingsForPlan(courseCode, semesterCode, section, campus);
     if (!meetings.length) return;
     let list = this._getPlanItems();
@@ -3878,6 +4033,7 @@ const App = {
       showToast('Schedule planning is not available for this account.');
       return;
     }
+    this._ensureActivePlan(true);
     const normalized = this._normalizePlanItem(offering);
     if (!normalized.course_code) return;
     const list = this._getPlanItems();
@@ -3918,8 +4074,12 @@ const App = {
 
   _refreshPlanSurfaces(courseCode) {
     this._refreshNavPlanCount();
-    if (this._homeView === 'plan') this.showPlanView();
-    else if (this._homeView === 'home') this._refreshHomeDock();
+    if (this._homeView === 'plan') {
+      if (this._planDetailId) this.openPlanDetail(this._planDetailId);
+      else this.showPlanView();
+    } else if (this._homeView === 'home') {
+      this._refreshHomeDock();
+    }
     if (this.selectedCourse && this.selectedCourse.course_code === courseCode) {
       this.renderCourseCard(this.selectedCourse);
     }
@@ -4053,13 +4213,76 @@ const App = {
   showPlanView() {
     if (!canUseSchedulePlan(this.profile)) return;
     this._homeView = 'plan';
+    this._planDetailId = null;
     const el = document.getElementById('leftBody');
     if (!el) return;
 
-    const items = this._getPlanItemsForSemester(this.activeSemester);
+    const store = this._loadPlansStore();
+    const semLabel = semesterLabel(this.activeSemester);
+    const cards = (store.plans || []).map(plan => {
+      const sum = this._planSummary(plan, this.activeSemester);
+      const isActive = store.activePlanId === plan.id;
+      const updated = plan.updatedAt ? new Date(plan.updatedAt).toLocaleDateString() : '';
+      return `
+        <article class="plan-card ${isActive ? 'is-active' : ''}">
+          <button type="button" class="plan-card-main" data-action="plan-open" data-plan-id="${esc(plan.id)}">
+            <span class="plan-card-name">${esc(plan.name)}</span>
+            <span class="plan-card-meta">${sum.sectionCount} section${sum.sectionCount === 1 ? '' : 's'} · ${sum.units || 0} units${sum.conflicts ? ' · ' + sum.conflicts + ' conflict' + (sum.conflicts === 1 ? '' : 's') : ''}</span>
+            ${this.activeSemester !== 'all' && sum.filteredSections !== sum.sectionCount
+              ? `<span class="plan-card-meta plan-card-meta-sub">${sum.filteredSections} in ${esc(semLabel)}</span>` : ''}
+            ${updated ? `<span class="plan-card-meta plan-card-meta-sub">Updated ${esc(updated)}</span>` : ''}
+          </button>
+          <div class="plan-card-actions">
+            <button type="button" class="plan-card-btn" data-action="plan-rename" data-plan-id="${esc(plan.id)}" title="Rename">Rename</button>
+            <button type="button" class="plan-card-btn plan-card-btn-danger" data-action="plan-delete" data-plan-id="${esc(plan.id)}" title="Delete">Delete</button>
+          </div>
+        </article>`;
+    }).join('');
+
+    const emptyHtml = !store.plans.length ? `
+      <div class="plan-empty">
+        <div class="plan-empty-icon">${this._iconCalendar()}</div>
+        <div class="plan-empty-title">No schedules yet</div>
+        <div class="plan-empty-hint">Create a schedule, then add sections from course cards with <strong>+ Plan</strong>.</div>
+      </div>` : '';
+
+    el.innerHTML = `
+      <div class="plan-view plan-view-library">
+        <div class="plan-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
+          <div class="plan-title-row">
+            <h2 class="plan-title">Your schedules</h2>
+            <span class="plan-sem">${esc(semLabel)}</span>
+          </div>
+          <p class="plan-lead">Create multiple schedule drafts and compare them. Sections are added to your active schedule from course cards.</p>
+          <div class="plan-library-actions">
+            <button type="button" class="plan-new-btn" data-action="plan-create">${this._iconCalendar()} New schedule</button>
+          </div>
+        </div>
+        ${emptyHtml}
+        ${cards ? `<div class="plan-library">${cards}</div>` : ''}
+      </div>
+    `;
+    this._syncDirectoryFabLayout();
+  },
+
+  openPlanDetail(planId) {
+    if (!canUseSchedulePlan(this.profile)) return;
+    const plan = this._getPlanRecord(planId);
+    if (!plan) {
+      this.showPlanView();
+      return;
+    }
+    this._setActivePlanId(planId);
+    this._homeView = 'plan';
+    this._planDetailId = planId;
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+
+    const items = this._getPlanItemsForSemester(this.activeSemester, planId);
     const conflicts = findPlanConflicts(items);
     const units = this._planUnitsTotal(items);
-    const sectionCount = this._countPlannedSections(this.activeSemester);
+    const sectionCount = this._countPlannedSections(this.activeSemester, planId);
     const courseCount = new Set(items.map(i => i.course_code)).size;
     const semLabel = semesterLabel(this.activeSemester);
     const conflictPairs = countPlanConflictPairs(items);
@@ -4070,12 +4293,12 @@ const App = {
     el.innerHTML = `
       <div class="plan-view">
         <div class="plan-header">
-          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
+          <button class="dc-back-link" onclick="App.showPlanView()">All schedules</button>
           <div class="plan-title-row">
-            <h2 class="plan-title">Your schedule</h2>
+            <h2 class="plan-title">${esc(plan.name)}</h2>
             <span class="plan-sem">${esc(semLabel)}</span>
           </div>
-          <p class="plan-lead">Add sections from course cards to see them on a weekly calendar. Change semester with the navbar filter.</p>
+          <p class="plan-lead">Add sections from course cards with <strong>+ Plan</strong>. They go into this schedule.</p>
           <div class="plan-stats">
             <span class="plan-stat">${sectionCount} section${sectionCount === 1 ? '' : 's'}</span>
             <span class="plan-stat">${courseCount} course${courseCount === 1 ? '' : 's'}</span>
@@ -4088,6 +4311,7 @@ const App = {
       </div>
     `;
     this._syncDirectoryFabLayout();
+    this._refreshNavPlanCount();
   },
 
   async showStudentFlagsView() {
