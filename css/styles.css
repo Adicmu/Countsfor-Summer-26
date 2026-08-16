@@ -833,7 +833,44 @@ body.is-resizing-panels * {
 .typeahead-units {
   font-size:0.7rem;
   color:var(--text-tertiary);
-  white-space:nowrap;
+  flex-shrink:0;
+}
+.typeahead-item-row {
+  gap:8px;
+}
+.typeahead-item-main {
+  display:flex;
+  align-items:center;
+  gap:10px;
+  flex:1;
+  min-width:0;
+}
+.typeahead-item-main .typeahead-name {
+  flex:1;
+}
+.typeahead-plan-btn {
+  flex-shrink:0;
+  padding:4px 10px;
+  border-radius:999px;
+  border:1px solid var(--cmu-red);
+  background:transparent;
+  color:var(--cmu-red);
+  font-size:0.72rem;
+  font-weight:600;
+  cursor:pointer;
+  transition:background var(--transition), color var(--transition);
+}
+.typeahead-plan-btn:hover {
+  background:var(--cmu-red);
+  color:#fff;
+}
+.typeahead-item-row:hover .typeahead-plan-btn,
+.typeahead-item-row.focused .typeahead-plan-btn {
+  background:var(--cmu-red);
+  color:#fff;
+}
+.cc-card > .dc-back-link {
+  margin-bottom:12px;
 }
 .typeahead-hint {
   font-size:0.65rem;

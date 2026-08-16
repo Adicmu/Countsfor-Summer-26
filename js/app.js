@@ -1346,13 +1346,14 @@ const App = {
   renderShell() {
     const isSplit = this.layoutMode === 'split';
     const hasCourse = !!this.selectedCourse;
+    const showPlanSearch = this._homeView === 'plan' && canUseSchedulePlan(this.profile);
 
-    const headerHtml = hasCourse ? `
+    const headerHtml = (hasCourse || showPlanSearch) ? `
       <div class="panel-header">
         <div class="search-row">
           <div class="search-wrapper">
             <span class="search-icon">🔍</span>
-            <input type="text" class="search-input" id="courseSearch" placeholder='Try "15-122" or "Probability"' autocomplete="off" />
+            <input type="text" class="search-input" id="courseSearch" placeholder="${showPlanSearch && !hasCourse ? 'Search courses to add to your schedule…' : 'Try &quot;15-122&quot; or &quot;Probability&quot;'}" autocomplete="off" />
             <button type="button" class="search-clear" data-clear="courseSearch" aria-label="Clear search" hidden>&times;</button>
             <div class="typeahead" id="typeahead"></div>
           </div>
@@ -1811,6 +1812,8 @@ const App = {
 
   reset() {
     this.selectedCourse = null;
+    this._planDetailId = null;
+    this._planCourseReturn = null;
     if (this.layoutMode === 'split') {
       this.exitExplorer();   // resets internal flags; the DOM mutations it makes get rebuilt by renderShell()
     }
@@ -1942,12 +1945,19 @@ const App = {
           const mm = getMinorAsMajorCode(App.profile);
           if (mm) dcTag = '<span class="tr-leaf-tag tr-leaf-tag-' + mm.toLowerCase() + '" style="margin-left:6px">' + mm + '</span>';
         }
-        return '<div class="typeahead-item" data-idx="' + i + '" onclick="App.selectSearchResult(' + i + ')">' +
+        const inPlan = App._homeView === 'plan' && typeof canUseSchedulePlan === 'function' && canUseSchedulePlan(App.profile);
+        const planBtn = inPlan
+          ? `<button type="button" class="typeahead-plan-btn" data-action="plan-add-first" data-course-code="${esc(c.course_code)}" onclick="event.stopPropagation(); App.addFirstSectionToPlan('${esc(c.course_code)}')">+ Plan</button>`
+          : '';
+        return '<div class="typeahead-item typeahead-item-row" data-idx="' + i + '" onclick="App.selectSearchResult(' + i + ')">' +
+          '<span class="typeahead-item-main">' +
           '<span class="typeahead-code">' + esc(c.course_code) + '</span>' +
           '<span class="typeahead-name">' + esc(c.course_name) + '</span>' +
           matchHint +
           dcTag +
+          '</span>' +
           '<span class="typeahead-units">' + (c.units || '?') + ' u</span>' +
+          planBtn +
         '</div>';
       }).join('');
     }
@@ -1979,7 +1989,41 @@ const App = {
     }
   },
 
+  _beginPlanCourseBrowse() {
+    if (this._homeView !== 'plan') return;
+    this._planCourseReturn = { planId: this._planDetailId || null };
+  },
+
+  _returnFromPlanCourseBrowse() {
+    const ret = this._planCourseReturn;
+    this._planCourseReturn = null;
+    this.selectedCourse = null;
+    const ta = document.getElementById('typeahead');
+    if (ta) ta.classList.remove('visible');
+    const input = document.getElementById('courseSearch');
+    if (input) {
+      input.value = '';
+      this._syncSearchClear(input);
+    }
+    this.renderShell();
+    if (this._homeView !== 'plan') this._homeView = 'plan';
+    if (ret && ret.planId) this.openPlanDetail(ret.planId);
+    else this.showPlanView();
+  },
+
+  _planBackLinkHtml() {
+    if (this._planCourseReturn) {
+      const plan = this._planCourseReturn.planId
+        ? this._getPlanRecord(this._planCourseReturn.planId)
+        : null;
+      const label = plan ? `Back to ${plan.name}` : 'Back to schedules';
+      return `<button type="button" class="dc-back-link" onclick="App._returnFromPlanCourseBrowse()">${esc(label)}</button>`;
+    }
+    return '';
+  },
+
   _selectCourse(course) {
+    if (this._homeView === 'plan') this._beginPlanCourseBrowse();
     if (!course) return;
     this._recordCourseSearch(course.course_code);
     const wasEmpty = !this.selectedCourse;
@@ -2290,9 +2334,15 @@ const App = {
   renderLeftEmpty() {
     const el = document.getElementById('leftBody');
     if (!el) return;
+    const wasPlan = this._homeView === 'plan';
+    const hadCourse = !!this.selectedCourse;
+    this._homeView = 'home';
+    this._planDetailId = null;
+    this._planCourseReturn = null;
+    this.selectedCourse = null;
+    if (wasPlan || hadCourse) this.renderShell();
     const explBtn = document.getElementById('exploreInlineBtn');
     if (explBtn) explBtn.style.display = 'none';
-    this._homeView = 'home';
     el.innerHTML = this._renderHome();
     // Faculty home — flag queue summary; students — flagged courses read-only
     if (canFlagCourses(this.profile) && this.authMode === 'authed') {
@@ -3030,6 +3080,7 @@ const App = {
 
     el.innerHTML = `
       <div class="cc-card">
+        ${this._planBackLinkHtml()}
         ${dcBannerHtml}
         <div class="cc-head">
           <div class="cc-head-main">
@@ -3707,6 +3758,7 @@ const App = {
   // ══════════════════════════════════════════════════════════
   // Storage: localStorage['cf_plans_v2'] = { activePlanId, plans: [{ id, name, items }] }
   _planDetailId: null,
+  _planCourseReturn: null,
 
   _loadPlansStore() {
     let store = loadStore('cf_plans_v2', null);
@@ -3978,6 +4030,8 @@ const App = {
     }
     const g = grouped[0];
     this.togglePlanSection(courseCode, g.semester_code || this.activeSemester, g.section, g.campus, { forceAdd: true });
+    const ta = document.getElementById('typeahead');
+    if (ta) ta.classList.remove('visible');
   },
 
   togglePlanSection(courseCode, semesterCode, section, campus, opts) {
@@ -4074,7 +4128,7 @@ const App = {
 
   _refreshPlanSurfaces(courseCode) {
     this._refreshNavPlanCount();
-    if (this._homeView === 'plan') {
+    if (this._homeView === 'plan' && !this.selectedCourse) {
       if (this._planDetailId) this.openPlanDetail(this._planDetailId);
       else this.showPlanView();
     } else if (this._homeView === 'home') {
@@ -4166,7 +4220,7 @@ const App = {
         <div class="plan-empty">
           <div class="plan-empty-icon">${this._iconCalendar()}</div>
           <div class="plan-empty-title">Your schedule is empty</div>
-          <div class="plan-empty-hint">Open a course and tap <strong>+ Plan</strong> on a section row, or use <strong>Add to plan</strong> on the course card.</div>
+          <div class="plan-empty-hint">Search above and tap <strong>+ Plan</strong> on a result, or open a course and add a section.</div>
         </div>`;
     }
 
@@ -4214,6 +4268,9 @@ const App = {
     if (!canUseSchedulePlan(this.profile)) return;
     this._homeView = 'plan';
     this._planDetailId = null;
+    this._planCourseReturn = null;
+    this.selectedCourse = null;
+    this.renderShell();
     const el = document.getElementById('leftBody');
     if (!el) return;
 
@@ -4254,7 +4311,7 @@ const App = {
             <h2 class="plan-title">Your schedules</h2>
             <span class="plan-sem">${esc(semLabel)}</span>
           </div>
-          <p class="plan-lead">Create multiple schedule drafts and compare them. Sections are added to your active schedule from course cards.</p>
+          <p class="plan-lead">Search above to add courses with <strong>+ Plan</strong>, or open a course and pick a section.</p>
           <div class="plan-library-actions">
             <button type="button" class="plan-new-btn" data-action="plan-create">${this._iconCalendar()} New schedule</button>
           </div>
@@ -4276,6 +4333,9 @@ const App = {
     this._setActivePlanId(planId);
     this._homeView = 'plan';
     this._planDetailId = planId;
+    this._planCourseReturn = null;
+    this.selectedCourse = null;
+    this.renderShell();
     const el = document.getElementById('leftBody');
     if (!el) return;
 
@@ -4298,7 +4358,7 @@ const App = {
             <h2 class="plan-title">${esc(plan.name)}</h2>
             <span class="plan-sem">${esc(semLabel)}</span>
           </div>
-          <p class="plan-lead">Add sections from course cards with <strong>+ Plan</strong>. They go into this schedule.</p>
+          <p class="plan-lead">Search above and tap <strong>+ Plan</strong> to add a course, or open a course card and pick a section.</p>
           <div class="plan-stats">
             <span class="plan-stat">${sectionCount} section${sectionCount === 1 ? '' : 's'}</span>
             <span class="plan-stat">${courseCount} course${courseCount === 1 ? '' : 's'}</span>
