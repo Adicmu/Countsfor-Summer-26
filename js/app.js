@@ -2483,7 +2483,6 @@ const App = {
     const vm = computeViewMode(this.profile);
     const p = this.profile && this.profile.primary;
     const minorMajor = getMinorAsMajorCode(this.profile);
-    const minorLabel = (this.profile && this.profile.secondary) ? getMinorLabel(this.profile.secondary) : null;
 
     const lead = 'See what it counts for: View every major requirement and General Education category it fulfills, side by side.';
 
