@@ -2485,18 +2485,7 @@ const App = {
     const minorMajor = getMinorAsMajorCode(this.profile);
     const minorLabel = (this.profile && this.profile.secondary) ? getMinorLabel(this.profile.secondary) : null;
 
-    let lead;
-    if (vm === 'focused-dual') {
-      lead = `See what it counts for in your ${p} major and ${esc(minorLabel)} minor.`;
-    } else if (vm === 'focused-single' && this.profile.role === 'professor') {
-      lead = `See what it counts for in the program you teach.`;
-    } else if (vm === 'focused-single' && isFaculty(this.profile) && p) {
-      lead = `See what it counts for across programs, with ${p} highlighted.`;
-    } else if (vm === 'focused-single') {
-      lead = `See what it counts for in your ${p} program.`;
-    } else {
-      lead = `See what it counts for across CS, IS, BA, and BS.`;
-    }
+    const lead = 'See what it counts for: View every major requirement and General Education category it fulfills, side by side.';
 
     let browseSub;
     if (vm === 'focused-dual') browseSub = `${p} + ${minorMajor} requirement tree`;
