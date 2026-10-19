@@ -12,6 +12,8 @@ REQUIRED_TABLES = frozenset({
     "schedule_plans",
     "schedule_plan_items",
     "schedule_plan_share_tokens",
+    "admin_audit_events",
+    "course_overrides",
 })
 
 

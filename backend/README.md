@@ -61,6 +61,9 @@ out that a student could otherwise inspect the DOM and submit a flag.
 | `GET /api/me`                  | any logged-in user                                                  |
 | `POST /api/auth/signup,login`  | public                                                              |
 | `POST /api/auth/logout`        | any logged-in user                                                  |
+| `GET /api/courses/overrides`   | public (every visitor needs the corrected catalog)                  |
+| `POST /api/courses/overrides`, `PATCH/DELETE /api/courses/overrides/:code`, `POST .../:code/archive`, `POST .../:code/restore` | `admin` |
+| `GET /api/admin/overview`, `/api/admin/insights`, `/api/admin/activity` | `admin`                                 |
 
 ## Migration plan (frontend → backend)
 

@@ -340,6 +340,105 @@ function normalizeCourseCode(code) {
   return s;
 }
 
+// ── Admin course edits ──────────────────────────────────────
+// The scrape regenerates courses.json daily, so admin edits live in the
+// backend and are applied here, after load and before indexing.
+const COURSE_EDIT_FIELDS = ['course_name', 'department', 'units', 'description', 'prerequisites', 'offered_qatar', 'offered_pitts', 'offered'];
+
+function _emptyRequirements() {
+  const out = {};
+  for (const m of MAJOR_ORDER) out[m] = [];
+  return out;
+}
+
+/**
+ * Returns { courses, archived }. Each edited course gets `_edit` (the override)
+ * and `_catalog` (the scraped values it replaced) so the admin editor can show both.
+ */
+function applyCourseOverrides(courses, overrides) {
+  if (!overrides || !overrides.length) return { courses, archived: [] };
+  // Copy before editing: fetchAllCourses caches the parsed catalog, and a later
+  // reload must start from the scraped values, not from edited objects.
+  courses = courses.slice();
+  const index = new Map(courses.map((c, i) => [normalizeCourseCode(c.course_code), i]));
+  const byCode = {
+    get(key) {
+      const i = index.get(key);
+      if (i === undefined) return undefined;
+      if (!courses[i]._copied) courses[i] = Object.assign({}, courses[i], { _copied: true, _catalog: {} });
+      return courses[i];
+    },
+    set(key, course) {
+      courses.push(course);
+      index.set(key, courses.length - 1);
+    },
+  };
+  const archivedCodes = new Set();
+  const archived = [];
+
+  for (const o of overrides) {
+    const key = normalizeCourseCode(o.course_code);
+    const fields = o.fields || {};
+    let course = byCode.get(key);
+    if (!course && o.is_new) {
+      course = {
+        course_code: key,
+        course_name: '',
+        department: '',
+        units: 0,
+        description: '',
+        prerequisites: '',
+        offered: [],
+        offered_qatar: false,
+        offered_pitts: false,
+        requirements: _emptyRequirements(),
+        soc_sections: [],
+        offerings: [],
+        _added: true,
+        _copied: true,
+      };
+      byCode.set(key, course);
+    }
+    if (!course) continue;
+
+    course._catalog = course._catalog || {};
+    for (const f of COURSE_EDIT_FIELDS) {
+      if (!(f in fields)) continue;
+      if (!course._added && !(f in course._catalog)) course._catalog[f] = course[f];
+      course[f] = fields[f];
+    }
+    if (o.requirements) {
+      if (!course._added && !('requirements' in course._catalog)) course._catalog.requirements = course.requirements;
+      course.requirements = Object.assign(_emptyRequirements(), o.requirements);
+    }
+    if (fields.course_code && fields.course_code !== course.course_code) {
+      if (!course._added) course._catalog.course_code = course.course_code;
+      course.course_code = fields.course_code;
+    }
+    course._edit = o;
+    if (o.archived) {
+      archivedCodes.add(course);
+      archived.push(course);
+    }
+  }
+  return { courses: courses.filter(c => !archivedCodes.has(c)), archived };
+}
+
+/** Every requirement path used in the catalog, per program, with its Gen Ed flag. */
+function knownRequirementPaths(courses) {
+  const out = {};
+  for (const m of MAJOR_ORDER) out[m] = new Map();
+  for (const c of courses) {
+    for (const [prog, list] of Object.entries(c.requirements || {})) {
+      if (!out[prog]) continue;
+      for (const r of list || []) {
+        if (r && r.requirement && !out[prog].has(r.requirement)) out[prog].set(r.requirement, !!r.type);
+      }
+    }
+  }
+  return out;
+}
+
 // ── Build course index ──────────────────────────────────────
 function buildCourseIndex(courses) {
   const index = {};

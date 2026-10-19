@@ -276,6 +276,38 @@ async function apiPatchUser(id, patch) {
   return apiFetch('/api/users/' + encodeURIComponent(id), { method: 'PATCH', body: patch });
 }
 
+// ── Admin console ────────────────────────────────────────────
+async function apiAdminOverview() {
+  return apiFetch('/api/admin/overview');
+}
+async function apiAdminInsights(semester = '') {
+  return apiFetch('/api/admin/insights' + (semester ? '?semester=' + encodeURIComponent(semester) : ''));
+}
+async function apiAdminActivity(query = '') {
+  return apiFetch('/api/admin/activity' + (query ? '?' + query : ''));
+}
+
+// ── Course catalog edits (read: everyone, write: admin) ──────
+async function apiGetCourseOverrides() {
+  // Short timeout: the catalog renders without edits rather than waiting on a cold backend.
+  return apiFetch('/api/courses/overrides', { timeoutMs: 10000 });
+}
+async function apiAddCourse(body) {
+  return apiFetch('/api/courses/overrides', { method: 'POST', body });
+}
+async function apiEditCourse(code, body) {
+  return apiFetch('/api/courses/overrides/' + encodeURIComponent(code), { method: 'PATCH', body });
+}
+async function apiArchiveCourse(code) {
+  return apiFetch('/api/courses/overrides/' + encodeURIComponent(code) + '/archive', { method: 'POST', body: {} });
+}
+async function apiRestoreCourse(code) {
+  return apiFetch('/api/courses/overrides/' + encodeURIComponent(code) + '/restore', { method: 'POST', body: {} });
+}
+async function apiRevertCourse(code) {
+  return apiFetch('/api/courses/overrides/' + encodeURIComponent(code), { method: 'DELETE' });
+}
+
 async function apiListStaffDirectory() {
   return apiFetch('/api/directory/entries');
 }

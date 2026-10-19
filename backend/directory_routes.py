@@ -2,6 +2,7 @@
 from flask import Blueprint, g, jsonify, request
 
 from .cmu import normalize_cmu_email
+from .admin import record_event
 from .db import db
 from .directory import (
     ELEVATED_ROLES,
@@ -83,6 +84,7 @@ def add_entry():
         setattr(existing, field, payload[field])
     if not existing.added_by_id:
         existing.added_by_id = g.user.id
+    record_event(g.user, "directory.add" if created else "directory.update", email, role=payload["role"], name=payload["name"])
     db.session.commit()
     source = "db" if email not in _load_json_directory() else "db+json"
     body = existing.to_public_dict(source=source)
@@ -108,6 +110,7 @@ def update_entry(entry_id: int):
 
     for field in ("name", "role", "department", "primary_program", "picture_url"):
         setattr(row, field, payload[field])
+    record_event(g.user, "directory.update", row.email, role=payload["role"], name=payload["name"])
     db.session.commit()
     return jsonify(row.to_public_dict(source="db"))
 
@@ -132,6 +135,7 @@ def upsert_entry_by_email():
         db.session.add(row)
     for field in ("name", "role", "department", "primary_program", "picture_url"):
         setattr(row, field, payload[field])
+    record_event(g.user, "directory.add" if created else "directory.update", email, role=payload["role"], name=payload["name"])
     db.session.commit()
     source = "db+json" if email in _load_json_directory() else "db"
     return jsonify(row.to_public_dict(source=source)), 201 if created else 200
@@ -145,6 +149,7 @@ def delete_entry(entry_id: int):
         return jsonify(error="not_found", message="No such directory entry."), 404
     email = row.email
     db.session.delete(row)
+    record_event(g.user, "directory.remove", email, name=row.name)
     db.session.commit()
     return jsonify(ok=True, email=email)
 
@@ -161,6 +166,7 @@ def revoke_access():
     row = db.session.query(DirectoryEntry).filter_by(email=email).one_or_none()
     if row is not None:
         db.session.delete(row)
+        record_event(g.user, "directory.remove", email, name=row.name)
         db.session.commit()
         return jsonify(ok=True, message="Directory entry removed.")
 
@@ -174,6 +180,7 @@ def revoke_access():
         added_by_id=g.user.id,
     )
     db.session.add(row)
+    record_event(g.user, "directory.revoke", email, name=row.name)
     db.session.commit()
     return jsonify(ok=True, message="Access revoked. User will be a student on next login.")
 

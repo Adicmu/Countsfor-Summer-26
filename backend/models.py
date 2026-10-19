@@ -5,6 +5,7 @@ belongs in route modules or permissions.py.
 """
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 from sqlalchemy import (
     Integer, String, Text, DateTime, Boolean, ForeignKey, UniqueConstraint, Index
@@ -407,4 +408,73 @@ class CourseSearchCount(db.Model):
             "course_code": self.course_code,
             "search_count": self.search_count,
             "last_searched_at": self.last_searched_at.isoformat() if self.last_searched_at else None,
+        }
+
+
+class AdminAuditEvent(db.Model):
+    """Who changed what: role edits, flag reviews and directory changes."""
+    __tablename__ = "admin_audit_events"
+    __table_args__ = (Index("ix_admin_audit_created", "created_at"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    actor_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    # Copied at write time so the log still reads correctly after an account is removed.
+    actor_email: Mapped[str] = mapped_column(String(255), nullable=False)
+    actor_name: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    action: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    target: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON text
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+    def to_dict(self) -> dict:
+        try:
+            details = json.loads(self.details) if self.details else {}
+        except ValueError:
+            details = {}
+        return {
+            "id": self.id,
+            "actor_email": self.actor_email,
+            "actor_name": self.actor_name,
+            "action": self.action,
+            "target": self.target,
+            "details": details,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+        }
+
+
+class CourseOverride(db.Model):
+    """Admin edits layered over the scraped catalog (data/courses.json).
+
+    The daily scrape rewrites the catalog file, so manual changes live here and
+    the frontend applies them after loading it. One row per course, keyed by the
+    catalog code (or the new code for a course an admin added).
+    """
+    __tablename__ = "course_overrides"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    course_code: Mapped[str] = mapped_column(String(16), nullable=False, unique=True, index=True)
+    is_new: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    archived: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    fields: Mapped[str | None] = mapped_column(Text, nullable=True)        # JSON: only the changed catalog fields
+    requirements: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON: full "counts for" map when edited
+    updated_by_id: Mapped[int | None] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    updated_by_email: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), nullable=False, default=_utcnow, onupdate=_utcnow
+    )
+
+    def to_dict(self) -> dict:
+        return {
+            "course_code": self.course_code,
+            "is_new": self.is_new,
+            "archived": self.archived,
+            "fields": json.loads(self.fields) if self.fields else {},
+            "requirements": json.loads(self.requirements) if self.requirements else None,
+            "updated_by_email": self.updated_by_email,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }

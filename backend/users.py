@@ -2,6 +2,7 @@
 from flask import Blueprint, g, jsonify, request
 
 from .auth import USER_SETTABLE_ROLES, _sync_user_minors, _validate_consistent_profile, _minor_codes_for_validation
+from .admin import record_event
 from .db import db
 from .models import User
 from .permissions import require_role_group, ROLE_GROUP_ADMIN
@@ -23,6 +24,17 @@ ALLOWED_PATCH_FIELDS = {
 }
 
 
+def _audit_snapshot(user: User) -> dict:
+    return {
+        "role": user.role,
+        "primary_program": user.primary_program,
+        "minor_codes": user.minor_codes_list(),
+        "department": user.department,
+        "advisor_scope": user.advisor_scope,
+        "name": user.name,
+    }
+
+
 def _can_manage_users(user: User) -> bool:
     return user.role_group() == ROLE_GROUP_ADMIN
 
@@ -39,8 +51,27 @@ def list_users():
             | (User.name.ilike(like))
             | (User.role.ilike(like))
         )
-    rows = q.limit(200).all()
-    return jsonify(items=[u.to_public_dict() for u in rows], total=len(rows))
+    group = (request.args.get("role_group") or "").strip().lower()
+    if group == "student":
+        q = q.filter(User.role == "student")
+    elif group == "faculty":
+        q = q.filter(User.role.in_(FACULTY_ROLES))
+    elif group == "admin":
+        q = q.filter(User.role == "admin")
+    if (request.args.get("incomplete") or "").lower() in ("1", "true", "yes"):
+        q = q.filter(User.profile_completed.is_(False))
+    try:
+        limit = max(1, min(int(request.args.get("limit", 200)), 1000))
+    except ValueError:
+        limit = 200
+    total = q.count()
+    rows = q.limit(limit).all()
+    items = []
+    for u in rows:
+        row = u.to_public_dict()
+        row["created_at"] = u.created_at.isoformat() if u.created_at else None
+        items.append(row)
+    return jsonify(items=items, total=total)
 
 
 @bp.route("/<int:user_id>", methods=["PATCH"])
@@ -55,6 +86,7 @@ def update_user(user_id: int):
     if actor.role != "admin" and target.role == "admin":
         return jsonify(error="forbidden", message="Only admins can edit admin accounts."), 403
 
+    before = _audit_snapshot(target)
     data = request.get_json(silent=True) or {}
     unknown = set(data.keys()) - ALLOWED_PATCH_FIELDS
     if unknown:
@@ -113,5 +145,12 @@ def update_user(user_id: int):
             return jsonify(error="inconsistent_profile", message=sync_err), 400
 
     target.profile_completed = target.profile_is_complete()
+    changes = {
+        field: {"from": before[field], "to": value}
+        for field, value in _audit_snapshot(target).items()
+        if before[field] != value
+    }
+    if changes:
+        record_event(actor, "user.update", target.email, changes=changes)
     db.session.commit()
     return jsonify(target.to_public_dict())

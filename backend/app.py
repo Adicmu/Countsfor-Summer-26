@@ -71,6 +71,8 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
     from .directory_routes import bp as directory_bp
     from .search_analytics import bp as search_analytics_bp
     from .plans import bp as plans_bp
+    from .admin import bp as admin_bp
+    from .course_overrides import bp as course_overrides_bp
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(flags_bp)
@@ -79,6 +81,8 @@ def create_app(config_class=Config, *, bootstrap_db: bool | None = None) -> Flas
     app.register_blueprint(directory_bp)
     app.register_blueprint(search_analytics_bp)
     app.register_blueprint(plans_bp)
+    app.register_blueprint(admin_bp)
+    app.register_blueprint(course_overrides_bp)
 
     # Health check (Render pings this). Fails if Postgres tables are missing.
     @app.route("/health")

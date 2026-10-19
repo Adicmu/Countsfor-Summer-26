@@ -71,3 +71,39 @@ CREATE INDEX IF NOT EXISTS idx_wishlist_user ON wishlist_items(user_id);
 --                option for server-side session rows) --------
 -- Skipped: Flask-Login + a secret-rotated cookie is sufficient v1.
 -- Add a sessions table later only if we want forced-logout / device list.
+
+-- ----- Admin activity log -----------------------------------
+-- One row per admin action: course edits, role changes, flag reviews,
+-- directory changes. Actor email/name are copied so the log still reads
+-- correctly after an account is removed.
+CREATE TABLE IF NOT EXISTS admin_audit_events (
+  id           INTEGER PRIMARY KEY AUTOINCREMENT,
+  actor_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  actor_email  TEXT    NOT NULL,
+  actor_name   TEXT,
+  action       TEXT    NOT NULL,   -- e.g. 'course.update', 'user.update', 'flag.status', 'directory.add'
+  target       TEXT,               -- course code or email the action was about
+  details      TEXT,               -- JSON
+  created_at   DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS ix_admin_audit_created ON admin_audit_events(created_at);
+CREATE INDEX IF NOT EXISTS ix_admin_audit_events_action ON admin_audit_events(action);
+
+-- ----- Course catalog edits ---------------------------------
+-- The daily SOC scrape regenerates data/courses.json, so admin edits are
+-- stored here and the frontend applies them on top after loading the file.
+-- course_code is the catalog number (kept even if the course is renumbered),
+-- or the course's own number when an admin added it (is_new).
+CREATE TABLE IF NOT EXISTS course_overrides (
+  id                INTEGER PRIMARY KEY AUTOINCREMENT,
+  course_code       TEXT    NOT NULL UNIQUE,
+  is_new            BOOLEAN NOT NULL DEFAULT 0,   -- added by an admin, not in the scrape
+  archived          BOOLEAN NOT NULL DEFAULT 0,   -- hidden from students, never deleted
+  fields            TEXT,   -- JSON: only the changed fields (course_code, course_name, department,
+                            --       units, description, prerequisites, offered, offered_qatar, offered_pitts)
+  requirements      TEXT,   -- JSON: full "counts for" map {"CS": [{requirement, type, major}], ...} when edited
+  updated_by_id     INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  updated_by_email  TEXT,
+  created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);

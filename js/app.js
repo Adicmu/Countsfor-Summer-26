@@ -257,6 +257,39 @@ const App = {
   },
 
   // ── Data Loading ──────────────────────────────────────────
+  /** Load the scraped catalog, apply admin course edits, then index and build trees. */
+  async _prepareCatalog() {
+    const courses = await fetchAllCourses();
+    let overrides = [];
+    if (isBackendConfigured()) {
+      const r = await apiGetCourseOverrides();
+      if (r.ok && r.data) overrides = r.data.items || [];
+      else console.warn('[CountsFor] Course edits unavailable; showing the scraped catalog.', r.error);
+    }
+    const applied = applyCourseOverrides(courses, overrides);
+    this.courses = applied.courses;
+    this._archivedCourses = applied.archived;
+    this.courseIndex = buildCourseIndex(this.courses);
+    if (!this.minorCourseList) {
+      try {
+        this.minorCourseList = await fetchMinorCourses();
+      } catch {
+        this.minorCourseList = {};
+      }
+    }
+
+    // Profile-aware annotations
+    annotateDoubleCounters(this.courses, this.profile, this.minorCourseList);
+    annotateMultiProgram(this.courses);
+
+    // Build trees for each major
+    for (const m of MAJOR_ORDER) {
+      const raw = buildRequirementTree(this.courses, m);
+      this.trees[m] = normalizeTree(raw, m, 0);
+      this.treeSections[m] = splitTreeSections(this.trees[m], m);
+    }
+  },
+
   async loadData() {
     const body = document.getElementById('leftBody');
     const rBody = document.getElementById('rightBody');
@@ -264,24 +297,7 @@ const App = {
     if (rBody) rBody.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
 
     try {
-      this.courses = await fetchAllCourses();
-      this.courseIndex = buildCourseIndex(this.courses);
-      try {
-        this.minorCourseList = await fetchMinorCourses();
-      } catch {
-        this.minorCourseList = {};
-      }
-
-      // Profile-aware annotations
-      annotateDoubleCounters(this.courses, this.profile, this.minorCourseList);
-      annotateMultiProgram(this.courses);
-
-      // Build trees for each major
-      for (const m of MAJOR_ORDER) {
-        const raw = buildRequirementTree(this.courses, m);
-        this.trees[m] = normalizeTree(raw, m, 0);
-        this.treeSections[m] = splitTreeSections(this.trees[m], m);
-      }
+      await this._prepareCatalog();
 
       // Auto-expand first level of the default major
       this.autoExpandFirstLevel(this.activeMajor);
@@ -1428,8 +1444,8 @@ const App = {
             </div>
           </div>
           <button class="theme-toggle" id="themeBtn" onclick="App.toggleTheme()" title="Toggle theme">${this.theme==='dark'?'☀️':'🌙'}</button>
-          ${canManageUsers(this.authedUser) ? '<button class="nav-admin" onclick="App.showUserManagement()" title="Manage user roles">Users</button>' : ''}
-          ${(canFlagCourses(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review and resolve course flags">Flag review</button>' : ''}
+          ${canManageUsers(this.authedUser) ? '<button class="nav-admin" onclick="App.showAdminConsole()" title="Users, faculty access, flags, insights and the activity log">Admin</button>' : ''}
+          ${(canFlagCourses(this.profile) && this.authMode === 'authed' && !canManageUsers(this.authedUser)) ? '<button class="nav-admin" onclick="App.showFlagReview()" title="Review and resolve course flags">Flag review</button>' : ''}
           ${(isFaculty(this.profile) && this.authMode === 'authed') ? '<button class="nav-admin" onclick="App.showStudentFavorites()" title="View student saved courses and notes">Student favorites</button>' : ''}
           ${this.authMode === 'authed' ? '<button class="nav-signout" onclick="App.signOut()" title="Sign out" aria-label="Sign out">Sign out</button>' : ''}
         </div>
@@ -4874,6 +4890,7 @@ const App = {
     root.hidden = true;
     root.innerHTML = '';
     root.onclick = null;
+    if (this._homeView === 'admin-console' && this._adminConsole.tab === 'access') this._loadAdminAccess();
   },
 
   toggleDirectoryPanel() {
@@ -5060,56 +5077,939 @@ const App = {
   },
 
   // ══════════════════════════════════════════════════════════
+  // ADMIN — Admin page (overview, users, access, flags, insights, activity)
+  // ══════════════════════════════════════════════════════════
+  _adminConsole: { tab: 'courses', semester: '', activityAction: '', activityItems: [], activityTotal: 0, activityPage: 1 },
+
+  ADMIN_TABS: [
+    ['courses', 'Courses'],
+    ['overview', 'Overview'],
+    ['users', 'Users'],
+    ['access', 'Faculty access'],
+    ['flags', 'Flags'],
+    ['insights', 'Insights'],
+    ['activity', 'Activity log'],
+  ],
+
+  async showAdminConsole(tab) {
+    if (!canManageUsers(this.authedUser)) {
+      showToast('Admin access required.');
+      return;
+    }
+    if (this._homeView === 'plan' || this.selectedCourse) {
+      this.selectedCourse = null;
+      this._planDetailId = null;
+      this._homeView = 'admin-console';
+      this.renderShell();
+    }
+    this._homeView = 'admin-console';
+    if (tab) this._adminConsole.tab = tab;
+    const el = document.getElementById('leftBody');
+    if (!el) return;
+    const active = this._adminConsole.tab;
+    el.innerHTML = `
+      <div class="adm-view adm-console">
+        <div class="adm-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
+          <div class="adm-title">Admin</div>
+        </div>
+        <div class="adm-console-tabs" role="tablist" aria-label="Admin sections">
+          ${this.ADMIN_TABS.map(([id, label]) => `
+            <button type="button" class="adm-console-tab ${active === id ? 'is-active' : ''}" role="tab"
+              aria-selected="${active === id ? 'true' : 'false'}" data-tab="${id}" onclick="App._setAdminTab('${id}')">${label}</button>`).join('')}
+        </div>
+        <div id="admContent" class="adm-console-body"></div>
+      </div>`;
+    this._syncDirectoryFabLayout();
+    await this._loadAdminTab();
+  },
+
+  async _setAdminTab(tab) {
+    this._adminConsole.tab = tab;
+    document.querySelectorAll('.adm-console-tab').forEach(b => {
+      const on = b.dataset.tab === tab;
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    await this._loadAdminTab();
+  },
+
+  async _loadAdminTab() {
+    const el = document.getElementById('admContent');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+    const tab = this._adminConsole.tab;
+    if (tab === 'courses') return this._renderAdminCourses();
+    if (tab === 'overview') return this._loadAdminOverview();
+    if (tab === 'users') return this._loadUserAdmin();
+    if (tab === 'access') return this._loadAdminAccess();
+    if (tab === 'flags') return this._loadFlagReview();
+    if (tab === 'insights') return this._loadAdminInsights();
+    if (tab === 'activity') return this._loadAdminActivity(true);
+  },
+
+  /** Admin sub-views render into the Admin page when it is open, else the left panel. */
+  _admEl() {
+    return document.getElementById('admContent') || document.getElementById('leftBody');
+  },
+
+  _admEmbedded() {
+    return !!document.getElementById('admContent');
+  },
+
+  _admError(r, what) {
+    const el = this._admEl();
+    if (el) el.innerHTML = `<div class="empty-state"><div class="empty-text">Could not load ${what}: ${esc((r.data && r.data.message) || r.error || 'error')}</div></div>`;
+  },
+
+  /** Server times are UTC; SQLite drops the offset, so treat bare timestamps as UTC. */
+  _admParse(iso) {
+    if (!iso) return null;
+    const d = new Date(/[zZ]|[+-]\d\d:?\d\d$/.test(iso) ? iso : iso + 'Z');
+    return isNaN(d) ? null : d;
+  },
+
+  _admWhen(iso) {
+    const d = this._admParse(iso);
+    if (!d) return '';
+    const mins = Math.round((Date.now() - d.getTime()) / 60000);
+    if (mins < 1) return 'just now';
+    if (mins < 60) return `${mins} min ago`;
+    const hours = Math.round(mins / 60);
+    if (hours < 24) return `${hours} h ago`;
+    const days = Math.round(hours / 24);
+    if (days < 14) return `${days} day${days === 1 ? '' : 's'} ago`;
+    return d.toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' });
+  },
+
+  _admDate(iso) {
+    const d = this._admParse(iso);
+    return !d ? '' : d.toLocaleString(undefined, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+  },
+
+  _admRoleLabel(role) {
+    return (ROLE_META[role] && ROLE_META[role].label) || role || '';
+  },
+
+  _admCourseLabel(code) {
+    const c = this.courseIndex ? lookupCourse(this.courseIndex, code) : null;
+    return c && c.course_name ? c.course_name : '';
+  },
+
+  _admStat(value, label, sub, onclick) {
+    const tag = onclick ? 'button' : 'div';
+    return `
+      <${tag} class="adm-stat ${onclick ? 'adm-stat-link' : ''}" ${onclick ? `type="button" onclick="${onclick}"` : ''}>
+        <div class="adm-stat-value">${esc(String(value))}</div>
+        <div class="adm-stat-label">${esc(label)}</div>
+        ${sub ? `<div class="adm-stat-sub">${esc(sub)}</div>` : ''}
+      </${tag}>`;
+  },
+
+  // ── Courses (catalog edits) ───────────────────────────────
+  _courseAdmin: { view: 'list', q: '', filter: 'all', key: null, draft: null },
+
+  _courseEditKey(course) {
+    // Edits to a scraped course stay keyed by its catalog number, even after renumbering.
+    if (course._edit) return course._edit.course_code;
+    return course.course_code;
+  },
+
+  _courseIsEdited(c) {
+    const e = c._edit;
+    return !!(e && !c._added && (Object.keys(e.fields || {}).length || e.requirements));
+  },
+
+  _courseReqLabel(path) {
+    return String(path || '').split('---').join(' › ');
+  },
+
+  _courseMatches(c, q) {
+    if (!q) return true;
+    const code = (c.course_code || '').toLowerCase();
+    return code.includes(q) || code.replace('-', '').includes(q.replace('-', ''))
+      || (c.course_name || '').toLowerCase().includes(q);
+  },
+
+  _renderAdminCourses() {
+    const st = this._courseAdmin;
+    if (st.view === 'edit' || st.view === 'add') return this._renderCourseEditor();
+    const el = document.getElementById('admContent');
+    if (!el) return;
+    const all = this.courses || [];
+    const archived = this._archivedCourses || [];
+    const editedCount = all.filter(c => this._courseIsEdited(c)).length;
+    const addedCount = all.filter(c => c._added).length;
+    const chip = (id, label, n) => `<button type="button" class="adm-chip ${st.filter === id ? 'is-active' : ''}" onclick="App._setCourseFilter('${id}')">${label}${n != null ? ` <span class="adm-chip-n">${n}</span>` : ''}</button>`;
+    el.innerHTML = `
+      <div class="adm-card adm-card-row">
+        <div>
+          <div class="adm-card-title">Course catalog</div>
+          <p class="adm-card-text">${all.length.toLocaleString()} courses from the Schedule of Classes. Changes made here are kept when the daily scrape refreshes the catalog, and students see them the next time they load CountsFor.</p>
+        </div>
+        <button type="button" class="adm-btn adm-btn-resolve" onclick="App._openCourseAdd()">Add a course</button>
+      </div>
+      <div class="adm-search-row">
+        <input type="search" class="adm-search" id="admCourseSearch" placeholder="Search by number or name, for example 15-122 or Calculus"
+          value="${esc(st.q)}" oninput="App._onCourseSearch(this.value)" autocomplete="off" />
+      </div>
+      <div class="adm-toolbar">
+        ${chip('all', 'All courses')}
+        ${chip('edited', 'Edited', editedCount)}
+        ${chip('added', 'Added here', addedCount)}
+        ${chip('archived', 'Archived', archived.length)}
+        <span class="adm-toolbar-count" id="admCourseCount"></span>
+      </div>
+      <div id="admCourseResults"></div>`;
+    this._renderCourseResults();
+  },
+
+  _setCourseFilter(id) {
+    this._courseAdmin.filter = id;
+    this._renderAdminCourses();
+  },
+
+  _onCourseSearch(value) {
+    this._courseAdmin.q = value;
+    this._renderCourseResults();
+  },
+
+  _renderCourseResults() {
+    const st = this._courseAdmin;
+    const box = document.getElementById('admCourseResults');
+    if (!box) return;
+    const q = st.q.trim().toLowerCase();
+    let pool;
+    if (st.filter === 'archived') pool = this._archivedCourses || [];
+    else if (st.filter === 'edited') pool = (this.courses || []).filter(c => this._courseIsEdited(c));
+    else if (st.filter === 'added') pool = (this.courses || []).filter(c => c._added);
+    else pool = this.courses || [];
+    const matches = pool.filter(c => this._courseMatches(c, q))
+      .sort((a, b) => (a.course_code || '').localeCompare(b.course_code || ''));
+    const LIMIT = 60;
+    const countEl = document.getElementById('admCourseCount');
+    if (countEl) countEl.textContent = matches.length > LIMIT ? `Showing ${LIMIT} of ${matches.length.toLocaleString()}` : `${matches.length.toLocaleString()} course${matches.length === 1 ? '' : 's'}`;
+    if (!q && st.filter === 'all') {
+      box.innerHTML = '<p class="adm-empty-line">Search for a course to edit it, or use the filters to see what has already been changed.</p>';
+      if (countEl) countEl.textContent = '';
+      return;
+    }
+    if (!matches.length) {
+      box.innerHTML = '<div class="empty-state"><div class="empty-text">No courses match.</div></div>';
+      return;
+    }
+    const archivedView = st.filter === 'archived';
+    box.innerHTML = `<ul class="adm-course-list">${matches.slice(0, LIMIT).map(c => {
+      const where = [c.offered_qatar ? 'Qatar' : '', c.offered_pitts ? 'Pittsburgh' : ''].filter(Boolean).join(' · ');
+      const tags = [
+        c._added ? '<span class="adm-pill adm-pill-new">Added here</span>' : '',
+        this._courseIsEdited(c) && !archivedView ? '<span class="adm-pill adm-pill-edit">Edited</span>' : '',
+        archivedView ? '<span class="adm-pill">Archived</span>' : '',
+      ].join('');
+      const key = esc(this._courseEditKey(c));
+      return `
+        <li>
+          <button type="button" class="adm-course-item" onclick="App._openCourseEditor('${key}', ${archivedView})">
+            <span class="adm-course-item-code">${esc(c.course_code)}</span>
+            <span class="adm-course-item-body">
+              <span class="adm-course-item-name">${esc(c.course_name || 'Untitled')}</span>
+              <span class="adm-cell-sub">${c.units ? esc(String(c.units)) + ' units' : 'Units not set'}${where ? ' · ' + esc(where) : ''}</span>
+            </span>
+            <span class="adm-course-item-tags">${tags}</span>
+          </button>
+        </li>`;
+    }).join('')}</ul>`;
+  },
+
+  _findCourseByKey(key, archived) {
+    const pool = archived ? (this._archivedCourses || []) : (this.courses || []);
+    return pool.find(c => this._courseEditKey(c) === key) || null;
+  },
+
+  _courseDraftFrom(course) {
+    const reqs = {};
+    for (const m of MAJOR_ORDER) {
+      reqs[m] = ((course && course.requirements && course.requirements[m]) || [])
+        .map(r => ({ requirement: r.requirement, type: !!r.type }));
+    }
+    return {
+      course_code: course ? course.course_code : '',
+      course_name: course ? (course.course_name || '') : '',
+      department: course ? String(course.department || '') : '',
+      units: course ? (course.units != null ? String(course.units) : '') : '',
+      description: course ? (course.description || '') : '',
+      prerequisites: course ? (course.prerequisites || '') : '',
+      offered_qatar: course ? !!course.offered_qatar : true,
+      offered_pitts: course ? !!course.offered_pitts : false,
+      offered: course && Array.isArray(course.offered) ? course.offered.join(', ') : '',
+      requirements: reqs,
+    };
+  },
+
+  _openCourseEditor(key, archived) {
+    const course = this._findCourseByKey(key, archived);
+    if (!course) {
+      showToast('That course is no longer in the catalog.');
+      return;
+    }
+    this._courseAdmin.view = 'edit';
+    this._courseAdmin.key = key;
+    this._courseAdmin.archived = !!archived;
+    this._courseAdmin.draft = this._courseDraftFrom(course);
+    this._renderCourseEditor();
+    const top = document.getElementById('admContent');
+    if (top) top.scrollIntoView({ block: 'start' });
+  },
+
+  _openCourseAdd() {
+    this._courseAdmin.view = 'add';
+    this._courseAdmin.key = null;
+    this._courseAdmin.archived = false;
+    this._courseAdmin.draft = this._courseDraftFrom(null);
+    this._renderCourseEditor();
+  },
+
+  _closeCourseEditor() {
+    this._courseAdmin.view = 'list';
+    this._courseAdmin.draft = null;
+    this._renderAdminCourses();
+  },
+
+  /** Copy the form inputs into the draft so re-rendering the editor keeps what was typed. */
+  _syncCourseDraft() {
+    const d = this._courseAdmin.draft;
+    if (!d) return;
+    const val = id => { const el = document.getElementById(id); return el ? el.value : null; };
+    const chk = id => { const el = document.getElementById(id); return el ? el.checked : null; };
+    const fields = { course_code: 'ce-code', course_name: 'ce-name', department: 'ce-dept', units: 'ce-units', description: 'ce-desc', prerequisites: 'ce-prereq', offered: 'ce-offered' };
+    for (const [k, id] of Object.entries(fields)) { const v = val(id); if (v !== null) d[k] = v; }
+    const q = chk('ce-qatar'); if (q !== null) d.offered_qatar = q;
+    const pi = chk('ce-pitts'); if (pi !== null) d.offered_pitts = pi;
+  },
+
+  _renderCourseEditor() {
+    const el = document.getElementById('admContent');
+    const st = this._courseAdmin;
+    const d = st.draft;
+    if (!el || !d) return;
+    const adding = st.view === 'add';
+    const course = adding ? null : this._findCourseByKey(st.key, st.archived);
+    const cat = (course && course._catalog) || {};
+    const was = (field, fmt) => (field in cat)
+      ? `<span class="adm-field-was">Schedule of Classes says: ${esc(fmt ? fmt(cat[field]) : (cat[field] === '' || cat[field] == null ? '(blank)' : String(cat[field])))}</span>` : '';
+    const known = this._knownReqPaths || (this._knownReqPaths = knownRequirementPaths(this.courses || []));
+    const edit = course && course._edit;
+
+    const reqSections = MAJOR_ORDER.map(prog => {
+      const list = d.requirements[prog] || [];
+      const options = [...known[prog].keys()].sort().map(p => `<option value="${esc(this._courseReqLabel(p))}"></option>`).join('');
+      const chips = list.map((r, i) => `
+        <li class="adm-req">
+          <span class="adm-req-tag ${r.type ? 'is-gened' : ''}">${r.type ? 'Gen Ed' : 'Core'}</span>
+          <span class="adm-req-path">${esc(this._courseReqLabel(r.requirement))}</span>
+          <button type="button" class="adm-req-x" onclick="App._removeCourseReq('${prog}', ${i})" aria-label="Remove this requirement">×</button>
+        </li>`).join('');
+      return `
+        <div class="adm-req-group">
+          <div class="adm-req-head">${esc(getProgramLabel(prog) || prog)} <span class="adm-cell-sub">${list.length ? list.length + ' requirement' + (list.length === 1 ? '' : 's') : 'Does not count for anything'}</span></div>
+          ${chips ? `<ul class="adm-req-list">${chips}</ul>` : ''}
+          <div class="adm-req-add">
+            <input class="adm-search" id="ce-req-${prog}" list="ce-dl-${prog}" placeholder="Pick or type a category, for example GenEd › Humanities/Arts Electives" oninput="App._onCourseReqInput('${prog}')" />
+            <datalist id="ce-dl-${prog}">${options}</datalist>
+            <select class="adm-select" id="ce-req-type-${prog}" title="Only used for a category that does not exist yet" hidden>
+              <option value="core">Core</option><option value="gened">Gen Ed</option>
+            </select>
+            <button type="button" class="adm-btn" onclick="App._addCourseReq('${prog}')">Add</button>
+          </div>
+          <div class="adm-req-hint" id="ce-req-hint-${prog}" hidden>New category. Choose whether it is Core or Gen Ed.</div>
+        </div>`;
+    }).join('');
+
+    const actions = adding
+      ? `<button type="button" class="adm-btn adm-btn-resolve" onclick="App._saveCourse()">Add course</button>
+         <button type="button" class="adm-btn" onclick="App._closeCourseEditor()">Cancel</button>`
+      : st.archived
+        ? `<button type="button" class="adm-btn adm-btn-resolve" onclick="App._restoreCourse()">Restore course</button>
+           <button type="button" class="adm-btn" onclick="App._closeCourseEditor()">Back</button>`
+        : `<button type="button" class="adm-btn adm-btn-resolve" onclick="App._saveCourse()">Save changes</button>
+           <button type="button" class="adm-btn" onclick="App._closeCourseEditor()">Cancel</button>
+           <span class="adm-actions-spacer"></span>
+           ${this._courseIsEdited(course) ? '<button type="button" class="adm-btn" onclick="App._revertCourse()" title="Remove every manual change and show the Schedule of Classes version">Undo all edits</button>' : ''}
+           <button type="button" class="adm-btn adm-btn-dismiss" onclick="App._archiveCourse()" title="Hide from students. Nothing is deleted and it can be restored.">Archive</button>`;
+
+    el.innerHTML = `
+      <div class="adm-editor">
+        <button type="button" class="dc-back-link" onclick="App._closeCourseEditor()">Back to courses</button>
+        <div class="adm-editor-head">
+          <div class="adm-title">${adding ? 'Add a course' : esc(d.course_code) + ' ' + esc(d.course_name)}</div>
+          ${st.archived ? '<p class="adm-card-text">This course is archived, so students do not see it. Restore it to edit it again.</p>' : ''}
+          ${edit && edit.updated_at ? `<p class="adm-cell-sub">Last edited ${esc(this._admWhen(edit.updated_at))}${edit.updated_by_email ? ' by ' + esc(edit.updated_by_email) : ''}</p>` : ''}
+          ${!adding && course && !course._added && !this._courseIsEdited(course) ? '<p class="adm-cell-sub">Showing the Schedule of Classes version. Nothing has been changed yet.</p>' : ''}
+        </div>
+        <fieldset class="adm-fieldset" ${st.archived ? 'disabled' : ''}>
+          <div class="adm-form-grid">
+            <label class="adm-field">Course number<input class="adm-search" id="ce-code" value="${esc(d.course_code)}" placeholder="15-122" inputmode="numeric" />${was('course_code')}</label>
+            <label class="adm-field adm-field-wide">Course name<input class="adm-search" id="ce-name" value="${esc(d.course_name)}" placeholder="Principles of Imperative Computation" />${was('course_name')}</label>
+            <label class="adm-field">Department number<input class="adm-search" id="ce-dept" value="${esc(d.department)}" placeholder="15" inputmode="numeric" />${was('department')}</label>
+            <label class="adm-field">Units<input class="adm-search" id="ce-units" value="${esc(d.units)}" placeholder="9" inputmode="decimal" />${was('units')}</label>
+            <label class="adm-field">Semesters offered<input class="adm-search" id="ce-offered" value="${esc(d.offered)}" placeholder="F26, S27" />${was('offered', v => (v || []).join(', ') || '(none)')}</label>
+            <div class="adm-field">Campus
+              <div class="adm-checks">
+                <label><input type="checkbox" id="ce-qatar" ${d.offered_qatar ? 'checked' : ''} /> Qatar</label>
+                <label><input type="checkbox" id="ce-pitts" ${d.offered_pitts ? 'checked' : ''} /> Pittsburgh</label>
+              </div>
+            </div>
+            <label class="adm-field adm-field-full">Description<textarea class="adm-search adm-textarea" id="ce-desc" rows="4">${esc(d.description)}</textarea>${'description' in cat ? '<span class="adm-field-was">Changed from the Schedule of Classes text.</span>' : ''}</label>
+            <label class="adm-field adm-field-full">Prerequisites<input class="adm-search" id="ce-prereq" value="${esc(d.prerequisites)}" placeholder="15-112" />${was('prerequisites')}</label>
+          </div>
+          <div class="adm-card-title adm-section-title">What it counts for</div>
+          <p class="adm-card-text">The requirements this course fulfills in each major. ${'requirements' in cat ? 'These have been edited here.' : ''}</p>
+          <div class="adm-req-groups">${reqSections}</div>
+        </fieldset>
+        <div class="adm-actions adm-editor-actions">${actions}</div>
+      </div>`;
+  },
+
+  _reqPathFromInput(prog) {
+    const input = document.getElementById('ce-req-' + prog);
+    const raw = input ? input.value.trim() : '';
+    if (!raw) return '';
+    return raw.split(/\s*›\s*|\s*---\s*/).map(s => s.trim()).filter(Boolean).join('---');
+  },
+
+  _onCourseReqInput(prog) {
+    const path = this._reqPathFromInput(prog);
+    const known = this._knownReqPaths || {};
+    const isNew = !!path && !(known[prog] && known[prog].has(path));
+    const sel = document.getElementById('ce-req-type-' + prog);
+    const hint = document.getElementById('ce-req-hint-' + prog);
+    if (sel) {
+      sel.hidden = !isNew;
+      if (isNew) sel.value = /^gened/i.test(path) ? 'gened' : 'core';
+    }
+    if (hint) hint.hidden = !isNew;
+  },
+
+  _addCourseReq(prog) {
+    const path = this._reqPathFromInput(prog);
+    if (!path) return;
+    this._syncCourseDraft();
+    const list = this._courseAdmin.draft.requirements[prog];
+    if (list.some(r => r.requirement === path)) {
+      showToast('Already listed.');
+      return;
+    }
+    const known = this._knownReqPaths[prog];
+    const sel = document.getElementById('ce-req-type-' + prog);
+    const type = known.has(path) ? known.get(path) : (sel ? sel.value === 'gened' : false);
+    list.push({ requirement: path, type });
+    this._renderCourseEditor();
+    const next = document.getElementById('ce-req-' + prog);
+    if (next) next.focus();
+  },
+
+  _removeCourseReq(prog, index) {
+    this._syncCourseDraft();
+    this._courseAdmin.draft.requirements[prog].splice(index, 1);
+    this._renderCourseEditor();
+  },
+
+  _parseOffered(text) {
+    return String(text || '').split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
+  },
+
+  async _saveCourse() {
+    this._syncCourseDraft();
+    const st = this._courseAdmin;
+    const d = st.draft;
+    const adding = st.view === 'add';
+    const code = normalizeCourseCode(d.course_code) || d.course_code.trim();
+    if (!/^\d{2}-\d{3}$/.test(code)) {
+      showToast('Course number must look like 15-122.');
+      return;
+    }
+    if (!d.course_name.trim()) {
+      showToast('Course name is required.');
+      return;
+    }
+    const course = adding ? null : this._findCourseByKey(st.key, false);
+    const clash = lookupCourse(this.courseIndex, code) || (this._archivedCourses || []).find(c => c.course_code === code);
+    if (clash && clash !== course) {
+      showToast(`${code} is already in the catalog. Edit that course instead.`);
+      return;
+    }
+    const offered = this._parseOffered(d.offered);
+    if (offered.some(s => !/^[FSMN]\d{2}$/.test(s))) {
+      showToast('Semesters must be codes like F26 or S27, separated by commas.');
+      return;
+    }
+    const reqs = {};
+    for (const m of MAJOR_ORDER) reqs[m] = d.requirements[m].map(r => ({ requirement: r.requirement, type: !!r.type }));
+
+    let r;
+    if (adding) {
+      r = await apiAddCourse({
+        course_code: code,
+        course_name: d.course_name.trim(),
+        department: d.department.trim(),
+        units: d.units.trim() === '' ? 0 : d.units.trim(),
+        description: d.description,
+        prerequisites: d.prerequisites,
+        offered_qatar: d.offered_qatar,
+        offered_pitts: d.offered_pitts,
+        offered,
+        requirements: reqs,
+      });
+    } else {
+      const before = this._courseDraftFrom(course);
+      const body = {};
+      if (code !== course.course_code) body.new_code = code;
+      for (const f of ['course_name', 'department', 'description', 'prerequisites']) {
+        if (d[f].trim() !== String(before[f]).trim()) body[f] = d[f].trim();
+      }
+      if (d.units.trim() !== before.units.trim()) body.units = d.units.trim();
+      if (d.offered_qatar !== before.offered_qatar) body.offered_qatar = d.offered_qatar;
+      if (d.offered_pitts !== before.offered_pitts) body.offered_pitts = d.offered_pitts;
+      if (offered.join(',') !== this._parseOffered(before.offered).join(',')) body.offered = offered;
+      if (JSON.stringify(reqs) !== JSON.stringify(before.requirements)) body.requirements = reqs;
+      if (!Object.keys(body).length) {
+        showToast('Nothing has changed.');
+        return;
+      }
+      r = await apiEditCourse(st.key, body);
+    }
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Could not save the course.');
+      return;
+    }
+    const key = r.data.course_code;
+    await this._reloadCatalog();
+    showToast(adding ? `${code} added. Students will see it on their next visit.` : 'Course saved.');
+    const saved = this._findCourseByKey(key, false);
+    if (saved) this._openCourseEditor(key, false);
+    else this._closeCourseEditor();
+  },
+
+  async _archiveCourse() {
+    const st = this._courseAdmin;
+    const course = this._findCourseByKey(st.key, false);
+    if (!course) return;
+    if (!confirm(`Archive ${course.course_code} ${course.course_name}? Students will stop seeing it. Nothing is deleted, and you can restore it from the Archived list.`)) return;
+    const r = await apiArchiveCourse(st.key);
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Could not archive the course.');
+      return;
+    }
+    await this._reloadCatalog();
+    showToast(`${course.course_code} archived.`);
+    this._closeCourseEditor();
+  },
+
+  async _restoreCourse() {
+    const st = this._courseAdmin;
+    const r = await apiRestoreCourse(st.key);
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Could not restore the course.');
+      return;
+    }
+    await this._reloadCatalog();
+    showToast('Course restored.');
+    this._openCourseEditor(st.key, false);
+  },
+
+  async _revertCourse() {
+    const st = this._courseAdmin;
+    const course = this._findCourseByKey(st.key, false);
+    if (!course) return;
+    if (!confirm(`Undo every manual change to ${course.course_code}? It will show exactly what the Schedule of Classes says.`)) return;
+    const r = await apiRevertCourse(st.key);
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Could not undo the edits.');
+      return;
+    }
+    await this._reloadCatalog();
+    showToast('Edits removed.');
+    this._openCourseEditor(st.key, false);
+  },
+
+  /** Re-apply course edits after a save, so search, trees and this page all agree. */
+  async _reloadCatalog() {
+    try {
+      await this._prepareCatalog();
+      this._knownReqPaths = null;
+    } catch (err) {
+      console.error(err);
+      showToast('Saved, but the catalog could not be refreshed. Reload the page.');
+    }
+  },
+
+  // ── Overview ──────────────────────────────────────────────
+  async _loadAdminOverview() {
+    const r = await apiAdminOverview();
+    if (!r.ok) return this._admError(r, 'the overview');
+    const el = document.getElementById('admContent');
+    if (!el || this._adminConsole.tab !== 'overview') return;
+    const d = r.data;
+    const u = d.users;
+    const openFlags = (d.flags.pending || 0) + (d.flags.reviewed || 0);
+    const scraped = d.course_data && d.course_data.last_scrape;
+    const scrapedDays = scraped ? Math.floor((Date.now() - new Date(scraped).getTime()) / 86400000) : null;
+    const staleData = scrapedDays !== null && scrapedDays > 3;
+
+    const recent = (d.recent_signups || []).map(s => `
+      <li class="adm-recent-row">
+        <div>
+          <div class="adm-recent-name">${esc(s.name)}</div>
+          <div class="adm-recent-meta">${esc(s.email)} · ${esc(this._admRoleLabel(s.role))}${s.primary_program ? ' · ' + esc(getProgramLabel(s.primary_program) || s.primary_program) : ''}</div>
+        </div>
+        <span class="adm-recent-when" title="${esc(this._admDate(s.created_at))}">${esc(this._admWhen(s.created_at))}</span>
+      </li>`).join('') || '<li class="adm-empty-line">No accounts yet.</li>';
+
+    el.innerHTML = `
+      <div class="adm-stat-grid">
+        ${this._admStat(u.total, 'Accounts', `${u.by_group.student} student${u.by_group.student === 1 ? '' : 's'} · ${u.by_group.faculty} faculty · ${u.by_group.admin} admin${u.by_group.admin === 1 ? '' : 's'}`, "App._setAdminTab('users')")}
+        ${this._admStat(u.new_7d, 'New this week', `${u.new_30d} in the last 30 days`)}
+        ${this._admStat(u.active_7d, 'Signed in this week', u.total ? `${Math.round(100 * u.active_7d / u.total)}% of accounts` : '')}
+        ${this._admStat(u.incomplete_profiles, 'Unfinished profiles', 'Signed up but never chose a program', 'App._openIncompleteUsers()')}
+        ${this._admStat(openFlags, 'Open flags', `${d.flags.pending || 0} pending · ${d.flags.reviewed || 0} reviewed`, "App._setAdminTab('flags')")}
+        ${this._admStat(d.wishlist.items, 'Saved courses', `by ${d.wishlist.students} student${d.wishlist.students === 1 ? '' : 's'}`)}
+        ${this._admStat(d.plans, 'Schedule plans', '')}
+        ${this._admStat(d.course_lookups, 'Course lookups', 'Courses opened by students', "App._setAdminTab('insights')")}
+      </div>
+
+      <div class="adm-card ${staleData ? 'adm-card-warn' : ''}">
+        <div class="adm-card-title">Course data</div>
+        <p class="adm-card-text">${scraped
+          ? `Schedule of Classes last scraped <strong>${esc(this._admDate(scraped))}</strong> (${esc(this._admWhen(scraped))}).`
+          : 'The date of the last Schedule of Classes scrape is not available.'}
+          ${staleData ? ' The daily scrape normally keeps this within a day, so it may have stopped running.' : ''}</p>
+      </div>
+
+      <div class="adm-card">
+        <div class="adm-card-title">Newest accounts</div>
+        <ul class="adm-recent">${recent}</ul>
+      </div>`;
+  },
+
+  _openIncompleteUsers() {
+    this._userAdminState.roleGroup = '';
+    this._userAdminState.incomplete = true;
+    this._setAdminTab('users');
+  },
+
+  // ── Faculty access (directory) ────────────────────────────
+  async _loadAdminAccess() {
+    const r = await apiListStaffDirectory();
+    if (!r.ok) return this._admError(r, 'the directory');
+    const el = document.getElementById('admContent');
+    if (!el || this._adminConsole.tab !== 'access') return;
+    const items = [...(r.data.items || [])].sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { sensitivity: 'base' }));
+    const counts = {};
+    items.forEach(i => { counts[i.role] = (counts[i.role] || 0) + 1; });
+    const sourceLabel = { db: 'Added here', json: 'Seed list', 'db+json': 'Seed list, edited here' };
+    const rows = items.map(i => `
+      <tr>
+        <td><div class="adm-cell-strong">${esc(i.name)}</div><div class="adm-cell-sub">${esc(i.email)}</div></td>
+        <td>${esc(this._admRoleLabel(i.role))}</td>
+        <td>${esc(i.department || '')}</td>
+        <td class="adm-cell-sub">${esc(sourceLabel[i.source] || i.source || '')}</td>
+      </tr>`).join('');
+    el.innerHTML = `
+      <div class="adm-card">
+        <div class="adm-card-row">
+          <div>
+            <div class="adm-card-title">People with faculty or admin access</div>
+            <p class="adm-card-text">${items.length} people · ${Object.entries(counts).map(([role, n]) => `${n} ${esc(this._admRoleLabel(role))}`).join(' · ')}. Anyone listed gets the faculty view when they sign in. Changes apply on their next sign-in.</p>
+          </div>
+          <button type="button" class="adm-btn adm-btn-resolve" onclick="App._openDirectoryFromAdmin()">Add or edit people</button>
+        </div>
+      </div>
+      ${items.length ? `
+      <div class="adm-table-wrap">
+        <table class="adm-table">
+          <thead><tr><th scope="col">Person</th><th scope="col">Role</th><th scope="col">Department</th><th scope="col">Source</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+      </div>` : '<div class="empty-state"><div class="empty-text">Nobody has faculty access yet.</div></div>'}`;
+  },
+
+  _openDirectoryFromAdmin() {
+    if (!this._directoryPanelOpen) this.toggleDirectoryPanel();
+  },
+
+  // ── Insights ──────────────────────────────────────────────
+  async _loadAdminInsights() {
+    const r = await apiAdminInsights(this._adminConsole.semester);
+    if (!r.ok) return this._admError(r, 'insights');
+    const el = document.getElementById('admContent');
+    if (!el || this._adminConsole.tab !== 'insights') return;
+    const d = r.data;
+    const semLabel = code => {
+      const opt = (availableSemesterOptions(this.courses || [], code) || []).find(s => s.code === code);
+      return opt ? opt.label : code;
+    };
+    const semOpts = ['<option value="">All semesters</option>']
+      .concat((d.semesters || []).map(s => `<option value="${esc(s)}" ${this._adminConsole.semester === s ? 'selected' : ''}>${esc(semLabel(s))}</option>`))
+      .join('');
+
+    const bars = (rows, labelFn, valueKey = 'count', empty = 'No data yet.') => {
+      if (!rows || !rows.length) return `<p class="adm-empty-line">${empty}</p>`;
+      const max = Math.max(...rows.map(x => x[valueKey])) || 1;
+      return `<ol class="adm-bars">${rows.map(x => `
+        <li class="adm-bar-row">
+          <div class="adm-bar-label">${labelFn(x)}</div>
+          <div class="adm-bar-track"><div class="adm-bar-fill" style="width:${Math.max(2, Math.round(100 * x[valueKey] / max))}%"></div></div>
+          <div class="adm-bar-value">${x[valueKey]}</div>
+        </li>`).join('')}</ol>`;
+    };
+    const courseLabel = x => {
+      const name = this._admCourseLabel(x.course_code) || x.course_name || '';
+      return `<span class="adm-bar-code">${esc(x.course_code)}</span>${name ? ` <span class="adm-bar-name">${esc(name)}</span>` : ''}`;
+    };
+
+    const byProgram = Object.entries(d.lookups_by_program || {})
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .map(([prog, rows]) => `
+        <div class="adm-mini">
+          <div class="adm-mini-title">${esc(getProgramLabel(prog) || prog)}</div>
+          <ol class="adm-mini-list">${rows.map(x => `<li><span class="adm-bar-code">${esc(x.course_code)}</span> <span class="adm-cell-sub">${x.count}</span></li>`).join('')}</ol>
+        </div>`).join('') || '<p class="adm-empty-line">No lookups yet.</p>';
+
+    const programs = Object.entries(d.students_by_program || {})
+      .map(([p, n]) => ({ label: p === 'none' ? 'Not chosen yet' : (getProgramLabel(p) || p), count: n }))
+      .sort((a, b) => b.count - a.count);
+
+    const start = new Date(d.signups_by_week.start + 'T00:00:00');
+    const weeks = (d.signups_by_week.counts || []).map((n, i) => {
+      const wk = new Date(start.getTime() + i * 7 * 86400000);
+      return { label: wk.toLocaleDateString(undefined, { day: 'numeric', month: 'short' }), count: n };
+    });
+    const weekMax = Math.max(1, ...weeks.map(w => w.count));
+
+    el.innerHTML = `
+      <div class="adm-toolbar">
+        <label class="adm-toolbar-label" for="admInsightSem">Course lookups for</label>
+        <select id="admInsightSem" class="adm-select" onchange="App._adminConsole.semester=this.value;App._loadAdminInsights();">${semOpts}</select>
+      </div>
+      <div class="adm-insight-grid">
+        <section class="adm-card">
+          <div class="adm-card-title">Most looked-up courses</div>
+          <p class="adm-card-text">How often students opened each course.</p>
+          ${bars(d.top_lookups, courseLabel, 'count', 'No lookups yet.')}
+        </section>
+        <section class="adm-card">
+          <div class="adm-card-title">Most saved courses</div>
+          <p class="adm-card-text">Courses students added to their saved list.</p>
+          ${bars(d.most_saved, courseLabel, 'count', 'Nothing saved yet.')}
+        </section>
+        <section class="adm-card">
+          <div class="adm-card-title">Top lookups by program</div>
+          <div class="adm-mini-grid">${byProgram}</div>
+        </section>
+        <section class="adm-card">
+          <div class="adm-card-title">Most flagged courses</div>
+          ${d.most_flagged && d.most_flagged.length ? `<ol class="adm-bars">${d.most_flagged.map(x => `
+            <li class="adm-bar-row adm-bar-row-plain">
+              <div class="adm-bar-label">${courseLabel(x)}</div>
+              <div class="adm-bar-value">${x.total} flag${x.total === 1 ? '' : 's'}${x.open ? ` · <span class="adm-open">${x.open} open</span>` : ''}</div>
+            </li>`).join('')}</ol>` : '<p class="adm-empty-line">No flags yet.</p>'}
+        </section>
+        <section class="adm-card">
+          <div class="adm-card-title">Students by program</div>
+          ${bars(programs, x => esc(x.label), 'count', 'No students yet.')}
+        </section>
+        <section class="adm-card">
+          <div class="adm-card-title">New accounts per week</div>
+          <p class="adm-card-text">Last 12 weeks. Each bar is the week starting on that date.</p>
+          <div class="adm-weeks" role="img" aria-label="New accounts per week: ${weeks.map(w => `${w.label} ${w.count}`).join(', ')}">
+            ${weeks.map(w => `
+              <div class="adm-week" title="Week of ${esc(w.label)}: ${w.count}">
+                <div class="adm-week-value">${w.count || ''}</div>
+                <div class="adm-week-bar" style="height:${Math.round(100 * w.count / weekMax)}%"></div>
+                <div class="adm-week-label">${esc(w.label)}</div>
+              </div>`).join('')}
+          </div>
+        </section>
+      </div>`;
+  },
+
+  // ── Activity log ──────────────────────────────────────────
+  async _loadAdminActivity(reset) {
+    const s = this._adminConsole;
+    if (reset) {
+      s.activityPage = 1;
+      s.activityItems = [];
+    }
+    const q = `limit=50&page=${s.activityPage}` + (s.activityAction ? '&action=' + encodeURIComponent(s.activityAction) : '');
+    const r = await apiAdminActivity(q);
+    if (!r.ok) return this._admError(r, 'the activity log');
+    if (this._adminConsole.tab !== 'activity') return;
+    s.activityItems = s.activityItems.concat(r.data.items || []);
+    s.activityTotal = r.data.total || 0;
+    this._renderAdminActivity();
+  },
+
+  _renderAdminActivity() {
+    const el = document.getElementById('admContent');
+    if (!el) return;
+    const s = this._adminConsole;
+    const filters = [['', 'Everything'], ['course.', 'Courses'], ['user.', 'User changes'], ['flag.', 'Flag reviews'], ['directory.', 'Faculty access']];
+    const rows = s.activityItems.map(e => `
+      <li class="adm-log-row">
+        <div class="adm-log-text"><strong>${esc(e.actor_name || e.actor_email)}</strong> ${this._describeAdminEvent(e)}</div>
+        <div class="adm-log-meta" title="${esc(this._admDate(e.created_at))}">${esc(this._admWhen(e.created_at))}</div>
+      </li>`).join('');
+    el.innerHTML = `
+      <div class="adm-toolbar">
+        ${filters.map(([id, label]) => `<button type="button" class="adm-chip ${s.activityAction === id ? 'is-active' : ''}" onclick="App._adminConsole.activityAction='${id}';App._loadAdminActivity(true);">${label}</button>`).join('')}
+        <span class="adm-toolbar-count">${s.activityTotal} event${s.activityTotal === 1 ? '' : 's'}</span>
+      </div>
+      ${rows ? `<ul class="adm-log">${rows}</ul>` : '<div class="empty-state"><div class="empty-text">Nothing recorded yet. Course edits, role changes, flag reviews and directory edits will show up here.</div></div>'}
+      ${s.activityItems.length < s.activityTotal ? `<div class="adm-more"><button type="button" class="adm-btn" onclick="App._adminConsole.activityPage++;App._loadAdminActivity(false);">Show older</button></div>` : ''}`;
+  },
+
+  _describeAdminEvent(e) {
+    const d = e.details || {};
+    const who = `<strong>${esc(e.target || '')}</strong>`;
+    const fieldLabels = { primary_program: 'program', minor_codes: 'minors', department: 'department', advisor_scope: 'advisor scope', name: 'name' };
+    switch (e.action) {
+      case 'user.update': {
+        const changes = d.changes || {};
+        const parts = [];
+        if (changes.role) {
+          parts.push(`changed the role of ${who} from ${esc(this._admRoleLabel(changes.role.from))} to ${esc(this._admRoleLabel(changes.role.to))}`);
+        }
+        const others = esc(Object.keys(changes).filter(k => k !== 'role').map(k => fieldLabels[k] || k).join(', '));
+        if (others) parts.push(parts.length ? `and updated their ${others}` : `updated the ${others} of ${who}`);
+        return parts.join(' ') || `edited ${who}`;
+      }
+      case 'flag.status':
+        return `marked the flag on ${who} as <strong>${esc(d.to)}</strong> (was ${esc(d.from)})`;
+      case 'flag.note':
+        return d.note ? `added a note on the ${who} flag: <em>${esc(d.note)}</em>` : `cleared the note on the ${who} flag`;
+      case 'directory.add':
+        return `gave ${who} access as ${esc(this._admRoleLabel(d.role))}`;
+      case 'directory.update':
+        return `updated ${who} in the directory (${esc(this._admRoleLabel(d.role))})`;
+      case 'directory.remove':
+        return `removed ${who} from the directory`;
+      case 'directory.revoke':
+        return `revoked the elevated access of ${who}`;
+      case 'course.add':
+        return `added the course ${who}${d.name ? ' ' + esc(d.name) : ''}`;
+      case 'course.update': {
+        const labels = { course_code: 'number', course_name: 'name', department: 'department', units: 'units', description: 'description', prerequisites: 'prerequisites', offered_qatar: 'Qatar offering', offered_pitts: 'Pittsburgh offering', offered: 'semesters' };
+        const list = (d.fields || []).map(f => labels[f] || f).join(', ');
+        return `edited ${who}${list ? ': ' + esc(list) : ''}${d.renumbered_from ? ' (was ' + esc(d.renumbered_from) + ')' : ''}`;
+      }
+      case 'course.archive':
+        return `archived ${who}`;
+      case 'course.restore':
+        return `restored ${who}`;
+      case 'course.revert':
+        return `undid all edits to ${who}`;
+      default:
+        return `${esc(e.action)} ${who}`;
+    }
+  },
+
+  // ══════════════════════════════════════════════════════════
   // ADMIN — User role management
   // ══════════════════════════════════════════════════════════
-  _userAdminState: { items: [], search: '' },
+  _userAdminState: { items: [], search: '', roleGroup: '', incomplete: false, total: 0 },
 
   async showUserManagement() {
     if (!canManageUsers(this.authedUser)) {
       showToast('Admin access required.');
       return;
     }
-    this._homeView = 'users';
-    const el = document.getElementById('leftBody');
-    if (!el) return;
-    el.innerHTML = '<div class="empty-state"><div class="spinner"></div><div class="empty-text" style="margin-top:12px">Loading users…</div></div>';
-    await this._loadUserAdmin();
+    await this.showAdminConsole('users');
+  },
+
+  _userAdminQuery(limit) {
+    const st = this._userAdminState;
+    const parts = ['limit=' + limit];
+    if (st.search) parts.push('search=' + encodeURIComponent(st.search));
+    if (st.roleGroup) parts.push('role_group=' + encodeURIComponent(st.roleGroup));
+    if (st.incomplete) parts.push('incomplete=1');
+    return parts.join('&');
   },
 
   async _loadUserAdmin() {
-    const q = this._userAdminState.search ? 'search=' + encodeURIComponent(this._userAdminState.search) : '';
-    const r = await apiListUsers(q);
-    const el = document.getElementById('leftBody');
-    if (!r.ok) {
-      if (el) el.innerHTML = `<div class="empty-state"><div class="empty-text">Could not load users: ${esc((r.data && r.data.message) || r.error || 'error')}</div></div>`;
-      return;
-    }
+    const r = await apiListUsers(this._userAdminQuery(300));
+    if (!r.ok) return this._admError(r, 'users');
     this._userAdminState.items = r.data.items || [];
+    this._userAdminState.total = r.data.total != null ? r.data.total : this._userAdminState.items.length;
     this._renderUserAdmin();
   },
 
-  _renderUserAdmin() {
-    const el = document.getElementById('leftBody');
-    if (!el) return;
-    const items = this._userAdminState.items;
-    const rows = items.length === 0
-      ? '<div class="empty-state"><div class="empty-text">No users found.</div></div>'
-      : items.map(u => this._renderUserAdminRow(u)).join('');
+  _setUserAdminFilter(roleGroup, incomplete) {
+    this._userAdminState.roleGroup = roleGroup;
+    this._userAdminState.incomplete = !!incomplete;
+    this._loadUserAdmin();
+  },
 
-    el.innerHTML = `
+  async _exportUsersCsv() {
+    const r = await apiListUsers(this._userAdminQuery(1000));
+    if (!r.ok) {
+      showToast((r.data && r.data.message) || 'Could not export users.');
+      return;
+    }
+    const cols = ['name', 'email', 'role', 'primary_program', 'minor_codes', 'department', 'profile_completed', 'created_at', 'last_login'];
+    const cell = v => {
+      const text = Array.isArray(v) ? v.join('; ') : (v == null ? '' : String(v));
+      return /[",\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    };
+    const csv = [cols.join(',')].concat((r.data.items || []).map(u => cols.map(c => cell(u[c])).join(','))).join('\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'countsfor-users-' + new Date().toISOString().slice(0, 10) + '.csv';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  },
+
+  _renderUserAdmin() {
+    const el = this._admEl();
+    if (!el) return;
+    const st = this._userAdminState;
+    const items = st.items;
+    const rows = items.length === 0
+      ? '<div class="empty-state"><div class="empty-text">No users match.</div></div>'
+      : items.map(u => this._renderUserAdminRow(u)).join('');
+    const chip = (group, incomplete, label) => {
+      const on = st.roleGroup === group && st.incomplete === incomplete;
+      return `<button type="button" class="adm-chip ${on ? 'is-active' : ''}" onclick="App._setUserAdminFilter('${group}', ${incomplete})">${label}</button>`;
+    };
+    const countText = items.length < st.total ? `Showing ${items.length} of ${st.total}` : `${st.total} ${st.total === 1 ? 'person' : 'people'}`;
+
+    const body = `
+        <div class="adm-search-row">
+          <input type="search" class="adm-search" id="userAdminSearch" placeholder="Search by email, name or role" value="${esc(st.search)}"
+            onkeydown="if(event.key==='Enter'){App._userAdminState.search=this.value;App._loadUserAdmin();}" />
+          <button class="adm-btn" onclick="App._userAdminState.search=document.getElementById('userAdminSearch').value;App._loadUserAdmin();">Search</button>
+          <button class="adm-btn" onclick="App._exportUsersCsv()" title="Download the people matching these filters as a spreadsheet">Export CSV</button>
+        </div>
+        <div class="adm-toolbar">
+          ${chip('', false, 'Everyone')}
+          ${chip('student', false, 'Students')}
+          ${chip('faculty', false, 'Faculty')}
+          ${chip('admin', false, 'Admins')}
+          ${chip('', true, 'Unfinished profiles')}
+          <span class="adm-toolbar-count">${countText}</span>
+        </div>
+        <div class="adm-list">${rows}</div>`;
+
+    el.innerHTML = this._admEmbedded() ? body : `
       <div class="adm-view">
         <div class="adm-header">
           <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
-          <div class="adm-title">User roles <span class="adm-count">· ${items.length}</span></div>
+          <div class="adm-title">User roles <span class="adm-count">· ${st.total}</span></div>
         </div>
-        <div class="adm-search-row">
-          <input type="search" class="adm-search" placeholder="Search by email or name" value="${esc(this._userAdminState.search)}"
-            onkeydown="if(event.key==='Enter'){App._userAdminState.search=this.value;App._loadUserAdmin();}" />
-          <button class="adm-btn" onclick="App._userAdminState.search=document.querySelector('.adm-search').value;App._loadUserAdmin();">Search</button>
-        </div>
-        <div class="adm-list">${rows}</div>
-      </div>
-    `;
+        ${body}
+      </div>`;
   },
 
   _renderUserAdminRow(u) {
@@ -5149,15 +6049,29 @@ const App = {
             <div class="adm-course-code">${esc(u.email)}</div>
             <div class="adm-course-name">${summary}</div>
           </div>
+          <div class="adm-user-dates">
+            ${u.profile_completed ? '' : '<span class="adm-pill">Unfinished profile</span>'}
+            <span title="${esc(this._admDate(u.created_at))}">Joined ${esc(this._admWhen(u.created_at) || 'unknown')}</span>
+            <span title="${esc(this._admDate(u.last_login))}">Last sign-in ${esc(this._admWhen(u.last_login) || 'never')}</span>
+          </div>
         </div>
         <div class="adm-user-fields">
-          <label>Role<select class="adm-select" id="role-${u.id}">${roleOpts}</select></label>
-          <div id="role-fields-${u.id}">${isStudent ? studentFields : facultyFields}</div>
+          <label>Role<select class="adm-select" id="role-${u.id}" onchange="App._onUserAdminRoleChange(${u.id}, this.value)">${roleOpts}</select></label>
+          <div id="student-fields-${u.id}" ${isStudent ? '' : 'hidden'}>${studentFields}</div>
+          <div id="faculty-fields-${u.id}" ${isStudent ? 'hidden' : ''}>${facultyFields}</div>
         </div>
         <div class="adm-actions">
           <button class="adm-btn adm-btn-resolve" onclick="App._saveUserAdmin(${u.id})">Save</button>
         </div>
       </div>`;
+  },
+
+  _onUserAdminRoleChange(userId, role) {
+    const student = getRoleGroup(role) === 'student';
+    const s = document.getElementById('student-fields-' + userId);
+    const f = document.getElementById('faculty-fields-' + userId);
+    if (s) s.hidden = !student;
+    if (f) f.hidden = student;
   },
 
   _adminMinorCodes(userId) {
@@ -5228,6 +6142,10 @@ const App = {
       showToast('Faculty access required.');
       return;
     }
+    if (canManageUsers(this.authedUser)) {
+      await this.showAdminConsole('flags');
+      return;
+    }
     this._homeView = 'admin';
     const el = document.getElementById('leftBody');
     if (!el) return;
@@ -5238,18 +6156,14 @@ const App = {
   async _loadFlagReview() {
     const s = this._adminState;
     const r = await apiListFlags('status=' + encodeURIComponent(s.status) + '&limit=100');
-    if (!r.ok) {
-      const el = document.getElementById('leftBody');
-      if (el) el.innerHTML = `<div class="empty-state"><div class="empty-text">Could not load flags: ${esc((r.data && r.data.message) || r.error || 'error')}</div></div>`;
-      return;
-    }
+    if (!r.ok) return this._admError(r, 'flags');
     s.items = r.data.items || [];
     s.total = r.data.total || 0;
     this._renderFlagReview();
   },
 
   _renderFlagReview() {
-    const el = document.getElementById('leftBody');
+    const el = this._admEl();
     if (!el) return;
     const s = this._adminState;
 
@@ -5261,19 +6175,22 @@ const App = {
       ? `<div class="empty-state"><div class="empty-text">No flags with status “${esc(s.status)}”.</div></div>`
       : s.items.map(f => this._renderFlagRow(f)).join('');
 
-    el.innerHTML = `
-      <div class="adm-view">
-        <div class="adm-header">
-          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
-          <div class="adm-title">Flag review <span class="adm-count">· ${s.total}</span></div>
-        </div>
+    const body = `
         <div class="adm-tabs">
           ${tab('pending',   'Pending')}
           ${tab('reviewed',  'Reviewed')}
           ${tab('resolved',  'Resolved')}
           ${tab('dismissed', 'Dismissed')}
         </div>
-        <div class="adm-list">${rowsHtml}</div>
+        <div class="adm-list">${rowsHtml}</div>`;
+
+    el.innerHTML = this._admEmbedded() ? body : `
+      <div class="adm-view">
+        <div class="adm-header">
+          <button class="dc-back-link" onclick="App.renderLeftEmpty()">Back to home</button>
+          <div class="adm-title">Flag review <span class="adm-count">· ${s.total}</span></div>
+        </div>
+        ${body}
       </div>
     `;
   },

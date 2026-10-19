@@ -8,6 +8,7 @@ import secrets
 import time
 from flask import Blueprint, g, jsonify, request
 
+from .admin import record_event
 from .db import db
 from .models import Flag, FLAG_STATUSES
 from .permissions import (
@@ -150,11 +151,16 @@ def update_flag(flag_id: str):
     if "status" in data:
         if data["status"] not in FLAG_STATUSES:
             return jsonify(error="invalid_status", message=f"status must be one of {list(FLAG_STATUSES)}"), 400
+        if data["status"] != flag.status:
+            record_event(g.user, "flag.status", flag.course_code, flag_id=flag.id, **{"from": flag.status, "to": data["status"]})
         flag.status = data["status"]
         flag.resolved_by = g.user.id
 
     if "admin_notes" in data:
-        flag.admin_notes = data["admin_notes"] or None
+        note = data["admin_notes"] or None
+        if note != flag.admin_notes:
+            record_event(g.user, "flag.note", flag.course_code, flag_id=flag.id, note=note)
+        flag.admin_notes = note
 
     db.session.commit()
     return jsonify(flag.to_dict())
