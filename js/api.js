@@ -283,6 +283,9 @@ async function apiAdminOverview() {
 async function apiAdminInsights(semester = '') {
   return apiFetch('/api/admin/insights' + (semester ? '?semester=' + encodeURIComponent(semester) : ''));
 }
+async function apiAdminSignIns(days = 7) {
+  return apiFetch('/api/admin/sign-ins?days=' + encodeURIComponent(days));
+}
 async function apiAdminActivity(query = '') {
   return apiFetch('/api/admin/activity' + (query ? '?' + query : ''));
 }

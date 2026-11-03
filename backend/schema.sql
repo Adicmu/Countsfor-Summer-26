@@ -107,3 +107,31 @@ CREATE TABLE IF NOT EXISTS course_overrides (
   created_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at        DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
+
+-- ----- Sign-in analytics ------------------------------------
+-- Feeds the admin "Sign-in activity" page (GET /api/admin/sign-ins).
+-- One row per successful sign-in. method: google | password | email_link |
+-- register | before_tracking (backfilled once from users.last_login).
+CREATE TABLE IF NOT EXISTS sign_in_events (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  method      TEXT    NOT NULL DEFAULT 'unknown',
+  created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS ix_sign_in_events_created ON sign_in_events(created_at);
+CREATE INDEX IF NOT EXISTS ix_sign_in_events_user_id ON sign_in_events(user_id);
+
+-- One row per user per day (Qatar time, UTC+3). Sessions last 30 days, so
+-- visits (GET /api/me on each app load) matter more than sign-ins.
+CREATE TABLE IF NOT EXISTS user_activity_days (
+  id          INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id     INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  day         TEXT    NOT NULL,              -- YYYY-MM-DD
+  visits      INTEGER NOT NULL DEFAULT 0,
+  sign_ins    INTEGER NOT NULL DEFAULT 0,
+  first_seen  DATETIME NOT NULL,
+  last_seen   DATETIME NOT NULL,
+  UNIQUE (user_id, day)
+);
+CREATE INDEX IF NOT EXISTS ix_user_activity_day ON user_activity_days(day);
+CREATE INDEX IF NOT EXISTS ix_user_activity_days_user_id ON user_activity_days(user_id);

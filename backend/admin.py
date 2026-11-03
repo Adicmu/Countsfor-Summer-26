@@ -10,9 +10,10 @@ from flask import Blueprint, jsonify, request
 from sqlalchemy import func
 
 from .db import db
+from .activity import LOCAL_TZ, local_day
 from .models import (
     AdminAuditEvent, CourseSearchCount, DirectoryEntry, Flag, FLAG_STATUSES,
-    SchedulePlan, User, WishlistItem,
+    SchedulePlan, SignInEvent, User, UserActivityDay, WishlistItem,
 )
 from .permissions import require_role_group, ROLE_GROUP_ADMIN
 
@@ -68,6 +69,7 @@ def overview():
     week_ago, month_ago = now - timedelta(days=7), now - timedelta(days=30)
 
     users = db.session.query(User).all()
+    active_ids = _active_user_ids(_window_days(7))
     by_role: dict[str, int] = {}
     by_group = {"student": 0, "faculty": 0, "admin": 0}
     new_7d = new_30d = active_7d = incomplete = 0
@@ -79,7 +81,7 @@ def overview():
             new_7d += 1
         if created and created >= month_ago:
             new_30d += 1
-        if last_login and last_login >= week_ago:
+        if u.id in active_ids or (last_login and last_login >= week_ago):
             active_7d += 1
         if not u.profile_completed:
             incomplete += 1
@@ -194,6 +196,153 @@ def insights():
             "start": start.date().isoformat(),
             "counts": weeks,
         },
+    )
+
+
+# ── Sign-in analytics ────────────────────────────────────────
+SIGN_IN_WINDOWS = (7, 30, 90)
+
+
+def _window_days(n: int, end: datetime | None = None) -> list[str]:
+    """The last n CMU-Q calendar days ending today (or `end`), oldest first."""
+    end_day = datetime.fromisoformat(local_day(end)).date()
+    return [(end_day - timedelta(days=i)).isoformat() for i in range(n - 1, -1, -1)]
+
+
+def _active_user_ids(days: list[str]) -> set[int]:
+    if not days:
+        return set()
+    rows = db.session.query(UserActivityDay.user_id).filter(
+        UserActivityDay.day >= days[0], UserActivityDay.day <= days[-1]
+    ).distinct()
+    return {uid for (uid,) in rows}
+
+
+@bp.route("/sign-ins", methods=["GET"])
+@require_role_group(ROLE_GROUP_ADMIN)
+def sign_ins():
+    """Who used CountsFor in the last 7, 30 or 90 days, and how.
+
+    "Active" means the person signed in or opened CountsFor with a saved
+    session at least once in the window (sessions last 30 days, so counting
+    only fresh sign-ins would miss most returning users).
+    """
+    try:
+        n = int(request.args.get("days", 7))
+    except ValueError:
+        n = 7
+    if n not in SIGN_IN_WINDOWS:
+        n = 7
+
+    days = _window_days(n)
+    prev_days = _window_days(n, datetime.fromisoformat(days[0]).replace(tzinfo=LOCAL_TZ) - timedelta(days=1))
+    start_utc = datetime.fromisoformat(days[0]).replace(tzinfo=LOCAL_TZ).astimezone(timezone.utc)
+
+    rows = db.session.query(UserActivityDay).filter(
+        UserActivityDay.day >= prev_days[0], UserActivityDay.day <= days[-1]
+    ).all()
+    in_window = [r for r in rows if r.day >= days[0]]
+    prev_ids = {r.user_id for r in rows if r.day < days[0]}
+
+    per_user: dict[int, dict] = {}
+    daily = {d: {"day": d, "users": 0, "sign_ins": 0, "visits": 0} for d in days}
+    for r in in_window:
+        bucket = daily.get(r.day)
+        if bucket is not None:
+            bucket["users"] += 1
+            bucket["sign_ins"] += r.sign_ins or 0
+            bucket["visits"] += r.visits or 0
+        pu = per_user.setdefault(r.user_id, {"days_active": 0, "sign_ins": 0, "visits": 0, "last_seen": None, "first_seen": None})
+        pu["days_active"] += 1
+        pu["sign_ins"] += r.sign_ins or 0
+        pu["visits"] += r.visits or 0
+        last, first = _as_utc(r.last_seen), _as_utc(r.first_seen)
+        if last and (pu["last_seen"] is None or last > pu["last_seen"]):
+            pu["last_seen"] = last
+        if first and (pu["first_seen"] is None or first < pu["first_seen"]):
+            pu["first_seen"] = first
+
+    events = db.session.query(SignInEvent.method, SignInEvent.created_at, SignInEvent.user_id).filter(
+        SignInEvent.created_at >= start_utc
+    ).all()
+    by_method: dict[str, int] = {}
+    by_hour = [0] * 24
+    last_method: dict[int, tuple[datetime, str]] = {}
+    for method, created, uid in events:
+        by_method[method] = by_method.get(method, 0) + 1
+        created = _as_utc(created)
+        if method != "before_tracking":
+            by_hour[created.astimezone(LOCAL_TZ).hour] += 1
+        if uid not in last_method or created > last_method[uid][0]:
+            last_method[uid] = (created, method)
+
+    users = {u.id: u for u in db.session.query(User).filter(User.id.in_(list(per_user))).all()} if per_user else {}
+    total_accounts = db.session.query(func.count(User.id)).scalar() or 0
+
+    by_group = {"student": 0, "faculty": 0, "admin": 0}
+    by_program: dict[str, int] = {}
+    people = []
+    new_accounts = 0
+    for uid, stats in per_user.items():
+        u = users.get(uid)
+        if u is None:
+            continue
+        group = u.role_group()
+        by_group[group] = by_group.get(group, 0) + 1
+        prog = u.primary_program or "none"
+        by_program[prog] = by_program.get(prog, 0) + 1
+        created = _as_utc(u.created_at)
+        is_new = bool(created and created >= start_utc)
+        new_accounts += is_new
+        people.append({
+            "id": u.id,
+            "name": u.name,
+            "email": u.email,
+            "role": u.role,
+            "role_group": group,
+            "primary_program": u.primary_program,
+            "days_active": stats["days_active"],
+            "sign_ins": stats["sign_ins"],
+            "visits": stats["visits"],
+            "last_seen": stats["last_seen"].isoformat() if stats["last_seen"] else None,
+            "last_method": last_method.get(uid, (None, None))[1],
+            "is_new": is_new,
+            "returning": uid in prev_ids,
+            "created_at": created.isoformat() if created else None,
+        })
+    people.sort(key=lambda p: p["last_seen"] or "", reverse=True)
+
+    active = len(people)
+    first_event = db.session.query(func.min(SignInEvent.created_at)).filter(
+        SignInEvent.method != "before_tracking"
+    ).scalar()
+    return jsonify(
+        days=n,
+        windows=list(SIGN_IN_WINDOWS),
+        start=days[0],
+        end=days[-1],
+        timezone="Asia/Qatar (UTC+3)",
+        tracking_since=_as_utc(first_event).isoformat() if first_event else None,
+        totals={
+            "active_users": active,
+            "total_accounts": total_accounts,
+            "sign_ins": sum(d["sign_ins"] for d in daily.values()),
+            "visits": sum(d["visits"] for d in daily.values()),
+            "returning": sum(1 for p in people if p["returning"]),
+            "new_accounts": new_accounts,
+            "avg_days_active": round(sum(p["days_active"] for p in people) / active, 1) if active else 0,
+        },
+        previous={
+            "start": prev_days[0],
+            "end": prev_days[-1],
+            "active_users": len(prev_ids),
+        },
+        daily=list(daily.values()),
+        by_group=by_group,
+        by_program=by_program,
+        by_method=by_method,
+        by_hour=by_hour,
+        users=people,
     )
 
 

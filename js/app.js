@@ -5234,6 +5234,7 @@ const App = {
   _renderAdminCourses() {
     const st = this._courseAdmin;
     if (st.view === 'edit' || st.view === 'add') return this._renderCourseEditor();
+    if (st.view === 'saved') return this._renderCourseSaved();
     const el = document.getElementById('admContent');
     if (!el) return;
     const all = this.courses || [];
@@ -5372,7 +5373,56 @@ const App = {
   _closeCourseEditor() {
     this._courseAdmin.view = 'list';
     this._courseAdmin.draft = null;
+    this._courseAdmin.saved = null;
     this._renderAdminCourses();
+  },
+
+  /** Confirmation screen shown right after a course is added or saved. */
+  _renderCourseSaved() {
+    const el = document.getElementById('admContent');
+    const s = this._courseAdmin.saved;
+    if (!el || !s) return this._closeCourseEditor();
+    const course = this._findCourseByKey(s.key, false);
+    const name = course ? course.course_name : s.name;
+    const code = course ? course.course_code : s.code;
+    const where = course ? [course.offered_qatar ? 'Qatar' : '', course.offered_pitts ? 'Pittsburgh' : ''].filter(Boolean).join(' · ') : '';
+    const reqCount = course ? MAJOR_ORDER.reduce((n, m) => n + ((course.requirements && course.requirements[m]) || []).length, 0) : 0;
+    const changes = (s.changes || []).map(c => `<li>${esc(c)}</li>`).join('');
+    el.innerHTML = `
+      <div class="adm-saved" role="status" aria-live="polite">
+        <div class="adm-saved-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" width="28" height="28" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        </div>
+        <div class="adm-saved-kicker">${s.adding ? 'Course added' : 'Changes saved'}</div>
+        <div class="adm-saved-title">${esc(code)} ${esc(name || '')}</div>
+        <p class="adm-card-text">${s.adding
+          ? 'It is now part of the catalog. Students will see it the next time they open CountsFor.'
+          : 'Students will see the updated course the next time they open CountsFor.'}</p>
+        <dl class="adm-saved-facts">
+          <div><dt>Units</dt><dd>${course && course.units ? esc(String(course.units)) : 'Not set'}</dd></div>
+          <div><dt>Campus</dt><dd>${esc(where || 'Not listed')}</dd></div>
+          <div><dt>Counts for</dt><dd>${reqCount ? reqCount + ' requirement' + (reqCount === 1 ? '' : 's') : 'Nothing yet'}</dd></div>
+        </dl>
+        ${changes ? `<div class="adm-saved-changes"><div class="adm-mini-title">What changed</div><ul>${changes}</ul></div>` : ''}
+        <div class="adm-actions adm-saved-actions">
+          <button type="button" class="adm-btn adm-btn-resolve" onclick="App._closeCourseEditor()">Back to courses</button>
+          ${course ? `<button type="button" class="adm-btn" onclick="App._viewSavedCourse()">See it as a student</button>` : ''}
+          <button type="button" class="adm-btn" onclick="App._openCourseEditor('${esc(s.key)}', false)">Edit again</button>
+          <button type="button" class="adm-btn" onclick="App._openCourseAdd()">Add another course</button>
+        </div>
+      </div>`;
+    const top = document.getElementById('admContent');
+    if (top) top.scrollIntoView({ block: 'start' });
+  },
+
+  _viewSavedCourse() {
+    const s = this._courseAdmin.saved;
+    const course = s && this._findCourseByKey(s.key, false);
+    if (!course) return;
+    this._courseAdmin.view = 'list';
+    this._courseAdmin.saved = null;
+    this._homeView = 'home';
+    this._selectCourse(course);
   },
 
   /** Copy the form inputs into the draft so re-rendering the editor keeps what was typed. */
@@ -5426,12 +5476,12 @@ const App = {
     }).join('');
 
     const actions = adding
-      ? `<button type="button" class="adm-btn adm-btn-resolve" onclick="App._saveCourse()">Add course</button>
+      ? `<button type="button" class="adm-btn adm-btn-resolve adm-btn-primary" id="ce-save" onclick="App._saveCourse()">Add course</button>
          <button type="button" class="adm-btn" onclick="App._closeCourseEditor()">Cancel</button>`
       : st.archived
         ? `<button type="button" class="adm-btn adm-btn-resolve" onclick="App._restoreCourse()">Restore course</button>
            <button type="button" class="adm-btn" onclick="App._closeCourseEditor()">Back</button>`
-        : `<button type="button" class="adm-btn adm-btn-resolve" onclick="App._saveCourse()">Save changes</button>
+        : `<button type="button" class="adm-btn adm-btn-resolve adm-btn-primary" id="ce-save" onclick="App._saveCourse()">Save changes</button>
            <button type="button" class="adm-btn" onclick="App._closeCourseEditor()">Cancel</button>
            <span class="adm-actions-spacer"></span>
            ${this._courseIsEdited(course) ? '<button type="button" class="adm-btn" onclick="App._revertCourse()" title="Remove every manual change and show the Schedule of Classes version">Undo all edits</button>' : ''}
@@ -5466,7 +5516,9 @@ const App = {
           <p class="adm-card-text">The requirements this course fulfills in each major. ${'requirements' in cat ? 'These have been edited here.' : ''}</p>
           <div class="adm-req-groups">${reqSections}</div>
         </fieldset>
-        <div class="adm-actions adm-editor-actions">${actions}</div>
+        <div class="adm-actions adm-editor-actions">${actions}
+          <div class="adm-form-notice" id="ce-notice" role="alert" hidden></div>
+        </div>
       </div>`;
   },
 
@@ -5518,36 +5570,76 @@ const App = {
     return String(text || '').split(/[\s,]+/).map(s => s.trim().toUpperCase()).filter(Boolean);
   },
 
+  /** Show a message next to the Save button (instead of a toast that is easy to miss). */
+  _courseFormNotice(msg, fieldId) {
+    const box = document.getElementById('ce-notice');
+    if (box) {
+      box.textContent = msg;
+      box.hidden = !msg;
+    } else if (msg) {
+      showToast(msg);
+    }
+    if (fieldId) {
+      const f = document.getElementById(fieldId);
+      if (f) {
+        f.classList.add('adm-input-error');
+        f.focus();
+        f.addEventListener('input', () => f.classList.remove('adm-input-error'), { once: true });
+      }
+    }
+  },
+
+  /** A category typed into a "Pick or type" box but never added with its Add button still counts on save. */
+  _collectPendingCourseReqs() {
+    const d = this._courseAdmin.draft;
+    const known = this._knownReqPaths || {};
+    for (const prog of MAJOR_ORDER) {
+      const path = this._reqPathFromInput(prog);
+      if (!path) continue;
+      const list = d.requirements[prog];
+      if (list.some(r => r.requirement === path)) continue;
+      const sel = document.getElementById('ce-req-type-' + prog);
+      const type = known[prog] && known[prog].has(path) ? known[prog].get(path) : (sel ? sel.value === 'gened' : /^gened/i.test(path));
+      list.push({ requirement: path, type });
+    }
+  },
+
   async _saveCourse() {
+    if (this._courseSaving) return;
     this._syncCourseDraft();
+    this._collectPendingCourseReqs();
+    this._courseFormNotice('');
     const st = this._courseAdmin;
     const d = st.draft;
     const adding = st.view === 'add';
     const code = normalizeCourseCode(d.course_code) || d.course_code.trim();
     if (!/^\d{2}-\d{3}$/.test(code)) {
-      showToast('Course number must look like 15-122.');
+      this._courseFormNotice('Course number must look like 15-122.', 'ce-code');
       return;
     }
     if (!d.course_name.trim()) {
-      showToast('Course name is required.');
+      this._courseFormNotice('Course name is required.', 'ce-name');
       return;
     }
     const course = adding ? null : this._findCourseByKey(st.key, false);
     const clash = lookupCourse(this.courseIndex, code) || (this._archivedCourses || []).find(c => c.course_code === code);
     if (clash && clash !== course) {
-      showToast(`${code} is already in the catalog. Edit that course instead.`);
+      this._courseFormNotice(`${code} is already in the catalog. Edit that course instead.`, 'ce-code');
       return;
     }
     const offered = this._parseOffered(d.offered);
     if (offered.some(s => !/^[FSMN]\d{2}$/.test(s))) {
-      showToast('Semesters must be codes like F26 or S27, separated by commas.');
+      this._courseFormNotice('Semesters must be codes like F26 or S27, separated by commas.', 'ce-offered');
       return;
     }
     const reqs = {};
     for (const m of MAJOR_ORDER) reqs[m] = d.requirements[m].map(r => ({ requirement: r.requirement, type: !!r.type }));
 
     let r;
+    let changes = [];
     if (adding) {
+      changes = null;
+      this._setCourseSaving(true, 'Adding...');
       r = await apiAddCourse({
         course_code: code,
         course_name: d.course_name.trim(),
@@ -5573,21 +5665,44 @@ const App = {
       if (offered.join(',') !== this._parseOffered(before.offered).join(',')) body.offered = offered;
       if (JSON.stringify(reqs) !== JSON.stringify(before.requirements)) body.requirements = reqs;
       if (!Object.keys(body).length) {
-        showToast('Nothing has changed.');
+        this._courseFormNotice('There is nothing to save yet. Change a field first, or press Cancel to go back.');
         return;
       }
+      const labels = {
+        new_code: `Course number is now ${code}`, course_name: 'Course name', department: 'Department number',
+        units: 'Units', description: 'Description', prerequisites: 'Prerequisites',
+        offered_qatar: 'Campus (Qatar)', offered_pitts: 'Campus (Pittsburgh)', offered: 'Semesters offered',
+        requirements: 'What it counts for',
+      };
+      changes = Object.keys(body).map(k => labels[k] || k);
+      this._setCourseSaving(true, 'Saving...');
       r = await apiEditCourse(st.key, body);
     }
     if (!r.ok) {
-      showToast((r.data && r.data.message) || 'Could not save the course.');
+      this._setCourseSaving(false);
+      this._courseFormNotice((r.data && r.data.message) || r.error || 'Could not save the course. Try again.');
       return;
     }
-    const key = r.data.course_code;
+    const key = r.data.course_code || code;
     await this._reloadCatalog();
-    showToast(adding ? `${code} added. Students will see it on their next visit.` : 'Course saved.');
-    const saved = this._findCourseByKey(key, false);
-    if (saved) this._openCourseEditor(key, false);
-    else this._closeCourseEditor();
+    this._setCourseSaving(false);
+    st.view = 'saved';
+    st.draft = null;
+    st.saved = { key, code, name: d.course_name.trim(), adding, changes };
+    this._renderCourseSaved();
+  },
+
+  _setCourseSaving(on, label) {
+    this._courseSaving = !!on;
+    const btn = document.getElementById('ce-save');
+    if (!btn) return;
+    if (on) {
+      btn.dataset.label = btn.textContent;
+      btn.textContent = label || 'Saving...';
+    } else if (btn.dataset.label) {
+      btn.textContent = btn.dataset.label;
+    }
+    btn.disabled = !!on;
   },
 
   async _archiveCourse() {
@@ -5668,8 +5783,8 @@ const App = {
     el.innerHTML = `
       <div class="adm-stat-grid">
         ${this._admStat(u.total, 'Accounts', `${u.by_group.student} student${u.by_group.student === 1 ? '' : 's'} · ${u.by_group.faculty} faculty · ${u.by_group.admin} admin${u.by_group.admin === 1 ? '' : 's'}`, "App._setAdminTab('users')")}
-        ${this._admStat(u.new_7d, 'New this week', `${u.new_30d} in the last 30 days`)}
-        ${this._admStat(u.active_7d, 'Signed in this week', u.total ? `${Math.round(100 * u.active_7d / u.total)}% of accounts` : '')}
+        ${this._admStat(u.new_7d, 'New this week', `${u.new_30d} in the last 30 days`, "App._openSignIns(7, 'new')")}
+        ${this._admStat(u.active_7d, 'Signed in this week', (u.total ? `${Math.round(100 * u.active_7d / u.total)}% of accounts · ` : '') + 'See who', 'App._openSignIns(7)')}
         ${this._admStat(u.incomplete_profiles, 'Unfinished profiles', 'Signed up but never chose a program', 'App._openIncompleteUsers()')}
         ${this._admStat(openFlags, 'Open flags', `${d.flags.pending || 0} pending · ${d.flags.reviewed || 0} reviewed`, "App._setAdminTab('flags')")}
         ${this._admStat(d.wishlist.items, 'Saved courses', `by ${d.wishlist.students} student${d.wishlist.students === 1 ? '' : 's'}`)}
@@ -5695,6 +5810,286 @@ const App = {
     this._userAdminState.roleGroup = '';
     this._userAdminState.incomplete = true;
     this._setAdminTab('users');
+  },
+
+  // ── Sign-in activity (drill-down from "Signed in this week") ──
+  _signIns: { days: 7, q: '', group: '', show: '', sort: 'last_seen', dir: 'desc', data: null },
+
+  SIGN_IN_METHOD_LABELS: {
+    google: 'Google',
+    password: 'Password',
+    email_link: 'Email link',
+    register: 'Created an account',
+    before_tracking: 'Before tracking began',
+  },
+
+  async _openSignIns(days, show) {
+    const st = this._signIns;
+    st.days = days || st.days || 7;
+    st.show = show || '';
+    st.q = '';
+    st.group = '';
+    if (!document.getElementById('admContent')) await this.showAdminConsole('overview');
+    this._adminConsole.tab = 'overview';
+    document.querySelectorAll('.adm-console-tab').forEach(b => {
+      const on = b.dataset.tab === 'overview';
+      b.classList.toggle('is-active', on);
+      b.setAttribute('aria-selected', on ? 'true' : 'false');
+    });
+    await this._loadSignIns();
+    const top = document.getElementById('admContent');
+    if (top) top.scrollIntoView({ block: 'start' });
+  },
+
+  async _setSignInWindow(days) {
+    this._signIns.days = days;
+    await this._loadSignIns();
+  },
+
+  async _loadSignIns() {
+    const el = document.getElementById('admContent');
+    if (!el) return;
+    el.innerHTML = '<div class="empty-state"><div class="spinner"></div></div>';
+    const r = await apiAdminSignIns(this._signIns.days);
+    if (!r.ok) return this._admError(r, 'sign-in activity');
+    if (this._adminConsole.tab !== 'overview') return;
+    this._signIns.data = r.data;
+    this._renderSignIns();
+  },
+
+  _signInDayLabel(iso, long) {
+    const d = new Date(iso + 'T12:00:00');
+    return long
+      ? d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
+      : d.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+  },
+
+  _signInBars(items, label) {
+    const total = items.reduce((n, i) => n + i.n, 0);
+    const max = Math.max(1, ...items.map(i => i.n));
+    if (!total) return `<p class="adm-empty-line">No ${esc(label)} in this period.</p>`;
+    return `<ul class="adm-bars">${items.map(i => `
+      <li class="adm-bar-row" title="${esc(i.label)}: ${i.n} (${Math.round(100 * i.n / total)}%)">
+        <span class="adm-bar-label">${esc(i.label)}</span>
+        <span class="adm-bar-track"><span class="adm-bar-fill" style="width:${Math.max(2, Math.round(100 * i.n / max))}%"></span></span>
+        <span class="adm-bar-value">${i.n} <span class="adm-cell-sub">${Math.round(100 * i.n / total)}%</span></span>
+      </li>`).join('')}</ul>`;
+  },
+
+  _renderSignIns() {
+    const el = document.getElementById('admContent');
+    const st = this._signIns;
+    const d = st.data;
+    if (!el || !d) return;
+    const t = d.totals;
+    const span = d.days === 7 ? 'this week' : `in the last ${d.days} days`;
+    const pct = t.total_accounts ? Math.round(100 * t.active_users / t.total_accounts) : 0;
+    const diff = t.active_users - d.previous.active_users;
+    const diffText = d.previous.active_users || t.active_users
+      ? (diff === 0 ? 'Same as the period before' : `${diff > 0 ? 'Up' : 'Down'} ${Math.abs(diff)} from the ${d.days} days before`)
+      : '';
+
+    // Daily bars: one series (people active that day).
+    const maxDay = Math.max(1, ...d.daily.map(x => x.users));
+    const labelEvery = d.days <= 7 ? 1 : d.days <= 30 ? 5 : 14;
+    const dayBars = d.daily.map((x, i) => {
+      const h = x.users ? Math.max(4, Math.round(100 * x.users / maxDay)) : 0;
+      const showLabel = (d.daily.length - 1 - i) % labelEvery === 0;
+      const tip = `${this._signInDayLabel(x.day, true)}: ${x.users} ${x.users === 1 ? 'person' : 'people'}, ${x.sign_ins} sign-in${x.sign_ins === 1 ? '' : 's'}, ${x.visits} app open${x.visits === 1 ? '' : 's'}`;
+      return `
+        <div class="adm-day" data-tip="${esc(tip)}" tabindex="0" aria-label="${esc(tip)}">
+          ${d.days <= 7 ? `<span class="adm-day-value">${x.users || ''}</span>` : ''}
+          <span class="adm-day-plot"><span class="adm-day-bar" style="height:${h}%"></span></span>
+          <span class="adm-day-label">${showLabel ? esc(d.days <= 7 ? new Date(x.day + 'T12:00:00').toLocaleDateString(undefined, { weekday: 'short' }) : this._signInDayLabel(x.day)) : ''}</span>
+        </div>`;
+    }).join('');
+
+    const groupItems = [['student', 'Students'], ['faculty', 'Faculty'], ['admin', 'Admins']]
+      .map(([k, label]) => ({ label, n: d.by_group[k] || 0 }));
+    const programItems = Object.entries(d.by_program)
+      .map(([k, n]) => ({ label: k === 'none' ? 'No program chosen' : (getProgramLabel(k) || k), n }))
+      .sort((a, b) => b.n - a.n);
+    const methodItems = Object.entries(d.by_method)
+      .map(([k, n]) => ({ label: this.SIGN_IN_METHOD_LABELS[k] || k, n }))
+      .sort((a, b) => b.n - a.n);
+    const maxHour = Math.max(1, ...d.by_hour);
+    const hourTotal = d.by_hour.reduce((a, b) => a + b, 0);
+    const busiest = hourTotal ? d.by_hour.indexOf(Math.max(...d.by_hour)) : -1;
+    const hourName = h => `${h % 12 === 0 ? 12 : h % 12} ${h < 12 ? 'am' : 'pm'}`;
+    const hours = d.by_hour.map((n, h) => `
+      <div class="adm-hour" data-tip="${esc(`${hourName(h)} to ${hourName((h + 1) % 24)}: ${n} sign-in${n === 1 ? '' : 's'}`)}" tabindex="0">
+        <span class="adm-hour-bar" style="height:${n ? Math.max(6, Math.round(100 * n / maxHour)) : 0}%"></span>
+      </div>`).join('');
+
+    const chip = (val, label, n, field) => `<button type="button" class="adm-chip ${st[field] === val ? 'is-active' : ''}" onclick="App._setSignInFilter('${field}', '${val}')">${label}${n != null ? ` <span class="adm-chip-n">${n}</span>` : ''}</button>`;
+
+    el.innerHTML = `
+      <div class="adm-signins">
+        <button type="button" class="dc-back-link" onclick="App._setAdminTab('overview')">Back to overview</button>
+        <div class="adm-card-row adm-signins-head">
+          <div>
+            <div class="adm-title">Sign-in activity</div>
+            <p class="adm-card-text">Everyone who used CountsFor ${esc(span)}: they signed in, or opened CountsFor while still signed in from before. Days follow Qatar time.</p>
+          </div>
+          <div class="adm-seg" role="group" aria-label="Time period">
+            ${d.windows.map(w => `<button type="button" class="adm-seg-btn ${w === d.days ? 'is-active' : ''}" aria-pressed="${w === d.days}" onclick="App._setSignInWindow(${w})">${w} days</button>`).join('')}
+          </div>
+        </div>
+
+        <div class="adm-stat-grid">
+          ${this._admStat(t.active_users, 'Active people', `${pct}% of ${t.total_accounts} account${t.total_accounts === 1 ? '' : 's'}${diffText ? ' · ' + diffText : ''}`)}
+          ${this._admStat(t.sign_ins, 'Sign-ins', 'Times someone logged in')}
+          ${this._admStat(t.visits, 'App opens', 'Visits while already signed in')}
+          ${this._admStat(t.returning, 'Returning', `Also active in the ${d.days} days before`, "App._setSignInFilter('show', 'returning')")}
+          ${this._admStat(t.new_accounts, 'New accounts', `Joined ${span}`, "App._setSignInFilter('show', 'new')")}
+          ${this._admStat(t.avg_days_active, 'Days active', 'Average per active person')}
+        </div>
+
+        <div class="adm-card">
+          <div class="adm-card-title">People active each day</div>
+          <p class="adm-card-text">Hover or tap a bar for sign-ins and app opens on that day.</p>
+          <div class="adm-days ${d.days > 30 ? 'is-dense' : ''}" style="grid-template-columns: repeat(${d.daily.length}, minmax(0, 1fr))">${dayBars}</div>
+        </div>
+
+        <div class="adm-insight-grid adm-signins-grid">
+          <div class="adm-card"><div class="adm-card-title">By role</div>${this._signInBars(groupItems, 'activity')}</div>
+          <div class="adm-card"><div class="adm-card-title">By program</div>${this._signInBars(programItems, 'activity')}</div>
+          <div class="adm-card"><div class="adm-card-title">How they signed in</div>${this._signInBars(methodItems, 'sign-ins')}</div>
+          <div class="adm-card">
+            <div class="adm-card-title">Busiest hours</div>
+            <p class="adm-card-text">${busiest >= 0 ? `Most sign-ins happen between ${hourName(busiest)} and ${hourName((busiest + 1) % 24)} (Qatar time).` : 'No sign-ins recorded in this period yet.'}</p>
+            <div class="adm-hours">${hours}</div>
+            <div class="adm-hours-axis"><span>12 am</span><span>6 am</span><span>12 pm</span><span>6 pm</span><span>11 pm</span></div>
+          </div>
+        </div>
+
+        <div class="adm-card adm-signins-people">
+          <div class="adm-card-row">
+            <div>
+              <div class="adm-card-title">Who was active</div>
+              <p class="adm-card-text" id="admSignInCount"></p>
+            </div>
+            <button type="button" class="adm-btn" onclick="App._exportSignInsCsv()">Download CSV</button>
+          </div>
+          <div class="adm-search-row">
+            <input type="search" class="adm-search" placeholder="Search by name or email" value="${esc(st.q)}" oninput="App._onSignInSearch(this.value)" autocomplete="off" />
+          </div>
+          <div class="adm-toolbar">
+            ${chip('', 'Everyone', null, 'group')}
+            ${chip('student', 'Students', d.by_group.student || 0, 'group')}
+            ${chip('faculty', 'Faculty', d.by_group.faculty || 0, 'group')}
+            ${chip('admin', 'Admins', d.by_group.admin || 0, 'group')}
+            <span class="adm-toolbar-sep"></span>
+            ${chip('', 'All', null, 'show')}
+            ${chip('new', 'New accounts', t.new_accounts, 'show')}
+            ${chip('returning', 'Returning', t.returning, 'show')}
+          </div>
+          <div id="admSignInTable"></div>
+        </div>
+        <p class="adm-cell-sub adm-signins-foot">${d.tracking_since
+          ? `Detailed tracking started ${esc(this._admDate(d.tracking_since))}. Earlier activity only shows each person's most recent sign-in.`
+          : 'Detailed tracking starts with the next sign-in. Until then, only each person’s most recent sign-in is known.'}</p>
+      </div>`;
+    this._renderSignInTable();
+  },
+
+  _setSignInFilter(field, value) {
+    this._signIns[field] = value;
+    this._renderSignIns();
+    if (field === 'show' && value) {
+      const box = document.querySelector('.adm-signins-people');
+      if (box) box.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  },
+
+  _onSignInSearch(value) {
+    this._signIns.q = value;
+    this._renderSignInTable();
+  },
+
+  _sortSignIns(key) {
+    const st = this._signIns;
+    if (st.sort === key) st.dir = st.dir === 'asc' ? 'desc' : 'asc';
+    else { st.sort = key; st.dir = key === 'name' ? 'asc' : 'desc'; }
+    this._renderSignInTable();
+  },
+
+  _filteredSignIns() {
+    const st = this._signIns;
+    const q = st.q.trim().toLowerCase();
+    const rows = (st.data ? st.data.users : []).filter(p =>
+      (!st.group || p.role_group === st.group)
+      && (!st.show || (st.show === 'new' ? p.is_new : p.returning))
+      && (!q || (p.name || '').toLowerCase().includes(q) || (p.email || '').toLowerCase().includes(q)));
+    const k = st.sort;
+    const sign = st.dir === 'asc' ? 1 : -1;
+    return rows.sort((a, b) => {
+      const va = k === 'name' ? (a.name || '').toLowerCase() : a[k];
+      const vb = k === 'name' ? (b.name || '').toLowerCase() : b[k];
+      if (va === vb) return 0;
+      if (va == null) return 1;
+      if (vb == null) return -1;
+      return va > vb ? sign : -sign;
+    });
+  },
+
+  _renderSignInTable() {
+    const box = document.getElementById('admSignInTable');
+    const st = this._signIns;
+    if (!box || !st.data) return;
+    const rows = this._filteredSignIns();
+    const all = st.data.users.length;
+    const count = document.getElementById('admSignInCount');
+    if (count) count.textContent = rows.length === all
+      ? `${all} ${all === 1 ? 'person' : 'people'}, most recent first.`
+      : `Showing ${rows.length} of ${all} people.`;
+    if (!rows.length) {
+      box.innerHTML = `<p class="adm-empty-line">${all ? 'Nobody matches these filters.' : 'Nobody has used CountsFor in this period yet.'}</p>`;
+      return;
+    }
+    const th = (key, label, num) => {
+      const on = st.sort === key;
+      return `<th class="${num ? 'adm-num' : ''}" aria-sort="${on ? (st.dir === 'asc' ? 'ascending' : 'descending') : 'none'}">
+        <button type="button" class="adm-th-btn" onclick="App._sortSignIns('${key}')">${label}${on ? `<span aria-hidden="true">${st.dir === 'asc' ? ' ▲' : ' ▼'}</span>` : ''}</button></th>`;
+    };
+    box.innerHTML = `
+      <div class="adm-table-wrap">
+        <table class="adm-table">
+          <thead><tr>
+            ${th('name', 'Person')}${th('role', 'Role')}${th('primary_program', 'Program')}
+            ${th('days_active', 'Days active', true)}${th('sign_ins', 'Sign-ins', true)}${th('visits', 'App opens', true)}${th('last_seen', 'Last seen')}
+          </tr></thead>
+          <tbody>${rows.map(p => `
+            <tr>
+              <td>
+                <div class="adm-cell-strong">${esc(p.name || p.email)}
+                  ${p.is_new ? '<span class="adm-pill adm-pill-new">New</span>' : ''}
+                  ${p.returning ? '<span class="adm-pill adm-pill-edit">Returning</span>' : ''}</div>
+                <div class="adm-cell-sub">${esc(p.email)}</div>
+              </td>
+              <td>${esc(this._admRoleLabel(p.role))}</td>
+              <td>${esc(p.primary_program ? (getProgramLabel(p.primary_program) || p.primary_program) : 'Not chosen')}</td>
+              <td class="adm-num">${p.days_active}</td>
+              <td class="adm-num">${p.sign_ins}</td>
+              <td class="adm-num">${p.visits}</td>
+              <td title="${esc(this._admDate(p.last_seen))}">${esc(this._admWhen(p.last_seen))}
+                ${p.last_method ? `<div class="adm-cell-sub">${esc(this.SIGN_IN_METHOD_LABELS[p.last_method] || p.last_method)}</div>` : ''}</td>
+            </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  },
+
+  _exportSignInsCsv() {
+    const d = this._signIns.data;
+    if (!d) return;
+    const rows = this._filteredSignIns().map(p => [
+      p.name, p.email, this._admRoleLabel(p.role), p.primary_program || '', p.days_active, p.sign_ins, p.visits,
+      p.last_seen || '', this.SIGN_IN_METHOD_LABELS[p.last_method] || p.last_method || '', p.is_new ? 'yes' : 'no', p.returning ? 'yes' : 'no',
+    ]);
+    downloadExcelSheet(`countsfor-sign-ins-${d.start}-to-${d.end}.csv`, 'Sign-ins',
+      ['Name', 'Email', 'Role', 'Program', 'Days active', 'Sign-ins', 'App opens', 'Last seen (UTC)', 'Last sign-in method', 'New account', 'Returning'],
+      rows, [['CountsFor sign-in activity'], ['Period', `${d.start} to ${d.end} (Qatar time)`]]);
   },
 
   // ── Faculty access (directory) ────────────────────────────

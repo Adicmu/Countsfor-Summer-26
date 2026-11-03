@@ -478,3 +478,45 @@ class CourseOverride(db.Model):
             "updated_by_email": self.updated_by_email,
             "updated_at": self.updated_at.isoformat() if self.updated_at else None,
         }
+
+
+class SignInEvent(db.Model):
+    """One row per successful sign-in (Google, password, email link or new account).
+
+    Feeds the admin "Signed in this week" analytics. Rows written before this
+    table existed are backfilled from users.last_login with method "before_tracking".
+    """
+    __tablename__ = "sign_in_events"
+    __table_args__ = (Index("ix_sign_in_events_created", "created_at"),)
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    method: Mapped[str] = mapped_column(String(24), nullable=False, default="unknown")
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
+
+
+class UserActivityDay(db.Model):
+    """Per-user, per-day usage counter (CMU-Q local date).
+
+    A session lasts 30 days, so most returning visits do not create a new
+    sign-in. Each GET /api/me (every time a signed-in user opens CountsFor)
+    bumps `visits`; each sign-in bumps `sign_ins`. One row per user per day
+    keeps the table small enough to scan for any reporting window.
+    """
+    __tablename__ = "user_activity_days"
+    __table_args__ = (
+        UniqueConstraint("user_id", "day", name="uq_user_activity_day"),
+        Index("ix_user_activity_day", "day"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    day: Mapped[str] = mapped_column(String(10), nullable=False)  # YYYY-MM-DD in Qatar time
+    visits: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    sign_ins: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    first_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)
+    last_seen: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, default=_utcnow)

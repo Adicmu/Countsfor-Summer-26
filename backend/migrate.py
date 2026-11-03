@@ -164,7 +164,37 @@ def run_migrations() -> list[str]:
     if _add_column_if_missing("wishlist_items", "note", "note TEXT"):
         log.append("Added wishlist_items.note")
 
+    backfilled = _backfill_sign_in_history()
+    if backfilled:
+        log.append(f"Backfilled {backfilled} sign-in events from users.last_login")
+
     return log
+
+
+def _backfill_sign_in_history() -> int:
+    """Seed sign-in analytics from users.last_login, once.
+
+    Sign-in tracking (sign_in_events, user_activity_days) started after people
+    were already using CountsFor. The only history we have is each user's most
+    recent login, so the first deploy turns that into one event per user with
+    method "before_tracking". Skipped whenever sign_in_events already has rows.
+    """
+    if not (_table_exists("sign_in_events") and _table_exists("user_activity_days")):
+        return 0
+    from .activity import local_day
+    from .models import SignInEvent, User, UserActivityDay
+
+    if db.session.query(SignInEvent.id).first() is not None:
+        return 0
+    users = db.session.query(User).filter(User.last_login.isnot(None)).all()
+    for u in users:
+        db.session.add(SignInEvent(user_id=u.id, method="before_tracking", created_at=u.last_login))
+        db.session.add(UserActivityDay(
+            user_id=u.id, day=local_day(u.last_login), visits=0, sign_ins=1,
+            first_seen=u.last_login, last_seen=u.last_login,
+        ))
+    db.session.commit()
+    return len(users)
 
 
 def _migrate_staff_to_directory_entries() -> bool:

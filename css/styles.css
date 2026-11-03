@@ -5479,3 +5479,92 @@ body.view-split .nav-directory {
 .adm-search, .adm-select, .adm-textarea { background: var(--bg-card); color: var(--text-primary); }
 .adm-search::placeholder { color: var(--text-tertiary); }
 .adm-search:focus, .adm-select:focus { outline: none; border-color: var(--border-focus); box-shadow: var(--shadow-focus); }
+
+/* ── Admin page: course save confirmation ───────────────── */
+.adm-btn-primary { background: var(--cmu-red); border-color: var(--cmu-red); color: #fff; }
+.adm-btn-primary:hover { background: var(--cmu-red); border-color: var(--cmu-red); color: #fff; filter: brightness(1.08); }
+.adm-btn[disabled] { opacity: 0.6; cursor: progress; }
+.adm-form-notice { flex-basis: 100%; margin-top: 6px; padding: 8px 12px; border-radius: 8px; border: 1px solid var(--major-is-border); background: var(--major-is-bg); color: var(--major-is-text); font-size: 12.5px; font-weight: 600; }
+.adm-input-error { border-color: var(--cmu-red) !important; box-shadow: 0 0 0 3px rgba(196, 18, 48, 0.15); }
+.adm-saved { max-width: 640px; margin: 8px auto 24px; padding: 28px 28px 22px; border: 1px solid var(--major-bs-border); border-radius: var(--radius-md); background: var(--bg-card); text-align: left; }
+.adm-saved-icon { display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; border-radius: 50%; background: var(--major-bs-bg); color: var(--major-bs-text); margin-bottom: 12px; }
+.adm-saved-kicker { font-size: 12px; font-weight: 800; letter-spacing: 0.06em; text-transform: uppercase; color: var(--major-bs-text); }
+.adm-saved-title { margin-top: 4px; font-size: 20px; font-weight: 800; color: var(--text-primary); }
+.adm-saved-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 16px 0 0; }
+.adm-saved-facts div { padding: 10px 12px; border-radius: 8px; background: var(--bg-secondary); min-width: 0; }
+.adm-saved-facts dt { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-tertiary); }
+.adm-saved-facts dd { margin: 2px 0 0; font-size: 13.5px; font-weight: 700; color: var(--text-primary); overflow-wrap: anywhere; }
+.adm-saved-changes { margin-top: 14px; }
+.adm-saved-changes ul { margin: 0; padding-left: 18px; font-size: 13px; line-height: 1.7; color: var(--text-secondary); }
+.adm-saved-actions { margin-top: 20px; }
+@media (max-width: 560px) { .adm-saved { padding: 20px 16px; } .adm-saved-facts { grid-template-columns: 1fr; } }
+
+/* ── Admin page: sign-in activity ───────────────────────── */
+.adm-signins .dc-back-link { margin-bottom: 12px; }
+.adm-signins-head { margin-bottom: 14px; flex-wrap: wrap; }
+.adm-signins-head .adm-title { font-size: 18px; }
+.adm-seg { display: inline-flex; flex: none; padding: 3px; border: 1px solid var(--border-light); border-radius: 9px; background: var(--bg-secondary); }
+.adm-seg-btn { padding: 6px 12px; border: 0; border-radius: 7px; background: transparent; font-family: inherit; font-size: 12px; font-weight: 700; color: var(--text-secondary); cursor: pointer; }
+.adm-seg-btn:hover { color: var(--text-primary); }
+.adm-seg-btn.is-active { background: var(--bg-card); color: var(--text-primary); box-shadow: var(--shadow-sm); }
+
+.adm-days { display: grid; align-items: end; gap: 4px; height: 170px; margin-top: 14px; }
+.adm-days.is-dense { gap: 2px; }
+.adm-day, .adm-hour { position: relative; display: flex; flex-direction: column; justify-content: flex-end; align-items: center; height: 100%; min-width: 0; outline: none; cursor: default; }
+.adm-day-value { font-size: 11px; font-weight: 700; color: var(--text-secondary); min-height: 14px; font-variant-numeric: tabular-nums; }
+.adm-day-bar, .adm-hour-bar { width: 100%; max-width: 36px; border-radius: 4px 4px 0 0; background: var(--cmu-red); transition: opacity 120ms; }
+.adm-day-label { margin-top: 5px; min-height: 13px; font-size: 10.5px; color: var(--text-tertiary); white-space: nowrap; }
+.adm-days::after { content: none; }
+.adm-day:hover .adm-day-bar, .adm-day:focus-visible .adm-day-bar,
+.adm-hour:hover .adm-hour-bar, .adm-hour:focus-visible .adm-hour-bar { opacity: 0.75; }
+.adm-day[data-tip]:hover::after, .adm-day[data-tip]:focus-visible::after,
+.adm-hour[data-tip]:hover::after, .adm-hour[data-tip]:focus-visible::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 5;
+  width: max-content;
+  max-width: 220px;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: var(--text-primary);
+  color: var(--bg-primary);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1.4;
+  white-space: normal;
+  pointer-events: none;
+  box-shadow: var(--shadow-sm);
+}
+.adm-day:first-child[data-tip]:hover::after, .adm-hour:first-child[data-tip]:hover::after { left: 0; transform: none; }
+.adm-day:last-child[data-tip]:hover::after, .adm-hour:last-child[data-tip]:hover::after { left: auto; right: 0; transform: none; }
+.adm-days .adm-day { padding-top: 0; }
+.adm-day-bar { min-height: 0; }
+
+.adm-hours { display: grid; grid-template-columns: repeat(24, minmax(0, 1fr)); align-items: end; gap: 2px; height: 80px; margin-top: 12px; border-bottom: 1px solid var(--border-light); }
+.adm-hours-axis { display: flex; justify-content: space-between; margin-top: 4px; font-size: 10.5px; color: var(--text-tertiary); }
+
+.adm-signins-grid { margin-bottom: 12px; }
+.adm-toolbar-sep { width: 1px; height: 20px; margin: 0 4px; background: var(--border-light); }
+.adm-th-btn { padding: 0; border: 0; background: transparent; font: inherit; letter-spacing: inherit; text-transform: inherit; color: inherit; cursor: pointer; }
+.adm-th-btn:hover { color: var(--text-primary); }
+.adm-num { text-align: right; font-variant-numeric: tabular-nums; }
+.adm-table .adm-pill { margin-left: 6px; font-size: 10.5px; vertical-align: 1px; }
+.adm-signins-foot { margin: 4px 2px 0; }
+@media (max-width: 640px) {
+  .adm-days { height: 140px; }
+  .adm-day-value { display: none; }
+  .adm-seg { width: 100%; }
+  .adm-seg-btn { flex: 1; }
+}
+.adm-signins .adm-bar-track, .adm-signins .adm-bar-fill { display: block; }
+.adm-day-plot { flex: 1; display: flex; align-items: flex-end; justify-content: center; width: 100%; min-height: 0; }
+.adm-day-plot .adm-day-bar { display: block; }
+.adm-hour-bar { display: block; }
+.adm-signins .adm-stat-grid { grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); }
+.adm-signins-grid { grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+@media (min-width: 900px) { .adm-signins-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.adm-day-plot { border-bottom: 1px solid var(--border-light); }
+button.adm-stat { display: flex; flex-direction: column; justify-content: flex-start; align-items: stretch; }

@@ -118,3 +118,71 @@ def test_user_list_filters_and_reports_total(client, app, admin, student, profes
     assert client.get("/api/users?role_group=faculty").get_json()["total"] == 1
     limited = client.get("/api/users?limit=1").get_json()
     assert limited["total"] == 4 and len(limited["items"]) == 1
+
+
+# ── Sign-in analytics ────────────────────────────────────────
+def test_sign_ins_requires_admin(client, student, professor):
+    for user in (student, professor):
+        login(client, user)
+        assert client.get("/api/admin/sign-ins").status_code == 403
+    client.post("/api/auth/logout")
+    assert client.get("/api/admin/sign-ins").status_code == 401
+
+
+def test_sign_in_and_visits_are_tracked(client, app, admin):
+    # A real sign-in through the email route records an event and a day row.
+    r = client.post("/api/auth/email", json={"email": "newkid@andrew.cmu.edu"})
+    assert r.status_code == 200
+    client.get("/api/me")
+    client.get("/api/me")
+
+    login(client, admin)
+    body = client.get("/api/admin/sign-ins?days=7").get_json()
+    assert body["days"] == 7
+    assert len(body["daily"]) == 7
+    people = {p["email"]: p for p in body["users"]}
+    kid = people["newkid@andrew.cmu.edu"]
+    assert kid["sign_ins"] == 1
+    assert kid["visits"] == 2
+    assert kid["days_active"] == 1
+    assert kid["last_method"] == "email_link"
+    assert kid["is_new"] is True
+    assert body["by_method"].get("email_link") == 1
+    assert body["totals"]["active_users"] >= 1
+    assert body["daily"][-1]["users"] >= 1
+    assert sum(body["by_hour"]) >= 1
+
+
+def test_overview_active_week_matches_sign_ins(client, app, admin):
+    client.post("/api/auth/email", json={"email": "a1@andrew.cmu.edu"})
+    client.post("/api/auth/email", json={"email": "a2@andrew.cmu.edu"})
+    login(client, admin)
+    overview = client.get("/api/admin/overview").get_json()
+    sign_ins = client.get("/api/admin/sign-ins").get_json()
+    assert overview["users"]["active_7d"] >= 2
+    tracked = {p["email"] for p in sign_ins["users"]}
+    assert {"a1@andrew.cmu.edu", "a2@andrew.cmu.edu"} <= tracked
+
+
+def test_sign_ins_window_falls_back_to_seven(client, admin):
+    login(client, admin)
+    assert client.get("/api/admin/sign-ins?days=12").get_json()["days"] == 7
+    assert client.get("/api/admin/sign-ins?days=nope").get_json()["days"] == 7
+    assert len(client.get("/api/admin/sign-ins?days=30").get_json()["daily"]) == 30
+
+
+def test_backfill_turns_last_login_into_history(app):
+    from datetime import datetime, timedelta, timezone
+    from backend.db import db
+    from backend.migrate import _backfill_sign_in_history
+    from backend.models import SignInEvent, User, UserActivityDay
+
+    with app.app_context():
+        when = datetime.now(timezone.utc) - timedelta(days=2)
+        db.session.add(User(email="old@andrew.cmu.edu", name="Old", role="student", last_login=when))
+        db.session.commit()
+        assert _backfill_sign_in_history() == 1
+        assert db.session.query(SignInEvent).filter_by(method="before_tracking").count() == 1
+        assert db.session.query(UserActivityDay).count() == 1
+        # Runs only once.
+        assert _backfill_sign_in_history() == 0

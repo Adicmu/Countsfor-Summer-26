@@ -16,6 +16,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from google.oauth2 import id_token
 from google.auth.transport import requests as google_requests
 
+from .activity import mark_signed_in, record_visit
 from .cmu import normalize_cmu_email
 from .directory import resolve_directory_entry
 from .db import db
@@ -119,10 +120,10 @@ def _find_valid_reset_token(raw_token: str) -> PasswordResetToken | None:
     return row
 
 
-def _finalize_user(user: User, email: str) -> User:
+def _finalize_user(user: User, email: str, method: str = "password") -> User:
     """Apply directory/admin rules and mark profile complete when ready."""
     _sync_directory_profile(user, email)
-    user.last_login = datetime.now(timezone.utc)
+    mark_signed_in(user, method)
     if user.profile_is_complete():
         user.profile_completed = True
     db.session.commit()
@@ -157,7 +158,7 @@ def _create_user_with_password(email: str, name: str, password: str) -> User:
     db.session.flush()
     if not user.password_hash:
         raise RuntimeError("password_hash was not set during registration")
-    return _finalize_user(user, email)
+    return _finalize_user(user, email, method="register")
 
 
 MAJOR_MINOR_COLLISION = {"CS": "cs", "BA": "business", "BS": "biology"}
@@ -260,6 +261,7 @@ def _upsert_user_from_login(
     name: str,
     google_sub: str | None = None,
     picture_url: str | None = None,
+    method: str = "google",
 ) -> User:
     """Find or create a user, apply seed/admin rules, mark profile complete when ready."""
     user = (
@@ -288,7 +290,7 @@ def _upsert_user_from_login(
 
     _sync_directory_profile(user, email)
 
-    user.last_login = datetime.now(timezone.utc)
+    mark_signed_in(user, method)
     if user.profile_is_complete():
         user.profile_completed = True
 
@@ -327,7 +329,7 @@ def register():
         existing.password_hash = _hash_password(password)
         if not existing.name:
             existing.name = (data.get("name") or "").strip() or email.split("@", 1)[0].replace(".", " ").title()
-        user = _finalize_user(existing, email)
+        user = _finalize_user(existing, email, method="register")
     else:
         name = (data.get("name") or "").strip() or email.split("@", 1)[0].replace(".", " ").title()
         user = _create_user_with_password(email, name, password)
@@ -494,7 +496,7 @@ def email_signin():
         ), 403
 
     name = (data.get("name") or "").strip() or email.split("@", 1)[0].replace(".", " ").title()
-    user = _upsert_user_from_login(email, name)
+    user = _upsert_user_from_login(email, name, method="email_link")
     _write_session(user)
     return jsonify(_auth_payload(user))
 
@@ -555,6 +557,7 @@ def me():
     user = current_user()
     if not user:
         return jsonify(error="unauthenticated", message="Not signed in."), 401
+    record_visit(user)
     return jsonify(_auth_payload(user))
 
 
