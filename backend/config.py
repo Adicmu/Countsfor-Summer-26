@@ -129,6 +129,9 @@ class Config:
         "SEED_USERS_PATH",
         str(Path(__file__).resolve().parent / "seed_users.json"),
     )
+    # Hand-kept admins layered over the faculty seed (default data/directory_admins.json).
+    # Unset means the default file; an empty string disables it.
+    ADMIN_SEED_PATH = os.environ.get("ADMIN_SEED_PATH")
 
     # ── Password reset email ───────────────────────────────────
     RESET_TOKEN_MINUTES = int(os.environ.get("RESET_TOKEN_MINUTES", "30"))
@@ -166,5 +169,6 @@ class TestConfig(Config):
     SESSION_COOKIE_SAMESITE = "Lax"
     FRONTEND_ORIGINS = ["http://localhost:8765"]
     SEED_USERS_PATH = ""
+    ADMIN_SEED_PATH = ""
     # Tests opt in via monkeypatch when they need the raw reset token in responses.
     EXPOSE_RESET_TOKEN = os.environ.get("EXPOSE_RESET_TOKEN", "")

@@ -67,3 +67,39 @@ def test_students_cannot_list_directory(client, student):
     login(client, student)
     r = client.get("/api/directory/entries")
     assert r.status_code == 403
+
+
+def test_admin_seed_file_grants_admin_over_faculty_seed(app, tmp_path):
+    """data/directory_admins.json style file is layered over the faculty seed."""
+    import json
+    from backend.db import db
+    from backend.directory import resolve_directory_entry
+
+    faculty = tmp_path / "faculty.json"
+    faculty.write_text(json.dumps({"people": [
+        {"email": "prof@andrew.cmu.edu", "name": "Prof", "role": "professor", "primary_program": "CS", "department": "Computer Science"},
+    ]}))
+    admins = tmp_path / "admins.json"
+    admins.write_text(json.dumps({"people": [
+        {"email": "boss@andrew.cmu.edu", "name": "Boss", "role": "admin", "primary_program": "CS", "department": "Computer Science"},
+    ]}))
+    app.config["SEED_USERS_PATH"] = str(faculty)
+    app.config["ADMIN_SEED_PATH"] = str(admins)
+    with app.app_context():
+        assert resolve_directory_entry("boss@andrew.cmu.edu")["role"] == "admin"
+        assert resolve_directory_entry("prof@andrew.cmu.edu")["role"] == "professor"
+        app.config["ADMIN_SEED_PATH"] = ""
+        assert resolve_directory_entry("boss@andrew.cmu.edu") is None
+
+
+def test_admin_seed_sign_in_makes_admin(app, client, tmp_path):
+    import json
+    admins = tmp_path / "admins.json"
+    admins.write_text(json.dumps({"people": [
+        {"email": "boss@andrew.cmu.edu", "name": "Boss", "role": "admin", "primary_program": "CS", "department": "Computer Science"},
+    ]}))
+    app.config["ADMIN_SEED_PATH"] = str(admins)
+    r = client.post("/api/auth/register", json={"email": "boss@andrew.cmu.edu", "password": "a-long-password-1", "name": "Boss"})
+    assert r.status_code in (200, 201), r.get_json()
+    me = client.get("/api/me").get_json()
+    assert me["role"] == "admin" and me["role_group"] == "admin"

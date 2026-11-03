@@ -455,7 +455,7 @@ Email behaviour summary (`forgot_password()` plus `email_util.py`): if neither R
 On **every** sign-in (`register`, `login`, `google`, `email`), the backend calls `_sync_directory_profile(user, email)`:
 
 1. Look up the email in the `directory_entries` table. If found, use that row.
-2. Otherwise look in the JSON seed. `_load_json_directory()` tries, in order, `SEED_USERS_PATH`, `backend/seed_users.json`, `backend/faculty_seed.json`, `data/faculty_directory.json`, and **uses the first file that exists and has rows** (files are not merged).
+2. Otherwise look in the JSON seed. `_load_json_directory()` tries, in order, `SEED_USERS_PATH`, `backend/seed_users.json`, `backend/faculty_seed.json`, `data/faculty_directory.json`, and **uses the first file that exists and has rows** (files are not merged). Then `data/directory_admins.json` (path set by `ADMIN_SEED_PATH`; empty string disables it) is layered on top, so the admins listed there win over the faculty seed. It is a separate file because `data/scrape_faculty_directory.py` rewrites `faculty_directory.json` from scratch.
 3. If a row is found: `role` comes from it (`admin` sets `is_admin`), and `name`, `primary_program`, `department`, `department_scope`, `picture_url` are copied when present. Minors are cleared.
 4. If no row is found: the user becomes `student`, `is_admin = False`.
 
@@ -1275,6 +1275,10 @@ Sign in as admin, open **Admin**, tab **Courses**, search the course, click it, 
 | Local `backend/.env` | your laptop | Never commit it (gitignored) | None |
 
 ### 19.7 Give someone admin (production)
+
+**Permanent admins** (the project owners): add them to `data/directory_admins.json` (email, name, `role: "admin"`, `primary_program`, `department`), push to `main`, wait for Render to redeploy, then have them sign out and in. As of November 2026 it lists `avivek@andrew.cmu.edu`. Remove people from this file when they leave.
+
+**Anyone else:**
 
 1. Sign in as an existing admin.
 2. Admin page, **Faculty access** tab, "Add or edit people" (opens the Directory panel). Enter name and andrew email, role **Admin**, department. Save. This writes a `directory_entries` row (audited as `directory.add`).
