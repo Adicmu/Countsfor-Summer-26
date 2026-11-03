@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>CountsFor Analytics Plan</title>
+<style>
+  @page { size: A4; margin: 18mm 17mm 18mm 17mm; }
+  :root { --red: #C41230; --ink: #1a1a1a; --muted: #5c5c5c; --line: #e3e0dc; --soft: #f6f4f1; --green: #047857; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--ink); font-size: 10.5pt; line-height: 1.5; }
+  h1 { font-size: 24pt; margin: 0 0 4px; letter-spacing: -0.01em; }
+  h2 { font-size: 14pt; margin: 22px 0 6px; padding-top: 4px; border-top: 2px solid var(--red); break-after: avoid; }
+  h3 { font-size: 11pt; margin: 14px 0 4px; break-after: avoid; }
+  p { margin: 0 0 8px; }
+  ul, ol { margin: 0 0 8px; padding-left: 18px; }
+  li { margin-bottom: 3px; }
+  .kicker { color: var(--red); font-weight: 800; font-size: 9pt; letter-spacing: 0.08em; text-transform: uppercase; }
+  .meta { color: var(--muted); font-size: 9.5pt; margin-bottom: 14px; }
+  .summary { background: var(--soft); border-left: 4px solid var(--red); padding: 12px 14px; margin: 12px 0 4px; }
+  .summary p:last-child { margin: 0; }
+  table { width: 100%; border-collapse: collapse; margin: 6px 0 10px; font-size: 9.5pt; break-inside: avoid; }
+  th { text-align: left; font-size: 8.5pt; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); border-bottom: 1.5px solid var(--ink); padding: 5px 6px; }
+  td { border-bottom: 1px solid var(--line); padding: 6px; vertical-align: top; }
+  td:first-child { font-weight: 700; white-space: nowrap; }
+  code { font-family: "SF Mono", Menlo, monospace; font-size: 8.8pt; background: var(--soft); padding: 1px 4px; border-radius: 3px; }
+  figure { margin: 10px 0 12px; break-inside: avoid; }
+  figure img { width: 100%; border: 1px solid var(--line); border-radius: 6px; }
+  figcaption { font-size: 8.8pt; color: var(--muted); margin-top: 4px; }
+  .tag { display: inline-block; font-size: 8pt; font-weight: 800; padding: 1px 7px; border-radius: 99px; vertical-align: 1px; }
+  .done { background: #e6f4ee; color: var(--green); }
+  .next { background: #fdecef; color: var(--red); }
+  .later { background: #eeeeee; color: #555; }
+  .flow { display: flex; align-items: stretch; gap: 6px; margin: 8px 0 12px; font-size: 9pt; break-inside: avoid; }
+  .flow div { flex: 1; border: 1px solid var(--line); border-radius: 6px; padding: 8px; background: #fff; }
+  .flow div b { display: block; font-size: 9.5pt; margin-bottom: 2px; }
+  .flow .arrow { flex: none; border: 0; padding: 0; align-self: center; color: var(--red); font-weight: 800; background: none; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .box { border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; break-inside: avoid; }
+  .box h3 { margin-top: 0; }
+  .pb { break-before: page; }
+  .small { font-size: 9pt; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<div class="kicker">CountsFor · Admin analytics</div>
+<h1>Analytics plan</h1>
+<div class="meta">Prepared by Aditya Vivek for the CountsFor team · 3 November 2026 · Branch <code>feat/admin-page</code></div>
+
+<div class="summary">
+  <p><strong>In one paragraph.</strong> The admin Overview already showed a "Signed in this week" number, but it was not clickable and it was not measuring much: the database only kept each person's single most recent login, and because a CountsFor session lasts 30 days, most people who came back never logged in again and were never counted. Phase 1 (built, running locally, not yet deployed) fixes the measurement and turns that number into a full Sign-in activity page. Phases 2 and 3 below are proposals for the team to agree on before anything else is built.</p>
+</div>
+
+<h2>1. What questions should analytics answer?</h2>
+<p>We collect only what helps the people running CountsFor make decisions. Each question names who asks it.</p>
+<table>
+  <thead><tr><th>Question</th><th>Who asks</th><th>Answered by</th></tr></thead>
+  <tbody>
+    <tr><td>Is anyone actually using CountsFor?</td><td>Prof. Silvia, area heads</td><td>Active people per day / week / 30 / 90 days <span class="tag done">Phase 1</span></td></tr>
+    <tr><td>Who is using it, students or faculty? Which majors?</td><td>Area heads, advisors</td><td>Breakdown by role and program <span class="tag done">Phase 1</span></td></tr>
+    <tr><td>Do people come back after the first visit?</td><td>Team</td><td>Returning people, days active per person <span class="tag done">Phase 1</span></td></tr>
+    <tr><td>When do people use it (registration week, evenings)?</td><td>Team, IT</td><td>Daily chart, busiest hours <span class="tag done">Phase 1</span></td></tr>
+    <tr><td>Which parts of the site get used: search, trees, planner, wishlist?</td><td>Team</td><td>Feature usage events <span class="tag next">Phase 2</span></td></tr>
+    <tr><td>Where do new users drop off?</td><td>Team</td><td>Onboarding funnel <span class="tag next">Phase 2</span></td></tr>
+    <tr><td>How does this semester compare to last?</td><td>Prof. Silvia</td><td>Semester report and weekly digest <span class="tag later">Phase 3</span></td></tr>
+  </tbody>
+</table>
+
+<h2>2. Phase 1: Sign-in activity <span class="tag done">Built, local only</span></h2>
+<p>On the admin Overview, the <strong>Signed in this week</strong> card is now a button. It opens a <strong>Sign-in activity</strong> page with a 7 / 30 / 90 day switch. The <strong>New this week</strong> card opens the same page filtered to new accounts.</p>
+
+<figure>
+  <img src="signins-7d.png" alt="Sign-in activity page">
+  <figcaption>Sign-in activity, 7 day view. The numbers are sample data from a local test database, not real usage.</figcaption>
+</figure>
+
+<h3>What the page shows</h3>
+<table>
+  <thead><tr><th>Metric</th><th>Exact definition</th></tr></thead>
+  <tbody>
+    <tr><td>Active people</td><td>Distinct accounts that signed in <em>or</em> opened CountsFor while already signed in, at least once in the period. Also shown as a share of all accounts and compared with the same-length period before.</td></tr>
+    <tr><td>Sign-ins</td><td>Successful logins (Google, password, email link, or creating an account).</td></tr>
+    <tr><td>App opens</td><td>Times a signed-in person loaded CountsFor (each call to <code>GET /api/me</code>).</td></tr>
+    <tr><td>Returning</td><td>Active in this period and also active in the period right before it.</td></tr>
+    <tr><td>New accounts</td><td>Active people whose account was created inside the period.</td></tr>
+    <tr><td>Days active</td><td>Average number of different days each active person used CountsFor.</td></tr>
+    <tr><td>People active each day</td><td>Bar chart, one bar per day; hovering shows that day's sign-ins and app opens.</td></tr>
+    <tr><td>Breakdowns</td><td>By role (student / faculty / admin), by program, by sign-in method, and sign-ins by hour of day.</td></tr>
+    <tr><td>Who was active</td><td>Searchable, sortable table: name, email, role, program, days active, sign-ins, app opens, last seen, how they last signed in, New and Returning badges. Exports to CSV.</td></tr>
+  </tbody>
+</table>
+<p class="small">All days are counted in Qatar time (UTC+3, no daylight saving), so "today" on the page is the same calendar day people in Doha see.</p>
+
+<h3>How it is measured</h3>
+<div class="flow">
+  <div><b>Someone signs in</b>Any of the four sign-in routes in <code>backend/auth.py</code> calls <code>mark_signed_in()</code></div>
+  <div class="arrow">→</div>
+  <div><b>Someone opens the app</b><code>GET /api/me</code> calls <code>record_visit()</code>; it can never break the page</div>
+  <div class="arrow">→</div>
+  <div><b>Two small tables</b><code>sign_in_events</code> (one row per login) and <code>user_activity_days</code> (one row per person per day)</div>
+  <div class="arrow">→</div>
+  <div><b>Admin only API</b><code>GET /api/admin/sign-ins?days=7|30|90</code>, checked on the server</div>
+</div>
+<p>One row per person per day keeps the activity table tiny: 1,000 daily users for a full year is about 365,000 short rows. The tables are created automatically on the next Render deploy (the pre-deploy step runs <code>create_all</code> and the migrations). On that first deploy, each existing user's last login is copied in once as a "before tracking began" sign-in, so the page is not empty on day one.</p>
+
+<h3>Also fixed in this round</h3>
+<p>In the admin Courses editor, pressing <strong>Add course</strong> or <strong>Save changes</strong> used to show only a small toast bubble and leave you on the same form; pressing Save again showed "Nothing has changed." It now goes straight to a <strong>Course added</strong> / <strong>Changes saved</strong> confirmation with the course's units, campus, what it counts for and a list of what changed, plus buttons to go back, view it as a student, edit again or add another. Form errors appear next to the button and highlight the field. A category typed into a "Pick or type" box but never added with its Add button is now saved too, instead of being silently dropped.</p>
+
+<h2>3. Privacy and access</h2>
+<ul>
+  <li><strong>Admins only.</strong> The API checks the admin role on the server; hiding the button is not the protection.</li>
+  <li><strong>What we store:</strong> account id, the day, counts, first and last time seen, and the sign-in method. <strong>Not</strong> stored: IP addresses, browser or device, location, pages viewed, searches tied to a person.</li>
+  <li><strong>Course lookups stay anonymous.</strong> The existing Insights tab counts lookups per program and semester, never per person. Phase 2 keeps that rule.</li>
+  <li><strong>Retention (proposal):</strong> keep daily rows for 13 months so one semester can be compared with the same one a year earlier, then delete them with a small scheduled clean-up.</li>
+  <li><strong>Tell users (proposal):</strong> add one line to the sign-in page, for example "CountsFor admins can see when you last used the site."</li>
+</ul>
+
+<h2>4. Phase 2: Feature usage and onboarding funnel <span class="tag next">Proposed</span></h2>
+<div class="two">
+  <div class="box">
+    <h3>Feature usage</h3>
+    <p>A single <code>POST /api/usage</code> endpoint with a short fixed list of event names: <code>search</code>, <code>course_open</code>, <code>tree_open</code>, <code>plan_create</code>, <code>wishlist_add</code>, <code>export</code>, <code>share</code>. Stored as daily counts per role group and program, <strong>not per person</strong>.</p>
+    <p class="small">Shows which features to invest in and which nobody uses.</p>
+  </div>
+  <div class="box">
+    <h3>Onboarding funnel</h3>
+    <p>Accounts created, then profile completed, then first course opened, then first save or plan. Computed from data we already have plus Phase 2 counts.</p>
+    <p class="small">Shows where new students give up. The Overview already counts "Unfinished profiles"; this adds the steps after it.</p>
+  </div>
+</div>
+<p>Estimated effort: about 3 to 4 days including tests. No new libraries; the frontend keeps its zero-dependency rule.</p>
+
+<h2>5. Phase 3: Reports <span class="tag later">Later</span></h2>
+<ul>
+  <li><strong>Weekly digest email</strong> to admins every Sunday: active people, new accounts, open flags, top courses. Uses the email sender already in <code>backend/email_util.py</code> and a scheduled job.</li>
+  <li><strong>Semester report:</strong> one printable page per semester comparing usage with the previous one, for Prof. Silvia's reporting.</li>
+  <li><strong>Registration-week view:</strong> usage around registration dates, when CountsFor matters most.</li>
+</ul>
+
+<h2>6. Rollout checklist</h2>
+<ol>
+  <li>Team reviews this plan and the local demo (the admin page on <code>feat/admin-page</code>).</li>
+  <li>Merge <code>feat/admin-page</code> into <code>main</code>; Hind syncs her fork so the daily scrape and the app are on the same code.</li>
+  <li>Deploy the backend on Render. Check that <code>/health</code> says <code>"status": "ok"</code>; it reports "degraded" and names any missing table, which would include <code>sign_in_events</code> or <code>user_activity_days</code>.</li>
+  <li>Publish the frontend to GitHub Pages.</li>
+  <li>After one week, compare the Sign-in activity numbers with what we expect (for example, our own logins) before sharing them with anyone outside the team.</li>
+  <li>Decide on Phase 2 and the retention period.</li>
+</ol>
+
+<h2>7. Decisions needed from the team</h2>
+<table>
+  <thead><tr><th>Decision</th><th>Options</th><th>Suggested</th></tr></thead>
+  <tbody>
+    <tr><td>Who can see the activity page?</td><td>Admins only, or also area heads</td><td>Admins only for now</td></tr>
+    <tr><td>Keep activity data for</td><td>One semester, 13 months, forever</td><td>13 months</td></tr>
+    <tr><td>Show a notice to users?</td><td>Yes / no</td><td>Yes, one line on sign-in</td></tr>
+    <tr><td>Build Phase 2?</td><td>Now, after merge, not at all</td><td>Right after the Phase 1 deploy is verified</td></tr>
+    <tr><td>Weekly digest recipients</td><td>Admins, area heads, Prof. Silvia</td><td>Admins and Prof. Silvia</td></tr>
+  </tbody>
+</table>
+
+<h2>8. Where the code lives</h2>
+<table>
+  <thead><tr><th>Piece</th><th>File</th></tr></thead>
+  <tbody>
+    <tr><td>Tracking</td><td><code>backend/activity.py</code> (<code>mark_signed_in</code>, <code>record_visit</code>, Qatar day helper)</td></tr>
+    <tr><td>Tables</td><td><code>backend/models.py</code>: <code>SignInEvent</code>, <code>UserActivityDay</code>; documented in <code>backend/schema.sql</code></td></tr>
+    <tr><td>One-time backfill</td><td><code>backend/migrate.py</code>: <code>_backfill_sign_in_history</code></td></tr>
+    <tr><td>API</td><td><code>backend/admin.py</code>: <code>GET /api/admin/sign-ins</code>; Overview "Signed in this week" uses the same data</td></tr>
+    <tr><td>Page</td><td><code>js/app.js</code>: <code>_openSignIns</code>, <code>_renderSignIns</code>, <code>_renderSignInTable</code>; styles in <code>css/styles.css</code></td></tr>
+    <tr><td>Tests</td><td><code>backend/tests/test_admin.py</code> (5 new tests, all passing)</td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>

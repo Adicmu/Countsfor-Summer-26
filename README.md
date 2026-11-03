@@ -2,6 +2,8 @@
 
 A role-aware curriculum explorer for Carnegie Mellon University in Qatar. Tell the app who you are once, then see only what matters for *your* degree path — your major, your minor, and the courses that fill **both** at the same time.
 
+> **New to this project? Start with [`docs/MANUAL.md`](docs/MANUAL.md).** It is the complete maintainer manual (setup, architecture, deployment, data pipeline, known issues) and is more up to date than the rest of this README.
+
 ![Status](https://img.shields.io/badge/Status-Active_Development-brightgreen) ![License](https://img.shields.io/badge/License-MIT-blue)
 
 **Live:** [adicmu.github.io/Countsfor-Summer-26](https://adicmu.github.io/Countsfor-Summer-26/) · **CMU-Q deployment:** [countsfor.qatar.cmu.edu](https://countsfor.qatar.cmu.edu) (CMU network only)
