@@ -37,7 +37,7 @@ services:
       - key: SEED_USERS_PATH
         value: data/faculty_directory.json
       # ── Password-reset email. Configure ONE provider in the dashboard (see
-      #    docs/SETUP_AUTH.md "Reset emails"). Until then the forgot view
+      #    README.md section 6, "Email behaviour summary"). Until then the forgot view
       #    steers users to Google recovery — nothing looks broken.
       #    Resend API: RESEND_API_KEY + MAIL_FROM.
       #    Gmail SMTP: SMTP_HOST=smtp.gmail.com, SMTP_USER=<gmail address>,
@@ -57,7 +57,7 @@ services:
       - key: FRONTEND_RESET_BASE
         value: https://adicmu.github.io/Countsfor-Summer-26/index.html
       # Recovery only: set to "1" for one deploy when Postgres is expired/unreachable,
-      # then upgrade DB + web to Starter, remove this, and redeploy. See docs/RENDER_UPGRADE.md
+      # then upgrade DB + web to Starter, remove this, and redeploy. See README.md section 15.2, "Recovering a deleted database"
       - key: ALLOW_BOOTSTRAP_SKIP
         sync: false
 

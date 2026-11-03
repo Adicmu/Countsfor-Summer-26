@@ -1,5 +1,5 @@
 /**
- * CountsFor — Heritage Single landing (vanilla JS, no browser storage)
+ * CountsFor — Heritage Single landing (vanilla JS; stores the auth token and guest flag in browser storage)
  */
 (function () {
   'use strict';
@@ -174,7 +174,7 @@
 
   function authErrorMessage(r, fallback) {
     if (isNetworkError(r)) {
-      return 'Could not reach the server — it may be waking up. Try again in ~30s.';
+      return 'Could not reach the server. It may be waking up, so try again in about 30 seconds.';
     }
     return (r.data && r.data.message) || fallback;
   }

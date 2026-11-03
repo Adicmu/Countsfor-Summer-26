@@ -1481,7 +1481,7 @@ const App = {
         </div>
       </div>
       ${(canManageDirectory(this.profile) && this.authMode === 'authed') ? `
-        <button type="button" class="directory-fab" onclick="App.toggleDirectoryPanel()" title="Directory — view and add faculty">📋 Directory</button>
+        <button type="button" class="directory-fab" onclick="App.toggleDirectoryPanel()" title="Directory: view and add faculty">📋 Directory</button>
         <div id="directoryPanelRoot" class="directory-panel-root" hidden></div>
       ` : ''}
     `;
@@ -4406,7 +4406,7 @@ const App = {
           <button type="button" class="plan-block" style="top:${top}%;height:${height}%;left:calc(${leftPct}% + ${inset}px);width:calc(${widthPct}% - ${inset * 2}px);background:${colors.bg};border-color:${colors.border};color:${colors.text}" title="${esc(title)}" onclick="App.selectCourseFromTree('${esc(item.course_code)}')">
             <span class="plan-block-code">${esc(item.course_code)}</span>
             <span class="plan-block-sec">Sec ${esc(item.section)}</span>
-            <span class="plan-block-time">${esc(formatPlanMinutes(parsed.startMin))}–${esc(formatPlanMinutes(parsed.endMin))}</span>
+            <span class="plan-block-time">${esc(formatPlanMinutes(parsed.startMin))} to ${esc(formatPlanMinutes(parsed.endMin))}</span>
           </button>`;
       }).join('');
       return `
@@ -4942,8 +4942,8 @@ const App = {
           <label>Full name<input class="adm-search" id="staffAddName" value="${esc(f.name)}" placeholder="Full name" autocomplete="name" /></label>
           <label>Email<input class="adm-search" id="staffAddEmail" value="${esc(f.email)}" placeholder="name@andrew.cmu.edu" autocomplete="email" inputmode="email" ${f.editEmail ? 'readonly' : ''} /></label>
           <label>Role<select class="adm-select" id="staffAddRole">${roleOpts}</select></label>
-          <label>Department<select class="adm-select" id="staffAddDept"><option value="">—</option>${deptOpts}</select></label>
-          <label>Program<select class="adm-select" id="staffAddProgram"><option value="">—</option>${progOpts}</select></label>
+          <label>Department<select class="adm-select" id="staffAddDept"><option value="">None</option>${deptOpts}</select></label>
+          <label>Program<select class="adm-select" id="staffAddProgram"><option value="">None</option>${progOpts}</select></label>
         </div>
         <div class="directory-form-actions">
           <button type="button" class="adm-btn adm-btn-resolve" onclick="App._submitDirectoryForm()">${f.editEmail ? 'Save changes' : 'Add to directory'}</button>
@@ -5070,7 +5070,7 @@ const App = {
     const roleLabel = (ROLE_META[body.role] && ROLE_META[body.role].label) || body.role;
     showToast(f.editEmail
       ? 'Directory updated.'
-      : `Added — ${roleLabel === 'Admin' ? 'admin' : 'faculty'} access on next login.`);
+      : `Added. They get ${roleLabel === 'Admin' ? 'admin' : 'faculty'} access the next time they sign in.`);
     this._staffDirState.form = { name: '', email: '', role: 'professor', department: '', primary_program: '' };
     await this._loadDirectoryPanel();
     this._setDirectoryTab('search');

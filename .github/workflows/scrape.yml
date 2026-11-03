@@ -31,6 +31,9 @@ jobs:
         with:
           python-version: '3.11'
 
+      - name: Install test runner
+        run: python -m pip install --quiet pytest
+
       - name: Run SOC parser tests
         run: python -m pytest data/tests/test_scrape_soc.py data/tests/test_soc_parse.py -q
 

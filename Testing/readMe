@@ -21,7 +21,7 @@ pip install flask
 
 ### 2. Make the scraper's URL and threshold overridable
 
-For testing to work, `scraper/scrape_soc.py` needs to accept env vars instead
+For testing to work, `data/scrape_soc.py` needs to accept env vars instead
 of hardcoding the URL and threshold. Change these three lines near the top:
 
 ```python
@@ -60,7 +60,7 @@ You'll see `Running on http://127.0.0.1:5000`. Leave it.
 SOC_BASE_URL=http://localhost:5000/open/SOC/SOCServlet \
 MIN_COURSES_FOR_VALID_SCRAPE=1 \
 SOC_OUTPUT_PATH=/tmp/test_soc.json \
-python scraper/scrape_soc.py
+python data/scrape_soc.py
 ```
 
 Then inspect `/tmp/test_soc.json` — it should contain the seed courses

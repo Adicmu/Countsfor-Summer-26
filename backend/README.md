@@ -1,77 +1,20 @@
-# CountsFor — Backend (scaffold only)
+# CountsFor backend
 
-This directory is reserved for the future Python backend. **No running code lives here yet** — auth + persistent storage are deferred per the May 26 meeting decision. The frontend currently uses `localStorage` and the existing GitHub-hosted course data.
+The Flask API for CountsFor. Everything about it (setup, environment
+variables, every route, the database and migrations, deployment on Render,
+tests) is documented in the main [README](../README.md):
 
-When the backend is implemented, this scaffold pre-commits the team to:
+- Run locally: section 5
+- Environment variables: section 6
+- Backend walkthrough: section 9
+- API reference: section 10
+- Database and migrations: section 11
+- Deployment: section 15
 
-- **Framework**: Flask (lightweight, easy for student contributors) + SQLAlchemy
-- **DB**: SQLite for local dev, Postgres for production (Render/Fly.io recommended)
-- **Auth**: server-side sessions via Flask-Login; passwords hashed with `bcrypt`
-- **Authorization**: role-based decorators on every protected route
-- **API shape**: see `../docs/BACKEND_API_CONTRACT.md`
-- **Schema**: see `schema.sql`
-
-## Suggested layout (when implementation begins)
-
-```
-backend/
-├── app.py                    # Flask app factory + blueprint registration
-├── auth.py                   # /api/auth/* routes — signup, login, logout, me
-├── flags.py                  # /api/flags/* routes (POST by faculty, GET/PATCH by admin)
-├── wishlist.py               # /api/wishlist/* routes (student-only)
-├── models.py                 # SQLAlchemy models matching schema.sql
-├── permissions.py            # @require_role decorator helpers
-├── seed.py                   # Pull legacy localStorage entries → backfill DB
-├── tests/
-│   ├── test_auth.py
-│   ├── test_flags.py
-│   └── test_wishlist.py
-├── requirements.txt          # flask, flask-sqlalchemy, flask-login, bcrypt, pytest
-├── .env.example
-└── schema.sql                # ← Already drafted; reflects the in-progress models
-```
-
-## Local dev (when ready)
+Quick start from the repo root:
 
 ```bash
-cd backend
-python3 -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-flask --app app run --debug --port 5000
+python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+.venv/bin/python -m backend.app          # http://localhost:5050
+.venv/bin/python -m pytest backend/tests -q
 ```
-
-The frontend's `js/api.js` is already organized as a priority chain
-(live API → GitHub raw → local JSON). When the backend goes live, point
-`API_BASE` in `js/api.js` at the deployed URL.
-
-## Role-based authorization
-
-Every protected endpoint must check the session user's role. Frontend gating
-(showing/hiding buttons) is **not** sufficient — the meeting explicitly called
-out that a student could otherwise inspect the DOM and submit a flag.
-
-| Endpoint                       | Allowed roles                                                       |
-| ------------------------------ | ------------------------------------------------------------------- |
-| `POST /api/flags`              | `professor`, `area_head`, `associate_area_head`, `advisor`, `admin` |
-| `GET /api/flags`               | `admin`                                                             |
-| `PATCH /api/flags/:id`         | `admin`                                                             |
-| `GET /api/wishlist`            | `student` (own data only)                                           |
-| `POST /api/wishlist`           | `student`                                                           |
-| `DELETE /api/wishlist/:code`   | `student` (own data only)                                           |
-| `GET /api/me`                  | any logged-in user                                                  |
-| `POST /api/auth/signup,login`  | public                                                              |
-| `POST /api/auth/logout`        | any logged-in user                                                  |
-| `GET /api/courses/overrides`   | public (every visitor needs the corrected catalog)                  |
-| `POST /api/courses/overrides`, `PATCH/DELETE /api/courses/overrides/:code`, `POST .../:code/archive`, `POST .../:code/restore` | `admin` |
-| `GET /api/admin/overview`, `/api/admin/insights`, `/api/admin/activity` | `admin`                                 |
-
-## Migration plan (frontend → backend)
-
-The frontend stores `cf_flags` and `cf_wishlist` in `localStorage` today with
-the same field names as the DB schema. When auth ships:
-
-1. On first login, the frontend POSTs any local `cf_flags` / `cf_wishlist`
-   entries to the new endpoints (one-time migration).
-2. After migration, the frontend reads/writes via the backend exclusively.
-3. The local fallback remains for offline / demo mode but shows a clear
-   "Sign in to sync" banner.

@@ -142,8 +142,8 @@ const ROLE_META = {
   area_head:           { label: 'Area Head',                  faculty: true,  needsMajor: true,  allowsMinor: false, allowsAllPrograms: false, group: 'area_lead' },
   associate_area_head: { label: 'Associate Area Head',        faculty: true,  needsMajor: true,  allowsMinor: false, allowsAllPrograms: false, group: 'area_lead' },
   advisor:             { label: 'Advisor',                    faculty: true,  needsMajor: false, allowsMinor: false, allowsAllPrograms: true,  group: 'advisor'   },
-  // Admins are not user-pickable in onboarding — they're promoted via the
-  // server's ADMIN_EMAILS env var. Treated as faculty for flagging visibility
+  // Admins are not user-pickable in onboarding — they're granted by a
+  // directory entry with role admin (directory_entries table). Treated as faculty for flagging visibility
   // (admins can also flag courses) but get the dedicated Flag-Review surface.
   admin:               { label: 'Admin',                      faculty: true,  needsMajor: false, allowsMinor: false, allowsAllPrograms: true,  group: 'admin'     },
 };

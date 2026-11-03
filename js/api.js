@@ -99,16 +99,15 @@ async function fetchAllCourses() {
 // ============================================================
 // CountsFor Backend client — auth, flags, wishlist
 // ============================================================
-// The Python backend lives in /backend (see docs/BACKEND_API_CONTRACT.md).
-// Dev: http://localhost:5000 ; production: a Render URL set below once
-// deployed. Override at runtime by setting window.CF_BACKEND_URL before
+// The Python backend lives in /backend (routes are listed in README.md,
+// section 10). Dev: http://localhost:5050 ; production: the Render URL. Override at runtime by setting window.CF_BACKEND_URL before
 // app.js loads.
 
 // Backend URL resolution, in priority order:
 //   1. localStorage 'cf_backend_override' — manual escape hatch for odd setups
 //      (e.g. localhost frontend against the production backend)
 //   2. window.CF_BACKEND_URL — set before this script loads
-//   3. localhost/127.0.0.1 hostname — local Flask dev server on :5000, so the
+//   3. localhost/127.0.0.1 hostname — local Flask dev server on :5050, so the
 //      committed production meta never needs hand-editing for local dev
 //   4. <meta name="cf-backend-url"> — the deployed production URL
 //   5. hardcoded fallback
