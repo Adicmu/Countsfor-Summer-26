@@ -7454,7 +7454,7 @@
           "section": "D",
           "modality": "In Person",
           "units": "12",
-          "days_times": "TR 12:00PM-12:50PM",
+          "days_times": "TR 12:00PM-04:00PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -7466,7 +7466,7 @@
           "section": "D",
           "modality": "In Person",
           "units": "12",
-          "days_times": "TR 12:00PM-04:00PM",
+          "days_times": "TR 12:00PM-12:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -7782,7 +7782,7 @@
           "section": "A",
           "modality": "In Person",
           "units": "12",
-          "days_times": "MF 12:00PM-12:50PM",
+          "days_times": "MF 12:00PM-04:00PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -7794,7 +7794,7 @@
           "section": "A",
           "modality": "In Person",
           "units": "12",
-          "days_times": "MF 12:00PM-04:00PM",
+          "days_times": "MF 12:00PM-12:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -7890,7 +7890,7 @@
           "section": "B",
           "modality": "In Person",
           "units": "12",
-          "days_times": "TR 12:00PM-12:50PM",
+          "days_times": "TR 12:00PM-04:00PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -7902,7 +7902,7 @@
           "section": "B",
           "modality": "In Person",
           "units": "12",
-          "days_times": "TR 12:00PM-04:00PM",
+          "days_times": "TR 12:00PM-12:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -21556,7 +21556,7 @@
           "section": "B",
           "modality": "In Person",
           "units": "9",
-          "days_times": "MW 06:30PM-07:20PM",
+          "days_times": "MW 06:30PM-08:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -21568,7 +21568,7 @@
           "section": "B",
           "modality": "In Person",
           "units": "9",
-          "days_times": "MW 06:30PM-08:50PM",
+          "days_times": "MW 06:30PM-07:20PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -22986,7 +22986,7 @@
           "section": "A",
           "modality": "In Person",
           "units": "12",
-          "days_times": "MW 02:00PM-04:50PM",
+          "days_times": "MW 02:00PM-02:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -22998,7 +22998,7 @@
           "section": "A",
           "modality": "In Person",
           "units": "12",
-          "days_times": "MW 02:00PM-02:50PM",
+          "days_times": "MW 02:00PM-04:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -105199,18 +105199,6 @@
       },
       "offerings": [
         {
-          "semester": "Spring 2027",
-          "semester_code": "S27",
-          "campus": "Qatar",
-          "section": "W",
-          "modality": "In Person",
-          "units": "9",
-          "days_times": "MW 11:30AM-12:45PM",
-          "instructor": "",
-          "location": "Doha, Qatar",
-          "delivery_mode_raw": "In-person only"
-        },
-        {
           "semester": "Spring 2026",
           "semester_code": "S26",
           "campus": "Qatar",
@@ -105224,18 +105212,6 @@
         }
       ],
       "soc_sections": [
-        {
-          "section": "W",
-          "days": "MW",
-          "begin_time": "",
-          "end_time": "",
-          "location": "Doha, Qatar",
-          "delivery_mode": "In-person only",
-          "campus": "Qatar",
-          "modality": "In Person",
-          "semester_code": "S27",
-          "semester": "Spring 2027"
-        },
         {
           "section": "W",
           "days": "UT",
@@ -316566,7 +316542,7 @@
         },
         {
           "section": "BB",
-          "days": "T",
+          "days": "TR",
           "begin_time": "",
           "end_time": "",
           "location": "Pittsburgh, Pennsylvania",
@@ -316578,7 +316554,7 @@
         },
         {
           "section": "D",
-          "days": "T",
+          "days": "TR",
           "begin_time": "",
           "end_time": "",
           "location": "Pittsburgh, Pennsylvania",
@@ -316633,7 +316609,7 @@
           "section": "BB",
           "modality": "Remote",
           "units": "12",
-          "days_times": "T 07:00PM-08:20PM",
+          "days_times": "TR 07:00PM-08:20PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "Remote only"
@@ -316645,7 +316621,7 @@
           "section": "D",
           "modality": "Remote",
           "units": "12",
-          "days_times": "T 07:00PM-08:20PM",
+          "days_times": "TR 07:00PM-08:20PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "Remote only"
@@ -449201,7 +449177,7 @@
       "soc_sections": [
         {
           "section": "A",
-          "days": "TR",
+          "days": "MW",
           "begin_time": "",
           "end_time": "",
           "location": "Pittsburgh, Pennsylvania",
@@ -449256,7 +449232,7 @@
           "section": "A",
           "modality": "In Person",
           "units": "9",
-          "days_times": "TR 07:00PM-08:50PM",
+          "days_times": "MW 07:00PM-08:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person Expectation"
@@ -613691,18 +613667,6 @@
           "delivery_mode": "In-person Expectation",
           "campus": "Pittsburgh",
           "modality": "In Person",
-          "semester_code": "S27",
-          "semester": "Spring 2027"
-        },
-        {
-          "section": "A",
-          "days": "TR",
-          "begin_time": "",
-          "end_time": "",
-          "location": "Pittsburgh, Pennsylvania",
-          "delivery_mode": "In-person Expectation",
-          "campus": "Pittsburgh",
-          "modality": "In Person",
           "semester_code": "F26",
           "semester": "Fall 2026"
         },
@@ -613720,18 +613684,6 @@
         }
       ],
       "offerings": [
-        {
-          "semester": "Spring 2027",
-          "semester_code": "S27",
-          "campus": "Pittsburgh",
-          "section": "A",
-          "modality": "In Person",
-          "units": "3",
-          "days_times": "TR 09:00AM-09:50AM",
-          "instructor": "",
-          "location": "Pittsburgh, Pennsylvania",
-          "delivery_mode_raw": "In-person Expectation"
-        },
         {
           "semester": "Fall 2026",
           "semester_code": "F26",
@@ -646537,18 +646489,6 @@
           "delivery_mode": "In-person Expectation",
           "campus": "Pittsburgh",
           "modality": "In Person",
-          "semester_code": "S27",
-          "semester": "Spring 2027"
-        },
-        {
-          "section": "A",
-          "days": "TR",
-          "begin_time": "",
-          "end_time": "",
-          "location": "Pittsburgh, Pennsylvania",
-          "delivery_mode": "In-person Expectation",
-          "campus": "Pittsburgh",
-          "modality": "In Person",
           "semester_code": "F26",
           "semester": "Fall 2026"
         },
@@ -646566,18 +646506,6 @@
         }
       ],
       "offerings": [
-        {
-          "semester": "Spring 2027",
-          "semester_code": "S27",
-          "campus": "Pittsburgh",
-          "section": "A",
-          "modality": "In Person",
-          "units": "3",
-          "days_times": "TR 09:00AM-09:50AM",
-          "instructor": "",
-          "location": "Pittsburgh, Pennsylvania",
-          "delivery_mode_raw": "In-person Expectation"
-        },
         {
           "semester": "Fall 2026",
           "semester_code": "F26",
@@ -749124,8 +749052,20 @@
       },
       "soc_sections": [
         {
-          "section": "A4",
+          "section": "A3",
           "days": "TBA",
+          "begin_time": "",
+          "end_time": "",
+          "location": "Pittsburgh, Pennsylvania",
+          "delivery_mode": "In-person Expectation",
+          "campus": "Pittsburgh",
+          "modality": "In Person",
+          "semester_code": "S27",
+          "semester": "Spring 2027"
+        },
+        {
+          "section": "A4",
+          "days": "TR",
           "begin_time": "",
           "end_time": "",
           "location": "Pittsburgh, Pennsylvania",
@@ -749165,10 +749105,22 @@
           "semester": "Spring 2027",
           "semester_code": "S27",
           "campus": "Pittsburgh",
-          "section": "A4",
+          "section": "A3",
           "modality": "In Person",
           "units": "6",
           "days_times": "TBA",
+          "instructor": "",
+          "location": "Pittsburgh, Pennsylvania",
+          "delivery_mode_raw": "In-person Expectation"
+        },
+        {
+          "semester": "Spring 2027",
+          "semester_code": "S27",
+          "campus": "Pittsburgh",
+          "section": "A4",
+          "modality": "In Person",
+          "units": "6",
+          "days_times": "TR 05:00PM-06:20PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person Expectation"
@@ -859298,7 +859250,7 @@
           "section": "A",
           "modality": "In Person",
           "units": "VAR",
-          "days_times": "MW 04:00PM-04:50PM",
+          "days_times": "MW 04:00PM-05:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person Expectation"
@@ -911940,7 +911892,7 @@
           "section": "A4",
           "modality": "In Person",
           "units": "9",
-          "days_times": "F 02:30PM-05:10PM",
+          "days_times": "F 11:00AM-05:00PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person Expectation"
@@ -965286,7 +965238,7 @@
           "section": "A4",
           "modality": "In Person",
           "units": "6",
-          "days_times": "TR 10:00AM-11:50AM",
+          "days_times": "TR 12:00PM-01:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person Expectation"
@@ -966360,7 +966312,7 @@
           "section": "A",
           "modality": "In Person",
           "units": "9",
-          "days_times": "MW 10:00AM-11:50PM",
+          "days_times": "MW 10:00AM-11:50AM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person Expectation"
@@ -974937,18 +974889,6 @@
           "modality": "In Person",
           "semester_code": "S27",
           "semester": "Spring 2027"
-        },
-        {
-          "section": "A4",
-          "days": "TBA",
-          "begin_time": "",
-          "end_time": "",
-          "location": "Pittsburgh, Pennsylvania",
-          "delivery_mode": "In-person Expectation",
-          "campus": "Pittsburgh",
-          "modality": "In Person",
-          "semester_code": "S27",
-          "semester": "Spring 2027"
         }
       ],
       "offerings": [
@@ -974957,18 +974897,6 @@
           "semester_code": "S27",
           "campus": "Pittsburgh",
           "section": "A3",
-          "modality": "In Person",
-          "units": "6",
-          "days_times": "TBA",
-          "instructor": "",
-          "location": "Pittsburgh, Pennsylvania",
-          "delivery_mode_raw": "In-person Expectation"
-        },
-        {
-          "semester": "Spring 2027",
-          "semester_code": "S27",
-          "campus": "Pittsburgh",
-          "section": "A4",
           "modality": "In Person",
           "units": "6",
           "days_times": "TBA",
@@ -976669,7 +976597,7 @@
     },
     {
       "course_code": "95-792",
-      "course_name": "Data Mining II",
+      "course_name": "Product Management Essentials I",
       "department": "95",
       "units": 6,
       "description": "",
@@ -976737,9 +976665,9 @@
           "delivery_mode_raw": "In-person Expectation"
         }
       ],
-      "soc_title": "Data Mining II",
       "soc_department": "Information Systems:Sch of IS & Mgt",
-      "soc_ingested": true
+      "soc_ingested": true,
+      "previous_course_name": "Data Mining II"
     },
     {
       "course_code": "57-143",
@@ -976843,9 +976771,9 @@
     },
     {
       "course_code": "95-793",
-      "course_name": "Financial Modeling for IT",
+      "course_name": "Product Management Essentials II",
       "department": "95",
-      "units": 12,
+      "units": 6,
       "description": "",
       "prerequisites": "",
       "offered": [
@@ -976880,15 +976808,115 @@
           "campus": "Pittsburgh",
           "section": "A4",
           "modality": "In Person",
-          "units": "12",
+          "units": "6",
           "days_times": "TR 11:00AM-12:20PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person Expectation"
         }
       ],
-      "soc_title": "Financial Modeling for IT",
       "soc_department": "Information Systems:Sch of IS & Mgt",
+      "soc_ingested": true,
+      "previous_course_name": "Financial Modeling for IT"
+    },
+    {
+      "course_code": "37-120",
+      "course_name": "Qatar Grand Challenges: Risk, Resilience, and Livability in the Gulf",
+      "department": "37",
+      "units": 9,
+      "description": "",
+      "prerequisites": "",
+      "offered": [
+        "S27"
+      ],
+      "offered_qatar": true,
+      "offered_pitts": false,
+      "requirements": {
+        "CS": [],
+        "IS": [],
+        "BA": [],
+        "BS": []
+      },
+      "soc_sections": [
+        {
+          "section": "W",
+          "days": "MW",
+          "begin_time": "",
+          "end_time": "",
+          "location": "Doha, Qatar",
+          "delivery_mode": "In-person Expectation",
+          "campus": "Qatar",
+          "modality": "In Person",
+          "semester_code": "S27",
+          "semester": "Spring 2027"
+        }
+      ],
+      "offerings": [
+        {
+          "semester": "Spring 2027",
+          "semester_code": "S27",
+          "campus": "Qatar",
+          "section": "W",
+          "modality": "In Person",
+          "units": "9",
+          "days_times": "MW 11:30AM-12:45PM",
+          "instructor": "",
+          "location": "Doha, Qatar",
+          "delivery_mode_raw": "In-person Expectation"
+        }
+      ],
+      "soc_title": "Qatar Grand Challenges: Risk, Resilience, and Livability in the Gulf",
+      "soc_department": "Qatar Campus Wide Studies",
+      "soc_ingested": true
+    },
+    {
+      "course_code": "82-484",
+      "course_name": "Translation Workshop II",
+      "department": "82",
+      "units": 9,
+      "description": "",
+      "prerequisites": "",
+      "offered": [
+        "S27"
+      ],
+      "offered_qatar": false,
+      "offered_pitts": true,
+      "requirements": {
+        "CS": [],
+        "IS": [],
+        "BA": [],
+        "BS": []
+      },
+      "soc_sections": [
+        {
+          "section": "A",
+          "days": "MW",
+          "begin_time": "",
+          "end_time": "",
+          "location": "Pittsburgh, Pennsylvania",
+          "delivery_mode": "In-Person + Technology",
+          "campus": "Pittsburgh",
+          "modality": "Hybrid",
+          "semester_code": "S27",
+          "semester": "Spring 2027"
+        }
+      ],
+      "offerings": [
+        {
+          "semester": "Spring 2027",
+          "semester_code": "S27",
+          "campus": "Pittsburgh",
+          "section": "A",
+          "modality": "Hybrid",
+          "units": "9",
+          "days_times": "MW 11:00AM-12:20PM",
+          "instructor": "",
+          "location": "Pittsburgh, Pennsylvania",
+          "delivery_mode_raw": "In-Person + Technology"
+        }
+      ],
+      "soc_title": "Translation Workshop II",
+      "soc_department": "Languages Cultures & Appl Linguistics",
       "soc_ingested": true
     }
   ]
