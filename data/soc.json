@@ -2,7 +2,7 @@
   "metadata": {
     "source": "Carnegie Mellon University -- Schedule of Classes",
     "url": "https://enr-apps.as.cmu.edu/open/SOC/SOCServlet/search",
-    "last_scrape": "2026-11-12T19:23:28.630718+00:00",
+    "last_scrape": "2026-11-13T13:55:52.659698+00:00",
     "semesters_on_form": [
       {
         "code": "S27",
@@ -21448,9 +21448,9 @@
             {
               "section": "A",
               "mini": "",
-              "days": "TBA",
-              "begin_time": "TBA",
-              "end_time": "TBA",
+              "days": "M",
+              "begin_time": "06:30PM",
+              "end_time": "10:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -21467,7 +21467,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "6",
-              "days_times": "TBA",
+              "days_times": "M 06:30PM-10:00PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -39181,7 +39181,7 @@
         },
         {
           "course_number": "06651",
-          "title": "ST: Grid Operations",
+          "title": "ST: Optimization and Market Modeling of Energy Systems",
           "units": "12",
           "department_code": "CHE",
           "department": "Chemical Engineering",
@@ -40906,7 +40906,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "07:20PM",
+              "end_time": "08:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -40916,7 +40916,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "08:50PM",
+              "end_time": "07:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -40969,7 +40969,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-07:20PM",
+              "days_times": "MW 06:30PM-08:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -40981,7 +40981,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-08:50PM",
+              "days_times": "MW 06:30PM-07:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -41237,7 +41237,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -41247,16 +41247,6 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "04:50PM",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode": "In-person only",
-              "campus": "Pittsburgh"
-            },
-            {
-              "section": "B",
-              "mini": "",
-              "days": "TR",
-              "begin_time": "02:00PM",
               "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
@@ -41268,6 +41258,16 @@
               "days": "TR",
               "begin_time": "02:00PM",
               "end_time": "04:50PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person only",
+              "campus": "Pittsburgh"
+            },
+            {
+              "section": "B",
+              "mini": "",
+              "days": "TR",
+              "begin_time": "02:00PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -41296,7 +41296,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "12",
-              "days_times": "MW 02:00PM-02:50PM",
+              "days_times": "MW 02:00PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -41308,19 +41308,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "12",
-              "days_times": "MW 02:00PM-04:50PM",
-              "instructor": "",
-              "location": "Pittsburgh, Pennsylvania",
-              "delivery_mode_raw": "In-person only"
-            },
-            {
-              "semester": "Spring 2027",
-              "semester_code": "S27",
-              "campus": "Pittsburgh",
-              "section": "B",
-              "modality": "In Person",
-              "units": "12",
-              "days_times": "TR 02:00PM-02:50PM",
+              "days_times": "MW 02:00PM-02:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -41333,6 +41321,18 @@
               "modality": "In Person",
               "units": "12",
               "days_times": "TR 02:00PM-04:50PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person only"
+            },
+            {
+              "semester": "Spring 2027",
+              "semester_code": "S27",
+              "campus": "Pittsburgh",
+              "section": "B",
+              "modality": "In Person",
+              "units": "12",
+              "days_times": "TR 02:00PM-02:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -42803,7 +42803,7 @@
             {
               "section": "Lec 1",
               "mini": "",
-              "days": "T",
+              "days": "M",
               "begin_time": "11:30AM",
               "end_time": "12:20PM",
               "location": "Doha, Qatar",
@@ -42832,7 +42832,7 @@
               "section": "Lec 1",
               "modality": "In Person",
               "units": "6",
-              "days_times": "T 11:30AM-12:20PM",
+              "days_times": "M 11:30AM-12:20PM",
               "instructor": "",
               "location": "Doha, Qatar",
               "delivery_mode_raw": "In-person only"
@@ -66958,7 +66958,7 @@
               "section": "B3",
               "mini": "Y",
               "days": "MTWRF",
-              "begin_time": "05:00PM",
+              "begin_time": "06:30PM",
               "end_time": "10:30PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
@@ -67122,7 +67122,7 @@
               "section": "B3",
               "modality": "In Person",
               "units": "16",
-              "days_times": "MTWRF 05:00PM-10:30PM",
+              "days_times": "MTWRF 06:30PM-10:30PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -75666,8 +75666,8 @@
               "section": "A4",
               "mini": "Y",
               "days": "T",
-              "begin_time": "02:00PM",
-              "end_time": "04:20PM",
+              "begin_time": "02:30PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -75696,7 +75696,7 @@
               "section": "A4",
               "modality": "In Person",
               "units": "5",
-              "days_times": "T 02:00PM-04:20PM",
+              "days_times": "T 02:30PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -90442,8 +90442,8 @@
               "section": "A4",
               "mini": "Y",
               "days": "T",
-              "begin_time": "02:00PM",
-              "end_time": "04:20PM",
+              "begin_time": "02:30PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -90472,7 +90472,7 @@
               "section": "A4",
               "modality": "In Person",
               "units": "5",
-              "days_times": "T 02:00PM-04:20PM",
+              "days_times": "T 02:30PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -106054,6 +106054,44 @@
           "semester_code": "S27"
         },
         {
+          "course_number": "76757",
+          "title": "Arts Greenhouse: Community Engagement with Local Middle School Students",
+          "units": "12",
+          "department_code": "ENG",
+          "department": "English",
+          "sections": [
+            {
+              "section": "A",
+              "mini": "",
+              "days": "TR",
+              "begin_time": "11:00AM",
+              "end_time": "12:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Spring 2027",
+              "semester_code": "S27",
+              "campus": "Pittsburgh",
+              "section": "A",
+              "modality": "In Person",
+              "units": "12",
+              "days_times": "TR 11:00AM-12:20PM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            }
+          ],
+          "semester": "Spring 2027",
+          "semester_code": "S27"
+        },
+        {
           "course_number": "76774",
           "title": "Software Documentation",
           "units": "9",
@@ -111997,6 +112035,44 @@
               "modality": "In Person",
               "units": "12",
               "days_times": "MW 09:30AM-10:50AM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person Expectation"
+            }
+          ],
+          "semester": "Spring 2027",
+          "semester_code": "S27"
+        },
+        {
+          "course_number": "94806",
+          "title": "Privacy in the Digital Age",
+          "units": "6",
+          "department_code": "HC",
+          "department": "Heinz College Wide Courses",
+          "sections": [
+            {
+              "section": "A3",
+              "mini": "Y",
+              "days": "R",
+              "begin_time": "06:30PM",
+              "end_time": "09:20PM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person Expectation",
+              "campus": "Pittsburgh"
+            }
+          ],
+          "campus": [
+            "Pittsburgh"
+          ],
+          "offerings": [
+            {
+              "semester": "Spring 2027",
+              "semester_code": "S27",
+              "campus": "Pittsburgh",
+              "section": "A3",
+              "modality": "In Person",
+              "units": "6",
+              "days_times": "R 06:30PM-09:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -119370,8 +119446,8 @@
               "section": "C",
               "mini": "",
               "days": "TR",
-              "begin_time": "02:00PM",
-              "end_time": "03:20PM",
+              "begin_time": "12:30PM",
+              "end_time": "01:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -119400,7 +119476,7 @@
               "section": "C",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 02:00PM-03:20PM",
+              "days_times": "TR 12:30PM-01:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -120692,8 +120768,8 @@
               "section": "C",
               "mini": "",
               "days": "TR",
-              "begin_time": "02:00PM",
-              "end_time": "03:20PM",
+              "begin_time": "12:30PM",
+              "end_time": "01:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation",
               "campus": "Pittsburgh"
@@ -120722,7 +120798,7 @@
               "section": "C",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 02:00PM-03:20PM",
+              "days_times": "TR 12:30PM-01:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation"
@@ -138061,7 +138137,7 @@
         },
         {
           "course_number": "82273",
-          "title": "Introduction to Japanese Language and Culture",
+          "title": "Japanese Culture and Society",
           "units": "9",
           "department_code": "LCL",
           "department": "Languages Cultures & Appl Linguistics",
@@ -154714,6 +154790,46 @@
               "campus": "Pittsburgh"
             },
             {
+              "section": "D3",
+              "mini": "Y",
+              "days": "M",
+              "begin_time": "10:00AM",
+              "end_time": "11:50AM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person only",
+              "campus": "Pittsburgh"
+            },
+            {
+              "section": "D4",
+              "mini": "Y",
+              "days": "M",
+              "begin_time": "10:00AM",
+              "end_time": "11:50AM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person only",
+              "campus": "Pittsburgh"
+            },
+            {
+              "section": "F3",
+              "mini": "Y",
+              "days": "W",
+              "begin_time": "10:00AM",
+              "end_time": "11:50AM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person only",
+              "campus": "Pittsburgh"
+            },
+            {
+              "section": "F4",
+              "mini": "Y",
+              "days": "W",
+              "begin_time": "10:00AM",
+              "end_time": "11:50AM",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode": "In-person only",
+              "campus": "Pittsburgh"
+            },
+            {
               "section": "H3",
               "mini": "Y",
               "days": "M",
@@ -154798,6 +154914,54 @@
               "modality": "In Person",
               "units": "3",
               "days_times": "M 08:00AM-09:50AM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person only"
+            },
+            {
+              "semester": "Spring 2027",
+              "semester_code": "S27",
+              "campus": "Pittsburgh",
+              "section": "D3",
+              "modality": "In Person",
+              "units": "3",
+              "days_times": "M 10:00AM-11:50AM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person only"
+            },
+            {
+              "semester": "Spring 2027",
+              "semester_code": "S27",
+              "campus": "Pittsburgh",
+              "section": "D4",
+              "modality": "In Person",
+              "units": "3",
+              "days_times": "M 10:00AM-11:50AM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person only"
+            },
+            {
+              "semester": "Spring 2027",
+              "semester_code": "S27",
+              "campus": "Pittsburgh",
+              "section": "F3",
+              "modality": "In Person",
+              "units": "3",
+              "days_times": "W 10:00AM-11:50AM",
+              "instructor": "",
+              "location": "Pittsburgh, Pennsylvania",
+              "delivery_mode_raw": "In-person only"
+            },
+            {
+              "semester": "Spring 2027",
+              "semester_code": "S27",
+              "campus": "Pittsburgh",
+              "section": "F4",
+              "modality": "In Person",
+              "units": "3",
+              "days_times": "W 10:00AM-11:50AM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -216286,7 +216450,7 @@
         },
         {
           "course_number": "98095",
-          "title": "Student Taught Courses (StuCo): Introduction to Plants vs Zombies",
+          "title": "Student Taught Courses (StuCo): Introduction to Plants vs Zombies This Section Cancelled",
           "units": "3",
           "department_code": "STU",
           "department": "StuCo (Student Led Courses)",
@@ -216438,7 +216602,7 @@
         },
         {
           "course_number": "98128",
-          "title": "Student Taught Courses (StuCo): Fundamentals of Improv Comedy",
+          "title": "Student Taught Courses (StuCo): Fundamentals of Improv Comedy This Section Cancelled",
           "units": "3",
           "department_code": "STU",
           "department": "StuCo (Student Led Courses)",
@@ -217773,8 +217937,8 @@
         {
           "code": "ENG",
           "name": "English",
-          "courses": 117,
-          "sections": 251
+          "courses": 118,
+          "sections": 252
         },
         {
           "code": "ETC",
@@ -217791,8 +217955,8 @@
         {
           "code": "HC",
           "name": "Heinz College Wide Courses",
-          "courses": 64,
-          "sections": 160
+          "courses": 65,
+          "sections": 161
         },
         {
           "code": "HIS",
@@ -217876,7 +218040,7 @@
           "code": "MEG",
           "name": "Mechanical Engineering",
           "courses": 78,
-          "sections": 151
+          "sections": 155
         },
         {
           "code": "MED",
@@ -217981,10 +218145,10 @@
           "sections": 43
         }
       ],
-      "scraped_at": "2026-11-12T19:23:28.630718+00:00",
+      "scraped_at": "2026-11-13T13:55:52.659698+00:00",
       "semester_label": "Spring 2027",
-      "total_courses": 3153,
-      "total_sections": 7593
+      "total_courses": 3155,
+      "total_sections": 7599
     },
     "F26": {
       "courses": [
@@ -256640,7 +256804,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "08:50PM",
+              "end_time": "07:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -256650,7 +256814,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "07:20PM",
+              "end_time": "08:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -256724,7 +256888,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-08:50PM",
+              "days_times": "MW 06:30PM-07:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -256736,7 +256900,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-07:20PM",
+              "days_times": "MW 06:30PM-08:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -441883,7 +442047,7 @@
           "sections": 50
         }
       ],
-      "scraped_at": "2026-11-12T19:23:28.630718+00:00",
+      "scraped_at": "2026-11-13T13:55:52.659698+00:00",
       "semester_label": "Fall 2026",
       "total_courses": 3244,
       "total_sections": 7797
@@ -459775,7 +459939,7 @@
           "sections": 0
         }
       ],
-      "scraped_at": "2026-11-12T19:23:28.630718+00:00",
+      "scraped_at": "2026-11-13T13:55:52.659698+00:00",
       "semester_label": "Summer 2026",
       "total_courses": 80,
       "total_sections": 739
@@ -499351,7 +499515,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "04:20PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation Rotation",
               "campus": "Pittsburgh"
@@ -499361,7 +499525,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person Expectation Rotation",
               "campus": "Pittsburgh"
@@ -499410,7 +499574,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 02:00PM-04:20PM",
+              "days_times": "MW 02:00PM-02:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation Rotation"
@@ -499422,7 +499586,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 02:00PM-02:50PM",
+              "days_times": "MW 02:00PM-04:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person Expectation Rotation"
@@ -499722,7 +499886,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "04:50PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -499732,7 +499896,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -499785,7 +499949,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 02:00PM-04:50PM",
+              "days_times": "TR 02:00PM-02:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -499797,7 +499961,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 02:00PM-02:50PM",
+              "days_times": "TR 02:00PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -678844,7 +679008,7 @@
           "sections": 39
         }
       ],
-      "scraped_at": "2026-11-12T19:23:28.630718+00:00",
+      "scraped_at": "2026-11-13T13:55:52.659698+00:00",
       "semester_label": "Spring 2026",
       "total_courses": 3208,
       "total_sections": 7604
@@ -691823,7 +691987,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -691833,7 +691997,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -691853,7 +692017,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "04:00PM",
+              "end_time": "12:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -691863,7 +692027,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "12:00PM",
-              "end_time": "12:50PM",
+              "end_time": "04:00PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -691925,7 +692089,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-04:00PM",
+              "days_times": "TR 12:00PM-12:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -691937,7 +692101,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-12:50PM",
+              "days_times": "TR 12:00PM-04:00PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -691961,7 +692125,7 @@
               "section": "D",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-04:00PM",
+              "days_times": "TR 12:00PM-12:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -691973,7 +692137,7 @@
               "section": "D",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 12:00PM-12:50PM",
+              "days_times": "TR 12:00PM-04:00PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -716992,7 +717156,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "07:20PM",
+              "end_time": "08:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -717002,7 +717166,7 @@
               "mini": "",
               "days": "MW",
               "begin_time": "06:30PM",
-              "end_time": "08:50PM",
+              "end_time": "07:20PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -717076,7 +717240,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-07:20PM",
+              "days_times": "MW 06:30PM-08:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -717088,7 +717252,7 @@
               "section": "B",
               "modality": "In Person",
               "units": "9",
-              "days_times": "MW 06:30PM-08:50PM",
+              "days_times": "MW 06:30PM-07:20PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -717374,7 +717538,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "02:50PM",
+              "end_time": "04:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -717384,7 +717548,7 @@
               "mini": "",
               "days": "TR",
               "begin_time": "02:00PM",
-              "end_time": "04:50PM",
+              "end_time": "02:50PM",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode": "In-person only",
               "campus": "Pittsburgh"
@@ -717413,7 +717577,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 02:00PM-02:50PM",
+              "days_times": "TR 02:00PM-04:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -717425,7 +717589,7 @@
               "section": "A",
               "modality": "In Person",
               "units": "12",
-              "days_times": "TR 02:00PM-04:50PM",
+              "days_times": "TR 02:00PM-02:50PM",
               "instructor": "",
               "location": "Pittsburgh, Pennsylvania",
               "delivery_mode_raw": "In-person only"
@@ -901424,7 +901588,7 @@
           "sections": 37
         }
       ],
-      "scraped_at": "2026-11-12T19:23:28.630718+00:00",
+      "scraped_at": "2026-11-13T13:55:52.659698+00:00",
       "semester_label": "Fall 2025",
       "total_courses": 3213,
       "total_sections": 7760
