@@ -8097,7 +8097,7 @@
           "section": "B",
           "modality": "In Person",
           "units": "12",
-          "days_times": "TR 12:00PM-12:50PM",
+          "days_times": "TR 12:00PM-04:00PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -8109,7 +8109,7 @@
           "section": "B",
           "modality": "In Person",
           "units": "12",
-          "days_times": "TR 12:00PM-04:00PM",
+          "days_times": "TR 12:00PM-12:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -23392,7 +23392,7 @@
           "section": "B",
           "modality": "In Person",
           "units": "12",
-          "days_times": "TR 02:00PM-02:50PM",
+          "days_times": "TR 02:00PM-04:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
@@ -23404,7 +23404,7 @@
           "section": "B",
           "modality": "In Person",
           "units": "12",
-          "days_times": "TR 02:00PM-04:50PM",
+          "days_times": "TR 02:00PM-02:50PM",
           "instructor": "",
           "location": "Pittsburgh, Pennsylvania",
           "delivery_mode_raw": "In-person only"
